@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Light Pollution WebGIS</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-star-and-crescent"></i> Light Pollution WebGIS
+            </span>
+        </div>
+    </nav>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <h6><i class="fas fa-tools"></i> Analysis Tools</h6>
+        <div class="btn-group-vertical w-100">
+            <button class="btn btn-primary btn-sm mb-2" id="drawPolygon">
+                <i class="fas fa-draw-polygon"></i> Draw Area
+            </button>
+            <button class="btn btn-success btn-sm mb-2" id="findDarkSky">
+                <i class="fas fa-star"></i> Find Dark Sky
+            </button>
+            <button class="btn btn-info btn-sm mb-2" id="compareLocations">
+                <i class="fas fa-balance-scale"></i> Compare
+            </button>
+            <button class="btn btn-warning btn-sm mb-2" id="planRoute">
+                <i class="fas fa-route"></i> Plan Route
+            </button>
+            <button class="btn btn-danger btn-sm mb-2" id="clearAll">
+                <i class="fas fa-trash"></i> Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <h6><i class="fas fa-layer-group"></i> Light Pollution</h6>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #0000FF;"></span>
+            <span class="legend-label">Low (0-30%)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #00FF00;"></span>
+            <span class="legend-label">Medium (30-60%)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #FFFF00;"></span>
+            <span class="legend-label">High (60-80%)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #FF0000;"></span>
+            <span class="legend-label">Very High (80-100%)</span>
+        </div>
+    </div>
+
+    <!-- Chatbot -->
+    <div class="chatbot-container">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-robot"></i> Light Pollution Assistant</span>
+                <button class="btn btn-sm btn-light" id="toggleChat">
+                    <i class="fas fa-minus"></i>
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div id="chat-messages" class="chat-messages">
+                    <div class="chat-message assistant">
+                        <strong>AI Assistant:</strong> Hello! I can help you analyze light pollution and find the best spots for sky observation. How can I assist you today?
+                    </div>
+                </div>
+                <div class="input-group p-2">
+                    <input type="text" class="form-control" id="user-input" placeholder="Ask about light pollution...">
+                    <button class="btn btn-primary" id="send-message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    
+    <!-- Your Custom JS -->
+    <script src="./js/app.js"></script>
+</body>
+</html>

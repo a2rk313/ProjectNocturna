@@ -1,0 +1,21 @@
+{
+  "name": "light-pollution-webgis",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "live-server --port=3000",
+    "dev": "live-server --port=3000 --watch=js,css,html"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "leaflet-draw": "^1.0.4",
+    "leaflet.heat": "^0.2.0",
+    "@turf/turf": "^6.5.0",
+    "bootstrap": "^5.3.0",
+    "chart.js": "^4.4.0",
+    "leaflet-routing-machine": "^3.2.12"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
