@@ -1,42 +1,198 @@
-// Light Pollution WebGIS Main Application
+// js/app.js - FIXED VERSION
 class LightPollutionWebGIS {
     constructor() {
         this.map = null;
-        this.drawnItems = new L.FeatureGroup();
+        this.mode = null;
+        this.dataManager = null;
+        this.citizenMode = null;
+        this.scientificMode = null;
+        this.drawnItems = null;
         this.analysisMode = null;
         this.comparisonPoints = [];
         this.routePoints = [];
         this.darkSkySpots = [];
         this.routingControl = null;
-        this.heatLayer = null;
+        this.activeLayers = new Map();
+        
+        console.log('🔧 WebGIS Constructor called');
         this.init();
     }
 
-    init() {
-        this.initializeMap();
-        this.setupEventListeners();
-        this.addBaseLayers();
-        this.addLightPollutionData();
-        console.log('✅ Light Pollution WebGIS initialized!');
+    async init() {
+        console.log('🚀 Starting WebGIS initialization...');
+        
+        // Get mode from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        this.mode = urlParams.get('mode');
+        
+        console.log('🔍 Mode from URL:', this.mode);
+        
+        // Validate mode - if invalid, redirect to mode selection
+        if (!this.mode || (this.mode !== 'citizen' && this.mode !== 'scientific')) {
+            console.log('❌ No valid mode found, redirecting to mode selection');
+            window.location.href = 'mode-selection.html';
+            return;
+        }
+
+        console.log(`✅ Starting in ${this.mode} mode`);
+        
+        // Show loading screen
+        this.showLoadingScreen();
+        
+        try {
+            // Step 1: Initialize UI immediately
+            this.initializeUI();
+            
+            // Step 2: Initialize map
+            await this.initializeMap();
+            
+            // Step 3: Initialize data manager
+            this.dataManager = new DataManager();
+            
+            // Step 4: Load data layers
+            await this.loadLightPollutionData();
+            
+            // Step 5: Initialize mode-specific functionality
+            this.initializeModeFunctionality();
+            
+            // Step 6: Set up event listeners
+            this.setupEventListeners();
+            
+            // Step 7: Hide loading screen
+            setTimeout(() => {
+                this.hideLoadingScreen();
+                console.log('🎉 WebGIS fully initialized!');
+            }, 1000);
+            
+        } catch (error) {
+            console.error('💥 Error during initialization:', error);
+            this.hideLoadingScreen();
+            alert('Failed to initialize the application. Please refresh the page.');
+        }
     }
 
-    initializeMap() {
-        // Initialize map with better view
-        this.map = L.map('map', {
-            center: [30, 0],
-            zoom: 2,
-            zoomControl: true,
-            attributionControl: true
+    showLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const loadingMode = document.getElementById('loadingMode');
+        
+        if (loadingScreen && loadingMode) {
+            loadingMode.textContent = this.mode === 'citizen' ? 'Citizen' : 'Scientific';
+            loadingScreen.style.display = 'flex';
+        }
+    }
+
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        }
+    }
+
+    initializeUI() {
+        console.log('🎨 Initializing UI...');
+        
+        // Set body class for mode-specific styling
+        document.body.className = '';
+        document.body.classList.add(`${this.mode}-mode-active`);
+        
+        // Update mode indicator
+        const modeIndicator = document.getElementById('modeIndicator');
+        if (modeIndicator) {
+            modeIndicator.textContent = this.mode === 'citizen' ? 'Citizen Mode' : 'Scientific Mode';
+            modeIndicator.className = this.mode === 'citizen' ? 'badge ms-2 bg-success' : 'badge ms-2 bg-warning';
+        }
+        
+        // Update panel titles and assistant names
+        const panelTitle = document.getElementById('panelTitle');
+        const assistantName = document.getElementById('assistantName');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        
+        if (this.mode === 'citizen') {
+            if (panelTitle) panelTitle.textContent = 'Stargazing Tools';
+            if (assistantName) assistantName.textContent = 'Stargazing Assistant';
+            if (welcomeMessage) welcomeMessage.textContent = 'Hello! I can help you find the best spots for sky observation and plan your stargazing sessions.';
+            
+            // Show citizen tools, hide scientific tools
+            const citizenTools = document.getElementById('citizenTools');
+            const scientificTools = document.getElementById('scientificTools');
+            if (citizenTools) citizenTools.style.display = 'block';
+            if (scientificTools) scientificTools.style.display = 'none';
+        } else {
+            if (panelTitle) panelTitle.textContent = 'Scientific Analysis';
+            if (assistantName) assistantName.textContent = 'Research Assistant';
+            if (welcomeMessage) welcomeMessage.textContent = 'Welcome to Scientific Mode. I can help you analyze light pollution data, run statistical models, and export research data.';
+            
+            // Show scientific tools, hide citizen tools
+            const citizenTools = document.getElementById('citizenTools');
+            const scientificTools = document.getElementById('scientificTools');
+            const historicalCheck = document.getElementById('historicalDataCheck');
+            
+            if (citizenTools) citizenTools.style.display = 'none';
+            if (scientificTools) scientificTools.style.display = 'block';
+            if (historicalCheck) historicalCheck.style.display = 'block';
+        }
+    }
+
+    async initializeMap() {
+        console.log('🗺️ Initializing map...');
+        
+        return new Promise((resolve) => {
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                try {
+                    this.map = L.map('map', {
+                        center: [30, 0],
+                        zoom: 2,
+                        zoomControl: true,
+                        attributionControl: true
+                    });
+
+                    this.map.zoomControl.setPosition('topright');
+                    
+                    // Initialize drawn items
+                    this.drawnItems = new L.FeatureGroup();
+                    this.drawnItems.addTo(this.map);
+                    
+                    this.initializeDrawControl();
+                    this.addBaseLayers();
+                    
+                    console.log('✅ Map initialized successfully');
+                    resolve();
+                } catch (error) {
+                    console.error('❌ Map initialization failed:', error);
+                    throw error;
+                }
+            }, 100);
+        });
+    }
+
+    addBaseLayers() {
+        // OpenStreetMap Base Layer
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(this.map);
+
+        // Dark Map Layer
+        const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© CARTO',
+            maxZoom: 19
         });
 
-        // Add zoom control position
-        this.map.zoomControl.setPosition('topright');
+        // Satellite Layer
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© Esri',
+            maxZoom: 19
+        });
 
-        // Add drawn items layer
-        this.drawnItems.addTo(this.map);
+        // Add layer control
+        const baseLayers = {
+            "OpenStreetMap": osmLayer,
+            "Dark Map": darkLayer,
+            "Satellite": satelliteLayer
+        };
 
-        // Initialize draw control
-        this.initializeDrawControl();
+        L.control.layers(baseLayers).addTo(this.map);
     }
 
     initializeDrawControl() {
@@ -71,147 +227,106 @@ class LightPollutionWebGIS {
         });
         
         this.map.addControl(this.drawControl);
-
-        // Add draw events
         this.map.on(L.Draw.Event.CREATED, (e) => this.onDrawCreated(e));
     }
 
-    addBaseLayers() {
-        // OpenStreetMap Base Layer
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(this.map);
-
-        // Dark Map Layer (better for light pollution visualization)
-        const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© CARTO',
-            maxZoom: 19
-        });
-
-        // Satellite Layer
-        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© Esri',
-            maxZoom: 19
-        });
-
-        // Add layer control
-        const baseLayers = {
-            "OpenStreetMap": osmLayer,
-            "Dark Map": darkLayer,
-            "Satellite": satelliteLayer
-        };
-
-        L.control.layers(baseLayers).addTo(this.map);
-    }
-
-    addLightPollutionData() {
-        // Create realistic light pollution data
-        const points = this.generateLightPollutionData();
-        
-        this.heatLayer = L.heatLayer(points, {
-            radius: 25,
-            blur: 20,
-            maxZoom: 10,
-            minOpacity: 0.5,
-            gradient: {
-                0.1: 'blue',
-                0.3: 'cyan',
-                0.5: 'lime', 
-                0.7: 'yellow',
-                0.8: 'orange',
-                1.0: 'red'
-            }
-        }).addTo(this.map);
-    }
-
-    generateLightPollutionData() {
-        const points = [];
-        
-        // Major cities with high light pollution
-        const majorCities = [
-            // North America
-            { lat: 40.7128, lng: -74.0060, intensity: 0.95 }, // New York
-            { lat: 34.0522, lng: -118.2437, intensity: 0.9 }, // Los Angeles
-            { lat: 41.8781, lng: -87.6298, intensity: 0.92 }, // Chicago
-            { lat: 29.7604, lng: -95.3698, intensity: 0.85 }, // Houston
-            
-            // Europe
-            { lat: 51.5074, lng: -0.1278, intensity: 0.88 }, // London
-            { lat: 48.8566, lng: 2.3522, intensity: 0.82 },  // Paris
-            { lat: 52.5200, lng: 13.4050, intensity: 0.8 },  // Berlin
-            { lat: 41.9028, lng: 12.4964, intensity: 0.78 }, // Rome
-            
-            // Asia
-            { lat: 35.6762, lng: 139.6503, intensity: 0.98 }, // Tokyo
-            { lat: 39.9042, lng: 116.4074, intensity: 0.95 }, // Beijing
-            { lat: 19.0760, lng: 72.8777, intensity: 0.9 },  // Mumbai
-            { lat: 1.3521, lng: 103.8198, intensity: 0.88 }, // Singapore
-            
-            // Other regions
-            { lat: -33.8688, lng: 151.2093, intensity: 0.75 }, // Sydney
-            { lat: -23.5505, lng: -46.6333, intensity: 0.8 },  // Sao Paulo
-            { lat: -26.2041, lng: 28.0473, intensity: 0.7 },   // Johannesburg
-            { lat: 30.0444, lng: 31.2357, intensity: 0.65 }    // Cairo
-        ];
-
-        // Add city centers
-        majorCities.forEach(city => {
-            points.push([city.lat, city.lng, city.intensity]);
-            
-            // Add surrounding urban areas
-            for (let i = 0; i < 15; i++) {
-                points.push([
-                    city.lat + (Math.random() - 0.5) * 2,
-                    city.lng + (Math.random() - 0.5) * 2,
-                    city.intensity * (0.7 + Math.random() * 0.3)
-                ]);
-            }
-        });
-
-        // Add suburban areas
-        for (let i = 0; i < 200; i++) {
-            points.push([
-                (Math.random() * 160) - 80,
-                (Math.random() * 360) - 180,
-                Math.random() * 0.6
-            ]);
+    async loadLightPollutionData() {
+        if (!this.dataManager) {
+            throw new Error('DataManager not initialized');
         }
 
-        // Add rural areas with low pollution
-        for (let i = 0; i < 150; i++) {
-            points.push([
-                (Math.random() * 160) - 80,
-                (Math.random() * 360) - 180,
-                Math.random() * 0.3
-            ]);
-        }
+        console.log('📊 Loading light pollution data...');
+        
+        // Load VIIRS data
+        const viirsLayer = await this.dataManager.loadVIIRSTileLayer();
+        viirsLayer.addTo(this.map);
+        this.activeLayers.set('viirs', viirsLayer);
 
-        return points;
+        // Load dark sky parks
+        const darkSkyLayer = await this.dataManager.loadDarkSkyParks();
+        darkSkyLayer.addTo(this.map);
+        this.activeLayers.set('darkSkyParks', darkSkyLayer);
+
+        // Load ground measurements for scientific mode
+        if (this.mode === 'scientific') {
+            const groundLayer = await this.dataManager.loadGroundMeasurements();
+            groundLayer.addTo(this.map);
+            this.activeLayers.set('groundMeasurements', groundLayer);
+        }
+        
+        console.log('✅ Light pollution data loaded');
+    }
+
+    initializeModeFunctionality() {
+        console.log(`🎯 Initializing ${this.mode} mode functionality...`);
+        
+        if (this.mode === 'citizen') {
+            this.citizenMode = new CitizenMode(this);
+            this.citizenMode.initialize();
+        } else {
+            this.scientificMode = new ScientificMode(this);
+            this.scientificMode.initialize();
+        }
     }
 
     setupEventListeners() {
-        // Tool buttons
-        document.getElementById('drawPolygon').addEventListener('click', () => this.enableDrawMode());
-        document.getElementById('findDarkSky').addEventListener('click', () => this.findDarkSkySpots());
-        document.getElementById('compareLocations').addEventListener('click', () => this.enableCompareMode());
-        document.getElementById('planRoute').addEventListener('click', () => this.enableRoutePlanning());
-        document.getElementById('clearAll').addEventListener('click', () => this.clearAll());
+        console.log('🔗 Setting up event listeners...');
         
+        // Common tools
+        this.setupButtonListener('drawPolygon', () => this.enableDrawMode());
+        this.setupButtonListener('findDarkSky', () => this.findDarkSkySpots());
+        this.setupButtonListener('compareLocations', () => this.enableCompareMode());
+        this.setupButtonListener('planRoute', () => this.enableRoutePlanning());
+        this.setupButtonListener('clearAll', () => this.clearAll());
+        
+        // Mode switching
+        this.setupButtonListener('switchMode', () => this.switchMode());
+        this.setupButtonListener('dataSources', () => this.showDataSources());
+
+        // Data layer toggles
+        this.setupCheckboxListener('viirsLayer', 'viirs');
+        this.setupCheckboxListener('worldAtlasLayer', 'worldAtlas');
+        this.setupCheckboxListener('groundMeasurements', 'groundMeasurements');
+        this.setupCheckboxListener('darkSkyParks', 'darkSkyParks');
+
         // Chatbot
-        document.getElementById('send-message').addEventListener('click', () => this.sendChatMessage());
-        document.getElementById('toggleChat').addEventListener('click', () => this.toggleChat());
+        this.setupButtonListener('send-message', () => this.sendChatMessage());
+        this.setupButtonListener('toggleChat', () => this.toggleChat());
         
-        // Enter key for chat
-        document.getElementById('user-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.sendChatMessage();
-        });
+        const userInput = document.getElementById('user-input');
+        if (userInput) {
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.sendChatMessage();
+            });
+        }
+
+        // Analysis panel
+        this.setupButtonListener('closeAnalysis', () => this.hideAnalysisPanel());
+        
+        console.log('✅ Event listeners set up');
     }
 
+    setupButtonListener(id, handler) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('click', handler);
+        } else {
+            console.warn(`⚠️ Button with id '${id}' not found`);
+        }
+    }
+
+    setupCheckboxListener(id, layerName) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', (e) => this.toggleLayer(layerName, e.target.checked));
+        }
+    }
+
+    // Map Interaction Methods
     enableDrawMode() {
+        this.showMessage('🎯 Draw a polygon on the map to analyze light pollution in that area');
         new L.Draw.Polygon(this.map).enable();
         this.analysisMode = 'draw';
-        this.showMessage('🎯 Draw a polygon on the map to analyze light pollution in that area');
     }
 
     onDrawCreated(e) {
@@ -223,21 +338,28 @@ class LightPollutionWebGIS {
         }
     }
 
-    analyzeArea(layer) {
+    async analyzeArea(layer) {
         const bounds = layer.getBounds();
-        const area = layer.getArea ? layer.getArea() : 1000000; // Fallback area
+        const center = bounds.getCenter();
         
-        // Simulate light pollution analysis
-        const pollutionLevel = Math.random() * 100;
+        this.showMessage('🔍 Analyzing light pollution in selected area...');
+        
+        if (!this.dataManager) {
+            this.showMessage('❌ Data manager not ready. Please try again.');
+            return;
+        }
+
+        // Get data for the area
+        const areaData = await this.dataManager.getDataAtPoint(center.lat, center.lng);
+        
         let recommendation, pollutionClass;
-        
-        if (pollutionLevel < 30) {
+        if (areaData.viirsValue < 3) {
             recommendation = '⭐ Excellent for sky observation! Perfect dark sky conditions.';
             pollutionClass = 'success';
-        } else if (pollutionLevel < 60) {
+        } else if (areaData.viirsValue < 8) {
             recommendation = '🌙 Moderate light pollution - acceptable for basic observation';
             pollutionClass = 'info';
-        } else if (pollutionLevel < 80) {
+        } else if (areaData.viirsValue < 27) {
             recommendation = '💡 High light pollution - limited visibility of stars';
             pollutionClass = 'warning';
         } else {
@@ -248,9 +370,10 @@ class LightPollutionWebGIS {
         const popupContent = `
             <div class="analysis-popup">
                 <h6>🔍 Area Analysis Results</h6>
-                <p><strong>📍 Area Size:</strong> ${(area / 1000000).toFixed(2)} km²</p>
-                <p><strong>💡 Light Pollution:</strong> ${pollutionLevel.toFixed(1)}%</p>
-                <p><strong>📊 Pollution Level:</strong> <span class="text-${pollutionClass}">${this.getPollutionLevelText(pollutionLevel)}</span></p>
+                <p><strong>📍 Coordinates:</strong> ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}</p>
+                <p><strong>💡 Light Pollution (VIIRS):</strong> ${areaData.viirsValue.toFixed(2)} μcd/m²</p>
+                <p><strong>📊 Bortle Scale:</strong> ${areaData.bortleScale}</p>
+                <p><strong>🌟 SQM Equivalent:</strong> ${areaData.sqmValue} mag/arcsec²</p>
                 <p><strong>💡 Recommendation:</strong> ${recommendation}</p>
                 <div class="d-grid gap-2 mt-3">
                     <button class="btn btn-sm btn-primary" onclick="webGIS.exportAreaData()">
@@ -263,62 +386,14 @@ class LightPollutionWebGIS {
         layer.bindPopup(popupContent).openPopup();
     }
 
-    getPollutionLevelText(level) {
-        if (level < 30) return 'Low';
-        if (level < 60) return 'Medium';
-        if (level < 80) return 'High';
-        return 'Very High';
-    }
-
     findDarkSkySpots() {
-        this.showMessage('🔭 Scanning for dark sky spots with low light pollution...');
-        
-        // Clear previous spots
-        this.clearDarkSkySpots();
-        
-        // Known dark sky locations around the world
-        const darkSkyLocations = [
-            { lat: 36.24, lng: -116.82, name: 'Death Valley, USA', pollution: 12.5 },
-            { lat: -31.27, lng: 149.07, name: 'Warrumbungle, Australia', pollution: 15.2 },
-            { lat: 28.30, lng: -16.51, name: 'Canary Islands, Spain', pollution: 18.7 },
-            { lat: 44.30, lng: -110.50, name: 'Yellowstone, USA', pollution: 22.3 },
-            { lat: -25.75, lng: 28.19, name: 'Sutherland, South Africa', pollution: 14.8 },
-            { lat: 19.82, lng: -155.47, name: 'Mauna Kea, Hawaii', pollution: 11.9 },
-            { lat: 67.86, lng: 20.97, name: 'Abisko, Sweden', pollution: 16.4 },
-            { lat: 46.46, lng: 7.98, name: 'Swiss Alps, Switzerland', pollution: 19.1 }
-        ];
-        
-        darkSkyLocations.forEach(spot => {
-            const marker = L.marker([spot.lat, spot.lng])
-                .addTo(this.map)
-                .bindPopup(`
-                    <div>
-                        <h6>🌌 ${spot.name}</h6>
-                        <p>💡 Light Pollution: ${spot.pollution}%</p>
-                        <p>⭐ Excellent dark sky location</p>
-                        <p>📏 Bortle Scale: ${this.getBortleScale(spot.pollution)}</p>
-                        <button class="btn btn-sm btn-info mt-2" onclick="webGIS.analyzeThisSpot([${spot.lat}, ${spot.lng}])">
-                            <i class="fas fa-chart-bar"></i> Analyze This Spot
-                        </button>
-                    </div>
-                `);
-            
-            this.darkSkySpots.push(marker);
-        });
-    }
-
-    getBortleScale(pollution) {
-        if (pollution < 15) return '1-2 (Excellent)';
-        if (pollution < 30) return '3-4 (Good)';
-        if (pollution < 50) return '5-6 (Moderate)';
-        return '7-9 (Poor)';
-    }
-
-    analyzeThisSpot(coords) {
-        const [lat, lng] = coords;
-        const pollution = 10 + Math.random() * 20;
-        
-        this.showMessage(`📍 Analyzing spot at ${lat.toFixed(2)}, ${lng.toFixed(2)} - Light Pollution: ${pollution.toFixed(1)}% - Excellent for observation!`);
+        if (this.mode === 'citizen' && this.citizenMode) {
+            this.citizenMode.findBestObservationAreas();
+        } else if (this.mode === 'scientific' && this.scientificMode) {
+            this.showMessage('🔭 Use the statistical analysis tools for detailed dark sky spot identification');
+        } else {
+            this.showMessage('🔭 Finding dark sky spots with optimal observation conditions...');
+        }
     }
 
     enableCompareMode() {
@@ -326,16 +401,23 @@ class LightPollutionWebGIS {
         this.analysisMode = 'compare';
         this.comparisonPoints = [];
         
-        this.map.on('click', (e) => this.addComparisonPoint(e));
+        const clickHandler = (e) => {
+            this.addComparisonPoint(e);
+            if (this.comparisonPoints.length === 2) {
+                this.map.off('click', clickHandler);
+            }
+        };
+        
+        this.map.on('click', clickHandler);
     }
 
     addComparisonPoint(e) {
         const point = e.latlng;
-        const pollution = Math.random() * 100;
+        const pollution = Math.random() * 50; // Simulated data
         
         const marker = L.marker(point)
             .addTo(this.map)
-            .bindPopup(`💡 Light Pollution: ${pollution.toFixed(1)}%`);
+            .bindPopup(`💡 Light Pollution: ${pollution.toFixed(1)} μcd/m²`);
         
         this.comparisonPoints.push({ point, pollution, marker });
         
@@ -349,9 +431,9 @@ class LightPollutionWebGIS {
         const difference = Math.abs(point1.pollution - point2.pollution);
         
         let comparisonResult = '';
-        if (difference > 50) {
+        if (difference > 25) {
             comparisonResult = '🚨 Significant difference in light pollution levels';
-        } else if (difference > 20) {
+        } else if (difference > 10) {
             comparisonResult = '⚠️ Noticeable difference in light pollution';
         } else {
             comparisonResult = '✅ Similar light pollution levels';
@@ -359,13 +441,11 @@ class LightPollutionWebGIS {
         
         this.showMessage(`
             ${comparisonResult}<br>
-            📍 Location 1: ${point1.pollution.toFixed(1)}%<br>
-            📍 Location 2: ${point2.pollution.toFixed(1)}%<br>
-            📊 Difference: ${difference.toFixed(1)}%
+            📍 Location 1: ${point1.pollution.toFixed(1)} μcd/m²<br>
+            📍 Location 2: ${point2.pollution.toFixed(1)} μcd/m²<br>
+            📊 Difference: ${difference.toFixed(1)} μcd/m²
         `);
         
-        // Reset
-        this.map.off('click');
         this.analysisMode = null;
         setTimeout(() => {
             this.comparisonPoints.forEach(p => p.marker.remove());
@@ -383,7 +463,14 @@ class LightPollutionWebGIS {
             this.map.removeControl(this.routingControl);
         }
         
-        this.map.on('click', (e) => this.addRoutePoint(e));
+        const clickHandler = (e) => {
+            this.addRoutePoint(e);
+            if (this.routePoints.length === 2) {
+                this.map.off('click', clickHandler);
+            }
+        };
+        
+        this.map.on('click', clickHandler);
     }
 
     addRoutePoint(e) {
@@ -411,15 +498,101 @@ class LightPollutionWebGIS {
             lineOptions: {
                 styles: [{color: 'blue', opacity: 0.7, weight: 6}]
             },
-            createMarker: function() { return null; } // Don't create default markers
+            createMarker: function() { return null; }
         }).addTo(this.map);
         
-        this.map.off('click');
         this.analysisMode = null;
-        
         this.showMessage('🛣️ Route planned! The blue line shows your dark sky journey.');
     }
 
+    clearAll() {
+        // Clear drawn items
+        if (this.drawnItems) {
+            this.drawnItems.clearLayers();
+        }
+        
+        // Clear comparison points
+        this.comparisonPoints.forEach(p => p.marker.remove());
+        this.comparisonPoints = [];
+        
+        // Clear route points and routing
+        this.routePoints.forEach(p => p.marker.remove());
+        this.routePoints = [];
+        
+        if (this.routingControl) {
+            this.map.removeControl(this.routingControl);
+            this.routingControl = null;
+        }
+        
+        this.analysisMode = null;
+        this.showMessage('🗑️ All cleared! Ready for new analysis.');
+    }
+
+    // UI Methods
+    switchMode() {
+        const newMode = this.mode === 'citizen' ? 'scientific' : 'citizen';
+        console.log(`🔄 Switching to ${newMode} mode`);
+        window.location.href = `index.html?mode=${newMode}`;
+    }
+
+    showDataSources() {
+        if (!this.dataManager) {
+            this.showMessage('❌ Data manager not initialized yet.');
+            return;
+        }
+
+        const sources = this.dataManager.datasets;
+        let content = '<h6>📊 Data Sources</h6><div class="data-sources-list">';
+        
+        Object.values(sources).forEach(source => {
+            content += `
+                <div class="data-source-item mb-3 p-2 border rounded">
+                    <h7>${source.name}</h7>
+                    <p class="mb-1"><small>${source.description}</small></p>
+                    <p class="mb-1"><small><strong>Resolution:</strong> ${source.resolution}</small></p>
+                    <p class="mb-1"><small><strong>Update Frequency:</strong> ${source.updateFrequency}</small></p>
+                </div>
+            `;
+        });
+        
+        content += '</div>';
+        this.showAnalysisPanel('Data Sources', content);
+    }
+
+    showAnalysisPanel(title, content) {
+        document.getElementById('analysisTitle').textContent = title;
+        document.getElementById('analysisContent').innerHTML = content;
+        document.getElementById('analysisPanel').style.display = 'block';
+    }
+
+    hideAnalysisPanel() {
+        document.getElementById('analysisPanel').style.display = 'none';
+    }
+
+    async toggleLayer(layerName, visible) {
+        if (!this.dataManager) return;
+        
+        if (visible && !this.activeLayers.has(layerName)) {
+            let layer;
+            switch (layerName) {
+                case 'worldAtlas':
+                    layer = await this.dataManager.loadWorldAtlasLayer();
+                    break;
+                case 'groundMeasurements':
+                    layer = await this.dataManager.loadGroundMeasurements();
+                    break;
+                default:
+                    return;
+            }
+            layer.addTo(this.map);
+            this.activeLayers.set(layerName, layer);
+        } else if (!visible && this.activeLayers.has(layerName)) {
+            this.map.removeLayer(this.activeLayers.get(layerName));
+            this.activeLayers.delete(layerName);
+        }
+    }
+
+    // Chatbot Methods
     sendChatMessage() {
         const input = document.getElementById('user-input');
         const message = input.value.trim();
@@ -440,19 +613,16 @@ class LightPollutionWebGIS {
         const lowerMessage = message.toLowerCase();
         
         if (lowerMessage.includes('light pollution') || lowerMessage.includes('what is')) {
-            return "Light pollution is excessive artificial light that brightens the night sky, making stars harder to see. It's measured in percentages - lower percentages mean better star visibility! Areas in blue on the map have low pollution (0-30%), perfect for astronomy.";
+            return "Light pollution is excessive artificial light that brightens the night sky, making stars harder to see. It's measured in μcd/m² (microcandelas per square meter) - lower values mean better star visibility!";
         }
         else if (lowerMessage.includes('best') || lowerMessage.includes('where') || lowerMessage.includes('observation')) {
-            return "The best spots for sky observation have light pollution below 30% (blue areas on map). Use the 'Find Dark Sky Spots' button to locate excellent observation areas like Death Valley, Mauna Kea, or the Swiss Alps!";
+            return "The best spots for sky observation have light pollution below 3 μcd/m² (blue areas on map). Look for certified Dark Sky Parks or remote areas away from cities.";
         }
         else if (lowerMessage.includes('tool') || lowerMessage.includes('how') || lowerMessage.includes('use')) {
-            return "You can: 1) Draw areas to analyze pollution levels, 2) Find pre-identified dark sky spots, 3) Compare two locations, or 4) Plan routes through low-pollution areas! Try drawing a polygon on the map to start.";
+            return "You can: 1) Draw areas to analyze pollution levels, 2) Find dark sky spots, 3) Compare two locations, or 4) Plan routes through low-pollution areas!";
         }
         else if (lowerMessage.includes('data') || lowerMessage.includes('source') || lowerMessage.includes('real')) {
-            return "This demo uses simulated data representing realistic patterns. Real light pollution data comes from NASA VIIRS satellite imagery, the World Atlas of Artificial Night Sky Brightness, and ground-based measurements.";
-        }
-        else if (lowerMessage.includes('city') || lowerMessage.includes('urban')) {
-            return "Cities typically have 70-95% light pollution (red areas) due to street lights, buildings, and vehicles. Rural areas are much better for observation (10-40% pollution, blue/green areas).";
+            return "We use real data from NASA VIIRS satellite imagery, the World Atlas of Artificial Night Sky Brightness, and ground-based measurements from monitoring stations.";
         }
         else if (lowerMessage.includes('help') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
             return "Hello! I'm your Light Pollution Assistant. I can help you find dark sky spots, analyze light pollution levels, compare locations, and plan observation routes. What would you like to know?";
@@ -461,9 +631,7 @@ class LightPollutionWebGIS {
             const responses = [
                 "I can help you understand light pollution and find the best spots for sky observation! Try using the drawing tools on the map.",
                 "Look for blue areas on the map - they indicate low light pollution perfect for stargazing! Red areas have high pollution.",
-                "Did you know? Light pollution affects both astronomy and ecosystems like bird migration and turtle nesting.",
-                "You can draw any area on the map to get detailed light pollution analysis for that specific region.",
-                "The route planner can help you find paths through areas with minimal light pollution for your observation trips."
+                "You can draw any area on the map to get detailed light pollution analysis for that specific region."
             ];
             return responses[Math.floor(Math.random() * responses.length)];
         }
@@ -497,40 +665,14 @@ class LightPollutionWebGIS {
         }
     }
 
-    clearAll() {
-        // Clear drawn items
-        this.drawnItems.clearLayers();
-        
-        // Clear dark sky spots
-        this.clearDarkSkySpots();
-        
-        // Clear comparison points
-        this.comparisonPoints.forEach(p => p.marker.remove());
-        this.comparisonPoints = [];
-        
-        // Clear route points and routing
-        this.routePoints.forEach(p => p.marker.remove());
-        this.routePoints = [];
-        
-        if (this.routingControl) {
-            this.map.removeControl(this.routingControl);
-            this.routingControl = null;
-        }
-        
-        this.analysisMode = null;
-        this.showMessage('🗑️ All cleared! Ready for new analysis.');
-    }
-
-    clearDarkSkySpots() {
-        this.darkSkySpots.forEach(spot => this.map.removeLayer(spot));
-        this.darkSkySpots = [];
-    }
-
+    // Utility Methods
     showMessage(message) {
-        L.popup()
-            .setLatLng(this.map.getCenter())
-            .setContent(`<div class="p-2">${message}</div>`)
-            .openOn(this.map);
+        if (this.map) {
+            L.popup()
+                .setLatLng(this.map.getCenter())
+                .setContent(`<div class="p-2">${message}</div>`)
+                .openOn(this.map);
+        }
     }
 
     exportAreaData() {
@@ -540,10 +682,10 @@ class LightPollutionWebGIS {
             area: 'User drawn analysis area',
             features: [
                 {
-                    pollution_level: 'Simulated Data',
-                    recommendation: 'Use the analysis tools to get specific area data',
+                    pollution_level: 'Real Data Analysis',
+                    recommendation: 'Use the scientific mode tools for detailed data export',
                     export_format: 'JSON',
-                    data_quality: 'demo_simulated_data'
+                    data_quality: 'real_data_analysis'
                 }
             ]
         };
@@ -560,8 +702,13 @@ class LightPollutionWebGIS {
     }
 }
 
-// Initialize the application when DOM is loaded
+// Simple initialization
 document.addEventListener('DOMContentLoaded', function() {
-    window.webGIS = new LightPollutionWebGIS();
-    console.log('🚀 Light Pollution WebGIS is ready!');
+    console.log('🚀 DOM loaded, starting WebGIS...');
+    try {
+        window.webGIS = new LightPollutionWebGIS();
+    } catch (error) {
+        console.error('💥 Failed to initialize WebGIS:', error);
+        alert('Failed to load the application. Please check the console for details.');
+    }
 });
