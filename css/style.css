@@ -1,8 +1,36 @@
+/* css/style.css */
 body {
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f8f9fa;
+}
+
+/* Loading Screen Styles */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-content {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 40px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.loading-screen .spinner-border {
+    width: 3rem;
+    height: 3rem;
 }
 
 .navbar {
@@ -154,31 +182,224 @@ body {
     margin-bottom: 12px;
 }
 
-/* Mobile Responsive */
+/* Mode Selection Styles */
+.mode-selection-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 20px 0;
+}
+
+.mode-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 3px solid transparent;
+    height: 100%;
+    backdrop-filter: blur(10px);
+}
+
+.mode-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.citizen-mode:hover {
+    border-color: #28a745;
+}
+
+.scientific-mode:hover {
+    border-color: #ffc107;
+}
+
+.mode-icon {
+    font-size: 4rem;
+    color: #6c757d;
+}
+
+.citizen-mode .mode-icon {
+    color: #28a745;
+}
+
+.scientific-mode .mode-icon {
+    color: #ffc107;
+}
+
+.mode-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.mode-card ul li {
+    padding: 5px 0;
+    position: relative;
+    padding-left: 25px;
+}
+
+.mode-card ul li:before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #28a745;
+    font-weight: bold;
+}
+
+/* Mode-specific UI elements */
+.mode-tools {
+    display: none;
+}
+
+#modeIndicator {
+    font-size: 0.7em;
+}
+
+.citizen-mode-active #modeIndicator {
+    background: #28a745;
+}
+
+.scientific-mode-active #modeIndicator {
+    background: #ffc107;
+    color: #000;
+}
+
+/* Data Layers Panel */
+.data-layers-panel {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    width: 220px;
+    backdrop-filter: blur(10px);
+    border: 1px solid #dee2e6;
+}
+
+.data-layers-panel h6 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-weight: 600;
+    text-align: center;
+    border-bottom: 2px solid #6f42c1;
+    padding-bottom: 8px;
+}
+
+.form-check {
+    margin-bottom: 8px;
+}
+
+.form-check-label {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Analysis Panel */
+.analysis-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    display: none;
+}
+
+.analysis-panel .card {
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border: none;
+}
+
+/* Enhanced Legend */
+.legend {
+    min-width: 200px;
+}
+
+/* Scientific Mode Specific Styles */
+.scientific-mode-active .control-panel {
+    width: 250px;
+}
+
+.scientific-mode-active .data-layers-panel {
+    display: block;
+}
+
+/* Citizen Mode Specific Styles */
+.citizen-mode-active .control-panel {
+    width: 200px;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
+    .data-layers-panel {
+        display: none;
+    }
+    
     .control-panel {
-        top: 60px;
-        left: 10px;
-        width: 160px;
-        padding: 10px;
+        width: 180px !important;
     }
     
-    .chatbot-container {
-        width: calc(100% - 20px);
-        right: 10px;
-        bottom: 10px;
+    .analysis-panel {
+        width: 95%;
     }
     
-    .legend {
-        left: 10px;
-        bottom: 10px;
-        min-width: 150px;
+    .loading-content {
+        padding: 20px;
+        margin: 20px;
     }
     
-    .btn {
-        font-size: 11px;
-        padding: 6px 8px;
+    .loading-content h4 {
+        font-size: 1.2rem;
     }
+}
+
+/* Chart Containers */
+.chart-container {
+    position: relative;
+    height: 200px;
+    width: 100%;
+    margin: 10px 0;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 20px;
+}
+
+.loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Data Table Styles */
+.data-table {
+    font-size: 12px;
+    width: 100%;
+}
+
+.data-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+/* Export Button Styles */
+.export-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.export-buttons .btn {
+    flex: 1;
+    font-size: 12px;
 }
 
 /* Custom Leaflet Styles */
@@ -208,4 +429,34 @@ body {
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+}
+
+
+/* Dark Sky Park Marker Styles */
+.dark-sky-park-marker {
+    background: transparent;
+    border: none;
+}
+
+.dark-sky-popup {
+    min-width: 250px;
+}
+
+.dark-sky-popup h6 {
+    color: #2c3e50;
+    border-bottom: 2px solid gold;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+/* Station popup styles */
+.station-popup {
+    min-width: 220px;
+}
+
+.station-popup h6 {
+    color: #2c3e50;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
 }
