@@ -1,4 +1,4 @@
-// js/app.js - FIXED VERSION
+// js/app.js - FIXED VERSION WITH N8N INTEGRATION
 class LightPollutionWebGIS {
     constructor() {
         this.map = null;
@@ -13,6 +13,7 @@ class LightPollutionWebGIS {
         this.darkSkySpots = [];
         this.routingControl = null;
         this.activeLayers = new Map();
+        this.n8nAvailable = false;
         
         console.log('🔧 WebGIS Constructor called');
         this.init();
@@ -40,6 +41,10 @@ class LightPollutionWebGIS {
         this.showLoadingScreen();
         
         try {
+            // Test n8n connection
+            this.n8nAvailable = await this.testN8NConnection();
+            console.log(`n8n ${this.n8nAvailable ? 'available' : 'unavailable, using fallback'}`);
+            
             // Step 1: Initialize UI immediately
             this.initializeUI();
             
@@ -68,6 +73,28 @@ class LightPollutionWebGIS {
             console.error('💥 Error during initialization:', error);
             this.hideLoadingScreen();
             alert('Failed to initialize the application. Please refresh the page.');
+        }
+    }
+
+    async testN8NConnection() {
+        try {
+            const response = await fetch(N8N_CONFIG.webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test: true,
+                    chatInput: 'Test connection',
+                    locationContext: { lat: 0, lng: 0 },
+                    sessionId: 'test-session'
+                }),
+                signal: AbortSignal.timeout(N8N_CONFIG.timeout)
+            });
+            return response.ok;
+        } catch (error) {
+            console.warn('n8n connection test failed:', error);
+            return false;
         }
     }
 
@@ -109,8 +136,8 @@ class LightPollutionWebGIS {
         
         if (this.mode === 'citizen') {
             if (panelTitle) panelTitle.textContent = 'Stargazing Tools';
-            if (assistantName) assistantName.textContent = 'Stargazing Assistant';
-            if (welcomeMessage) welcomeMessage.textContent = 'Hello! I can help you find the best spots for sky observation and plan your stargazing sessions.';
+            if (assistantName) assistantName.textContent = 'Lumina';
+            if (welcomeMessage) welcomeMessage.textContent = 'Hello! I\'m Lumina, I can help you find the best spots for sky observation and plan your stargazing sessions.';
             
             // Show citizen tools, hide scientific tools
             const citizenTools = document.getElementById('citizenTools');
@@ -119,8 +146,8 @@ class LightPollutionWebGIS {
             if (scientificTools) scientificTools.style.display = 'none';
         } else {
             if (panelTitle) panelTitle.textContent = 'Scientific Analysis';
-            if (assistantName) assistantName.textContent = 'Research Assistant';
-            if (welcomeMessage) welcomeMessage.textContent = 'Welcome to Scientific Mode. I can help you analyze light pollution data, run statistical models, and export research data.';
+            if (assistantName) assistantName.textContent = 'Lumina';
+            if (welcomeMessage) welcomeMessage.textContent = 'Welcome to Scientific Mode. I\'m Lumina, I can help you analyze light pollution data, run statistical models, and export research data.';
             
             // Show scientific tools, hide citizen tools
             const citizenTools = document.getElementById('citizenTools');
@@ -592,8 +619,8 @@ class LightPollutionWebGIS {
         }
     }
 
-    // Chatbot Methods
-    sendChatMessage() {
+    // Chatbot Methods with n8n Integration
+    async sendChatMessage() {
         const input = document.getElementById('user-input');
         const message = input.value.trim();
         
@@ -601,51 +628,125 @@ class LightPollutionWebGIS {
             this.addChatMessage('user', message);
             input.value = '';
             
-            // Generate AI response
-            setTimeout(() => {
-                const response = this.generateAIResponse(message);
+            // Generate AI response (now async)
+            try {
+                const response = await this.generateAIResponse(message);
                 this.addChatMessage('assistant', response);
-            }, 1000);
+            } catch (error) {
+                console.error('Error generating response:', error);
+                this.addChatMessage('assistant', "I'm having trouble connecting right now. Please try again shortly.");
+            }
         }
     }
 
-    generateAIResponse(message) {
+    async generateAIResponse(message) {
+        try {
+            // Get current map center for context
+            const center = this.map.getCenter();
+            
+            // Prepare data for n8n webhook
+            const requestData = {
+                chatInput: message,
+                locationContext: {
+                    lat: center.lat,
+                    lng: center.lng
+                },
+                sessionId: 'webgis-session-' + Date.now() // Simple session ID
+            };
+
+            // Show typing indicator
+            this.addChatMessage('assistant', 'Thinking...');
+
+            // Call n8n webhook
+            const response = await fetch(N8N_CONFIG.webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData),
+                signal: AbortSignal.timeout(N8N_CONFIG.timeout)
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await response.json();
+            
+            // Remove typing indicator and add actual response
+            const chatMessages = document.getElementById('chat-messages');
+            const lastMessage = chatMessages.lastChild;
+            if (lastMessage && lastMessage.textContent.includes('Thinking...')) {
+                chatMessages.removeChild(lastMessage);
+            }
+            
+            return data.output || "I'm here to help with light pollution questions!";
+
+        } catch (error) {
+            console.error('Error calling n8n:', error);
+            
+            // Remove typing indicator
+            const chatMessages = document.getElementById('chat-messages');
+            const lastMessage = chatMessages.lastChild;
+            if (lastMessage && lastMessage.textContent.includes('Thinking...')) {
+                chatMessages.removeChild(lastMessage);
+            }
+            
+            // Fallback to local responses if n8n is unavailable
+            return this.getFallbackResponse(message);
+        }
+    }
+
+    // Add fallback responses for when n8n is unavailable
+    getFallbackResponse(message) {
         const lowerMessage = message.toLowerCase();
         
         if (lowerMessage.includes('light pollution') || lowerMessage.includes('what is')) {
-            return "Light pollution is excessive artificial light that brightens the night sky, making stars harder to see. It's measured in μcd/m² (microcandelas per square meter) - lower values mean better star visibility!";
+            return "Light pollution is excessive artificial light that brightens the night sky. There are four main types: glare (excessive brightness), skyglow (urban glow), light trespass (unwanted light), and clutter (confusing groupings).";
         }
-        else if (lowerMessage.includes('best') || lowerMessage.includes('where') || lowerMessage.includes('observation')) {
-            return "The best spots for sky observation have light pollution below 3 μcd/m² (blue areas on map). Look for certified Dark Sky Parks or remote areas away from cities.";
+        else if (lowerMessage.includes('health') || lowerMessage.includes('sleep')) {
+            return "Blue light at night disrupts circadian rhythms by suppressing melatonin production. This can lead to sleep disorders, increased stress, and long-term health issues. I recommend using warm-colored lights (<3000K) after dark.";
         }
-        else if (lowerMessage.includes('tool') || lowerMessage.includes('how') || lowerMessage.includes('use')) {
-            return "You can: 1) Draw areas to analyze pollution levels, 2) Find dark sky spots, 3) Compare two locations, or 4) Plan routes through low-pollution areas!";
+        else if (lowerMessage.includes('bird') || lowerMessage.includes('turtle') || lowerMessage.includes('insect')) {
+            return "Light pollution affects wildlife significantly: birds get disoriented during migration, sea turtles avoid dark beaches to nest, and insects are drawn to lights until exhaustion. Shielded, warm lighting helps protect them.";
         }
-        else if (lowerMessage.includes('data') || lowerMessage.includes('source') || lowerMessage.includes('real')) {
-            return "We use real data from NASA VIIRS satellite imagery, the World Atlas of Artificial Night Sky Brightness, and ground-based measurements from monitoring stations.";
+        else if (lowerMessage.includes('solution') || lowerMessage.includes('reduce') || lowerMessage.includes('prevent')) {
+            return "To reduce light pollution: use fully shielded fixtures, choose warm color temperatures (<3000K), install motion sensors, turn off unnecessary lights, and direct lighting downward where needed.";
+        }
+        else if (lowerMessage.includes('dark sky') || lowerMessage.includes('best') || lowerMessage.includes('where')) {
+            return "The best dark sky spots have light pollution below 3 μcd/m². Look for certified International Dark Sky Parks, remote areas away from cities, and use the tools here to find optimal locations!";
         }
         else if (lowerMessage.includes('help') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-            return "Hello! I'm your Light Pollution Assistant. I can help you find dark sky spots, analyze light pollution levels, compare locations, and plan observation routes. What would you like to know?";
+            return "Hello! I'm Lumina, your light pollution assistant. I can explain the impacts of artificial light, help you find dark sky areas, and suggest solutions for reducing light pollution. What would you like to know?";
         }
         else {
-            const responses = [
-                "I can help you understand light pollution and find the best spots for sky observation! Try using the drawing tools on the map.",
-                "Look for blue areas on the map - they indicate low light pollution perfect for stargazing! Red areas have high pollution.",
-                "You can draw any area on the map to get detailed light pollution analysis for that specific region."
-            ];
-            return responses[Math.floor(Math.random() * responses.length)];
+            return "I specialize in light pollution and dark sky conservation. I can explain the different types of light pollution, their impacts on health and wildlife, and help you find solutions. What specifically would you like to know?";
         }
     }
 
     addChatMessage(sender, message) {
         const chatMessages = document.getElementById('chat-messages');
         const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message ${sender}`;
+        messageDiv.className = `chat-message ${sender} cosmic-message`;
         
         if (sender === 'user') {
-            messageDiv.innerHTML = `<strong>You:</strong> ${message}`;
+            messageDiv.innerHTML = `
+                <div class="message-avatar" style="background: linear-gradient(135deg, var(--cosmic-primary), var(--cosmic-secondary));">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="message-content">
+                    <strong>You:</strong> ${message}
+                </div>
+            `;
         } else {
-            messageDiv.innerHTML = `<strong>AI Assistant:</strong> ${message}`;
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <strong>Lumina:</strong> ${message}
+                </div>
+            `;
         }
         
         chatMessages.appendChild(messageDiv);
