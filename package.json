@@ -1,8 +1,8 @@
 {
   "name": "light-pollution-webgis-platform",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
-  "description": "Dual-mode WebGIS platform for light pollution analysis with real datasets",
+  "description": "Dual-mode WebGIS platform for light pollution analysis with n8n chatbot integration",
   "scripts": {
     "start": "live-server --port=3000",
     "dev": "live-server --port=3000 --watch=js,css,html,data",
@@ -29,7 +29,9 @@
     "light-pollution",
     "astronomy",
     "environmental-science",
-    "spatial-analysis"
+    "spatial-analysis",
+    "n8n",
+    "chatbot"
   ],
   "author": "Light Pollution Research Team",
   "license": "MIT"
