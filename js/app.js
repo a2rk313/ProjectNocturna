@@ -1,4 +1,4 @@
-// js/app.js - FIXED VERSION WITH N8N INTEGRATION
+// js/app.js - UPDATED WITH COLLAPSIBLE PANELS AND REAL DATA
 class LightPollutionWebGIS {
     constructor() {
         this.map = null;
@@ -14,6 +14,9 @@ class LightPollutionWebGIS {
         this.routingControl = null;
         this.activeLayers = new Map();
         this.n8nAvailable = false;
+        this.baseLayers = null;
+        this.activeBaseLayer = null;
+        this.collapsedPanels = new Set();
         
         console.log('🔧 WebGIS Constructor called');
         this.init();
@@ -22,48 +25,30 @@ class LightPollutionWebGIS {
     async init() {
         console.log('🚀 Starting WebGIS initialization...');
         
-        // Get mode from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         this.mode = urlParams.get('mode');
         
-        console.log('🔍 Mode from URL:', this.mode);
-        
-        // Validate mode - if invalid, redirect to mode selection
         if (!this.mode || (this.mode !== 'citizen' && this.mode !== 'scientific')) {
-            console.log('❌ No valid mode found, redirecting to mode selection');
             window.location.href = 'mode-selection.html';
             return;
         }
 
         console.log(`✅ Starting in ${this.mode} mode`);
         
-        // Show loading screen
         this.showLoadingScreen();
         
         try {
-            // Test n8n connection
             this.n8nAvailable = await this.testN8NConnection();
             console.log(`n8n ${this.n8nAvailable ? 'available' : 'unavailable, using fallback'}`);
             
-            // Step 1: Initialize UI immediately
             this.initializeUI();
-            
-            // Step 2: Initialize map
             await this.initializeMap();
-            
-            // Step 3: Initialize data manager
             this.dataManager = new DataManager();
-            
-            // Step 4: Load data layers
             await this.loadLightPollutionData();
-            
-            // Step 5: Initialize mode-specific functionality
             this.initializeModeFunctionality();
-            
-            // Step 6: Set up event listeners
             this.setupEventListeners();
+            this.initializePanelCollapse();
             
-            // Step 7: Hide loading screen
             setTimeout(() => {
                 this.hideLoadingScreen();
                 console.log('🎉 WebGIS fully initialized!');
@@ -118,18 +103,15 @@ class LightPollutionWebGIS {
     initializeUI() {
         console.log('🎨 Initializing UI...');
         
-        // Set body class for mode-specific styling
         document.body.className = '';
         document.body.classList.add(`${this.mode}-mode-active`);
         
-        // Update mode indicator
         const modeIndicator = document.getElementById('modeIndicator');
         if (modeIndicator) {
             modeIndicator.textContent = this.mode === 'citizen' ? 'Citizen Mode' : 'Scientific Mode';
             modeIndicator.className = this.mode === 'citizen' ? 'badge ms-2 bg-success' : 'badge ms-2 bg-warning';
         }
         
-        // Update panel titles and assistant names
         const panelTitle = document.getElementById('panelTitle');
         const assistantName = document.getElementById('assistantName');
         const welcomeMessage = document.getElementById('welcomeMessage');
@@ -139,7 +121,6 @@ class LightPollutionWebGIS {
             if (assistantName) assistantName.textContent = 'Lumina';
             if (welcomeMessage) welcomeMessage.textContent = 'Hello! I\'m Lumina, I can help you find the best spots for sky observation and plan your stargazing sessions.';
             
-            // Show citizen tools, hide scientific tools
             const citizenTools = document.getElementById('citizenTools');
             const scientificTools = document.getElementById('scientificTools');
             if (citizenTools) citizenTools.style.display = 'block';
@@ -149,14 +130,10 @@ class LightPollutionWebGIS {
             if (assistantName) assistantName.textContent = 'Lumina';
             if (welcomeMessage) welcomeMessage.textContent = 'Welcome to Scientific Mode. I\'m Lumina, I can help you analyze light pollution data, run statistical models, and export research data.';
             
-            // Show scientific tools, hide citizen tools
             const citizenTools = document.getElementById('citizenTools');
             const scientificTools = document.getElementById('scientificTools');
-            const historicalCheck = document.getElementById('historicalDataCheck');
-            
             if (citizenTools) citizenTools.style.display = 'none';
             if (scientificTools) scientificTools.style.display = 'block';
-            if (historicalCheck) historicalCheck.style.display = 'block';
         }
     }
 
@@ -164,7 +141,6 @@ class LightPollutionWebGIS {
         console.log('🗺️ Initializing map...');
         
         return new Promise((resolve) => {
-            // Small delay to ensure DOM is ready
             setTimeout(() => {
                 try {
                     this.map = L.map('map', {
@@ -176,12 +152,11 @@ class LightPollutionWebGIS {
 
                     this.map.zoomControl.setPosition('topright');
                     
-                    // Initialize drawn items
                     this.drawnItems = new L.FeatureGroup();
                     this.drawnItems.addTo(this.map);
                     
-                    this.initializeDrawControl();
                     this.addBaseLayers();
+                    this.initializeDrawControl();
                     
                     console.log('✅ Map initialized successfully');
                     resolve();
@@ -194,32 +169,71 @@ class LightPollutionWebGIS {
     }
 
     addBaseLayers() {
-        // OpenStreetMap Base Layer
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(this.map);
 
-        // Dark Map Layer
         const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '© CARTO',
             maxZoom: 19
         });
 
-        // Satellite Layer
         const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: '© Esri',
             maxZoom: 19
         });
 
-        // Add layer control
-        const baseLayers = {
-            "OpenStreetMap": osmLayer,
-            "Dark Map": darkLayer,
-            "Satellite": satelliteLayer
-        };
+        const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenTopoMap',
+            maxZoom: 17
+        });
 
-        L.control.layers(baseLayers).addTo(this.map);
+        this.baseLayers = {
+            osm: osmLayer,
+            dark: darkLayer,
+            satellite: satelliteLayer,
+            terrain: terrainLayer
+        };
+        
+        this.activeBaseLayer = 'osm';
+    }
+
+    switchBasemap(basemapId) {
+        if (this.baseLayers && this.baseLayers[basemapId]) {
+            if (this.activeBaseLayer) {
+                this.map.removeLayer(this.baseLayers[this.activeBaseLayer]);
+            }
+            
+            this.baseLayers[basemapId].addTo(this.map);
+            this.activeBaseLayer = basemapId;
+            
+            this.updateBasemapDropdown(basemapId);
+            this.showMessage(`🗺️ Switched to ${this.getBasemapName(basemapId)}`);
+        }
+    }
+
+    updateBasemapDropdown(selectedId) {
+        const dropdown = document.getElementById('basemapDropdown');
+        if (dropdown) {
+            const options = dropdown.querySelectorAll('.basemap-option');
+            options.forEach(option => {
+                option.classList.remove('active');
+                if (option.dataset.basemap === selectedId) {
+                    option.classList.add('active');
+                }
+            });
+        }
+    }
+
+    getBasemapName(basemapId) {
+        const names = {
+            osm: 'OpenStreetMap',
+            dark: 'Dark Map',
+            satellite: 'Satellite',
+            terrain: 'Terrain'
+        };
+        return names[basemapId] || basemapId;
     }
 
     initializeDrawControl() {
@@ -264,17 +278,16 @@ class LightPollutionWebGIS {
 
         console.log('📊 Loading light pollution data...');
         
-        // Load VIIRS data
+        this.dataManager.webGIS = this;
+        
         const viirsLayer = await this.dataManager.loadVIIRSTileLayer();
         viirsLayer.addTo(this.map);
         this.activeLayers.set('viirs', viirsLayer);
 
-        // Load dark sky parks
         const darkSkyLayer = await this.dataManager.loadDarkSkyParks();
         darkSkyLayer.addTo(this.map);
         this.activeLayers.set('darkSkyParks', darkSkyLayer);
 
-        // Load ground measurements for scientific mode
         if (this.mode === 'scientific') {
             const groundLayer = await this.dataManager.loadGroundMeasurements();
             groundLayer.addTo(this.map);
@@ -296,6 +309,7 @@ class LightPollutionWebGIS {
         }
     }
 
+    // In the setupEventListeners method, add:
     setupEventListeners() {
         console.log('🔗 Setting up event listeners...');
         
@@ -315,10 +329,40 @@ class LightPollutionWebGIS {
         this.setupCheckboxListener('worldAtlasLayer', 'worldAtlas');
         this.setupCheckboxListener('groundMeasurements', 'groundMeasurements');
         this.setupCheckboxListener('darkSkyParks', 'darkSkyParks');
+        this.setupCheckboxListener('heatmapLayer', 'heatmap');
+
+        // Basemap switcher (make sure it's connected)
+        const basemapSwitcher = document.getElementById('basemapSwitcher');
+        if (basemapSwitcher) {
+            basemapSwitcher.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dropdown = document.getElementById('basemapDropdown');
+                if (dropdown) {
+                    dropdown.classList.toggle('show');
+                }
+            });
+        }
+
+        // Handle basemap selection
+        const basemapOptions = document.querySelectorAll('.basemap-option');
+        basemapOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const basemapId = option.dataset.basemap;
+                this.switchBasemap(basemapId);
+                
+                // Hide dropdown
+                const dropdown = document.getElementById('basemapDropdown');
+                if (dropdown) {
+                    dropdown.classList.remove('show');
+                }
+            });
+        });
+
+        // Panel collapse handlers - ADD THIS
+        this.setupPanelCollapseListeners();
 
         // Chatbot
         this.setupButtonListener('send-message', () => this.sendChatMessage());
-        this.setupButtonListener('toggleChat', () => this.toggleChat());
         
         const userInput = document.getElementById('user-input');
         if (userInput) {
@@ -331,6 +375,130 @@ class LightPollutionWebGIS {
         this.setupButtonListener('closeAnalysis', () => this.hideAnalysisPanel());
         
         console.log('✅ Event listeners set up');
+    }
+
+    // Add these methods to the class:
+    setupPanelCollapseListeners() {
+        const panelIds = ['controlPanel', 'dataLayersPanel', 'legendPanel', 'chatbotPanel'];
+        
+        panelIds.forEach(panelId => {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                const header = panel.querySelector('.panel-header');
+                if (header) {
+                    // Remove existing collapse icon if any
+                    const existingIcon = header.querySelector('.collapse-icon');
+                    if (existingIcon) {
+                        existingIcon.remove();
+                    }
+                    
+                    // Add new collapse icon
+                    const collapseIcon = document.createElement('span');
+                    collapseIcon.className = 'collapse-icon';
+                    collapseIcon.innerHTML = '<i class="fas fa-chevron-down"></i>';
+                    header.appendChild(collapseIcon);
+                    
+                    // Make header clickable
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', (e) => {
+                        // Don't collapse if clicking on a button inside
+                        if (!e.target.closest('button')) {
+                            this.togglePanelCollapse(panelId);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    initializePanelCollapse() {
+        // Initialize all panels as expanded by default
+        const panelIds = ['controlPanel', 'dataLayersPanel', 'legendPanel', 'chatbotPanel'];
+        
+        panelIds.forEach(panelId => {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                panel.classList.remove('panel-collapsed');
+            }
+        });
+    }
+
+    togglePanelCollapse(panelId) {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        
+        panel.classList.toggle('panel-collapsed');
+        
+        // Update icon
+        const header = panel.querySelector('.panel-header');
+        if (header) {
+            const icon = header.querySelector('.collapse-icon i');
+            if (icon) {
+                if (panel.classList.contains('panel-collapsed')) {
+                    icon.className = 'fas fa-chevron-right';
+                } else {
+                    icon.className = 'fas fa-chevron-down';
+                }
+            }
+        }
+    }
+
+    setupPanelCollapseListeners() {
+        const panels = [
+            'controlPanel',
+            'dataLayersPanel',
+            'legendPanel',
+            'analysisPanel',
+            'chatbotPanel'
+        ];
+        
+        panels.forEach(panelId => {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                const header = panel.querySelector('.panel-header');
+                if (header) {
+                    const collapseIcon = document.createElement('span');
+                    collapseIcon.className = 'collapse-icon ms-2';
+                    collapseIcon.innerHTML = '<i class="fas fa-chevron-down"></i>';
+                    header.appendChild(collapseIcon);
+                    
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', (e) => {
+                        if (!e.target.closest('.btn-close-cosmic')) {
+                            this.togglePanelCollapse(panelId);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    initializePanelCollapse() {
+        const savedState = localStorage.getItem('panelCollapseState');
+        if (savedState) {
+            this.collapsedPanels = new Set(JSON.parse(savedState));
+            this.collapsedPanels.forEach(panelId => {
+                const panel = document.getElementById(panelId);
+                if (panel) {
+                    panel.classList.add('panel-collapsed');
+                }
+            });
+        }
+    }
+
+    togglePanelCollapse(panelId) {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        
+        if (this.collapsedPanels.has(panelId)) {
+            this.collapsedPanels.delete(panelId);
+            panel.classList.remove('panel-collapsed');
+        } else {
+            this.collapsedPanels.add(panelId);
+            panel.classList.add('panel-collapsed');
+        }
+        
+        localStorage.setItem('panelCollapseState', JSON.stringify([...this.collapsedPanels]));
     }
 
     setupButtonListener(id, handler) {
@@ -349,7 +517,13 @@ class LightPollutionWebGIS {
         }
     }
 
-    // Map Interaction Methods
+    toggleBasemapDropdown() {
+        const dropdown = document.getElementById('basemapDropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('show');
+        }
+    }
+
     enableDrawMode() {
         this.showMessage('🎯 Draw a polygon on the map to analyze light pollution in that area');
         new L.Draw.Polygon(this.map).enable();
@@ -376,31 +550,34 @@ class LightPollutionWebGIS {
             return;
         }
 
-        // Get data for the area
         const areaData = await this.dataManager.getDataAtPoint(center.lat, center.lng);
         
         let recommendation, pollutionClass;
-        if (areaData.viirsValue < 3) {
+        if (areaData.viirsValue < 1.5) {
             recommendation = '⭐ Excellent for sky observation! Perfect dark sky conditions.';
-            pollutionClass = 'success';
+            pollutionClass = 'heatmap-excellent';
+        } else if (areaData.viirsValue < 3) {
+            recommendation = '🌙 Good for astronomical observation - very good conditions';
+            pollutionClass = 'heatmap-good';
         } else if (areaData.viirsValue < 8) {
-            recommendation = '🌙 Moderate light pollution - acceptable for basic observation';
-            pollutionClass = 'info';
+            recommendation = '💡 Moderate light pollution - acceptable for basic observation';
+            pollutionClass = 'heatmap-moderate';
         } else if (areaData.viirsValue < 27) {
-            recommendation = '💡 High light pollution - limited visibility of stars';
-            pollutionClass = 'warning';
+            recommendation = '🏙️ High light pollution - limited visibility of stars';
+            pollutionClass = 'heatmap-high';
         } else {
-            recommendation = '🏙️ Very high light pollution - poor observation conditions';
-            pollutionClass = 'danger';
+            recommendation = '🚨 Very high light pollution - poor observation conditions';
+            pollutionClass = 'heatmap-very-high';
         }
         
         const popupContent = `
             <div class="analysis-popup">
                 <h6>🔍 Area Analysis Results</h6>
                 <p><strong>📍 Coordinates:</strong> ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}</p>
-                <p><strong>💡 Light Pollution (VIIRS):</strong> ${areaData.viirsValue.toFixed(2)} μcd/m²</p>
+                <p><strong>💡 Light Pollution:</strong> ${areaData.viirsValue.toFixed(2)} μcd/m²</p>
                 <p><strong>📊 Bortle Scale:</strong> ${areaData.bortleScale}</p>
                 <p><strong>🌟 SQM Equivalent:</strong> ${areaData.sqmValue} mag/arcsec²</p>
+                <p><strong>📡 Data Source:</strong> ${areaData.dataSource}</p>
                 <p><strong>💡 Recommendation:</strong> ${recommendation}</p>
                 <div class="d-grid gap-2 mt-3">
                     <button class="btn btn-sm btn-primary" onclick="webGIS.exportAreaData()">
@@ -440,7 +617,7 @@ class LightPollutionWebGIS {
 
     addComparisonPoint(e) {
         const point = e.latlng;
-        const pollution = Math.random() * 50; // Simulated data
+        const pollution = Math.random() * 50;
         
         const marker = L.marker(point)
             .addTo(this.map)
@@ -485,7 +662,6 @@ class LightPollutionWebGIS {
         this.analysisMode = 'route';
         this.routePoints = [];
         
-        // Clear existing routing
         if (this.routingControl) {
             this.map.removeControl(this.routingControl);
         }
@@ -533,16 +709,13 @@ class LightPollutionWebGIS {
     }
 
     clearAll() {
-        // Clear drawn items
         if (this.drawnItems) {
             this.drawnItems.clearLayers();
         }
         
-        // Clear comparison points
         this.comparisonPoints.forEach(p => p.marker.remove());
         this.comparisonPoints = [];
         
-        // Clear route points and routing
         this.routePoints.forEach(p => p.marker.remove());
         this.routePoints = [];
         
@@ -555,7 +728,34 @@ class LightPollutionWebGIS {
         this.showMessage('🗑️ All cleared! Ready for new analysis.');
     }
 
-    // UI Methods
+    async toggleLayer(layerName, visible) {
+        if (!this.dataManager) return;
+        
+        if (visible && !this.activeLayers.has(layerName)) {
+            let layer;
+            switch (layerName) {
+                case 'worldAtlas':
+                    layer = await this.dataManager.loadWorldAtlasLayer();
+                    break;
+                case 'groundMeasurements':
+                    layer = await this.dataManager.loadGroundMeasurements();
+                    break;
+                case 'heatmap':
+                    layer = await this.dataManager.loadHeatmapLayer();
+                    break;
+                default:
+                    return;
+            }
+            if (layer) {
+                layer.addTo(this.map);
+                this.activeLayers.set(layerName, layer);
+            }
+        } else if (!visible && this.activeLayers.has(layerName)) {
+            this.map.removeLayer(this.activeLayers.get(layerName));
+            this.activeLayers.delete(layerName);
+        }
+    }
+
     switchMode() {
         const newMode = this.mode === 'citizen' ? 'scientific' : 'citizen';
         console.log(`🔄 Switching to ${newMode} mode`);
@@ -576,8 +776,9 @@ class LightPollutionWebGIS {
                 <div class="data-source-item mb-3 p-2 border rounded">
                     <h7>${source.name}</h7>
                     <p class="mb-1"><small>${source.description}</small></p>
-                    <p class="mb-1"><small><strong>Resolution:</strong> ${source.resolution}</small></p>
-                    <p class="mb-1"><small><strong>Update Frequency:</strong> ${source.updateFrequency}</small></p>
+                    <p class="mb-1"><small><strong>Type:</strong> ${source.type || 'tile layer'}</small></p>
+                    <p class="mb-1"><small><strong>Update Frequency:</strong> ${source.updateFrequency || 'Varies'}</small></p>
+                    <p class="mb-1"><small><strong>API Endpoint:</strong> ${source.apiEndpoint ? 'Available' : 'Not available'}</small></p>
                 </div>
             `;
         });
@@ -590,36 +791,16 @@ class LightPollutionWebGIS {
         document.getElementById('analysisTitle').textContent = title;
         document.getElementById('analysisContent').innerHTML = content;
         document.getElementById('analysisPanel').style.display = 'block';
+        
+        if (this.collapsedPanels.has('analysisPanel')) {
+            this.togglePanelCollapse('analysisPanel');
+        }
     }
 
     hideAnalysisPanel() {
         document.getElementById('analysisPanel').style.display = 'none';
     }
 
-    async toggleLayer(layerName, visible) {
-        if (!this.dataManager) return;
-        
-        if (visible && !this.activeLayers.has(layerName)) {
-            let layer;
-            switch (layerName) {
-                case 'worldAtlas':
-                    layer = await this.dataManager.loadWorldAtlasLayer();
-                    break;
-                case 'groundMeasurements':
-                    layer = await this.dataManager.loadGroundMeasurements();
-                    break;
-                default:
-                    return;
-            }
-            layer.addTo(this.map);
-            this.activeLayers.set(layerName, layer);
-        } else if (!visible && this.activeLayers.has(layerName)) {
-            this.map.removeLayer(this.activeLayers.get(layerName));
-            this.activeLayers.delete(layerName);
-        }
-    }
-
-    // Chatbot Methods with n8n Integration
     async sendChatMessage() {
         const input = document.getElementById('user-input');
         const message = input.value.trim();
@@ -628,7 +809,6 @@ class LightPollutionWebGIS {
             this.addChatMessage('user', message);
             input.value = '';
             
-            // Generate AI response (now async)
             try {
                 const response = await this.generateAIResponse(message);
                 this.addChatMessage('assistant', response);
@@ -641,23 +821,19 @@ class LightPollutionWebGIS {
 
     async generateAIResponse(message) {
         try {
-            // Get current map center for context
             const center = this.map.getCenter();
             
-            // Prepare data for n8n webhook
             const requestData = {
                 chatInput: message,
                 locationContext: {
                     lat: center.lat,
                     lng: center.lng
                 },
-                sessionId: 'webgis-session-' + Date.now() // Simple session ID
+                sessionId: 'webgis-session-' + Date.now()
             };
 
-            // Show typing indicator
             this.addChatMessage('assistant', 'Thinking...');
 
-            // Call n8n webhook
             const response = await fetch(N8N_CONFIG.webhookUrl, {
                 method: 'POST',
                 headers: {
@@ -673,7 +849,6 @@ class LightPollutionWebGIS {
 
             const data = await response.json();
             
-            // Remove typing indicator and add actual response
             const chatMessages = document.getElementById('chat-messages');
             const lastMessage = chatMessages.lastChild;
             if (lastMessage && lastMessage.textContent.includes('Thinking...')) {
@@ -685,19 +860,16 @@ class LightPollutionWebGIS {
         } catch (error) {
             console.error('Error calling n8n:', error);
             
-            // Remove typing indicator
             const chatMessages = document.getElementById('chat-messages');
             const lastMessage = chatMessages.lastChild;
             if (lastMessage && lastMessage.textContent.includes('Thinking...')) {
                 chatMessages.removeChild(lastMessage);
             }
             
-            // Fallback to local responses if n8n is unavailable
             return this.getFallbackResponse(message);
         }
     }
 
-    // Add fallback responses for when n8n is unavailable
     getFallbackResponse(message) {
         const lowerMessage = message.toLowerCase();
         
@@ -753,20 +925,6 @@ class LightPollutionWebGIS {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    toggleChat() {
-        const chatbot = document.querySelector('.chatbot-container');
-        const toggleBtn = document.getElementById('toggleChat');
-        const icon = toggleBtn.querySelector('i');
-        
-        chatbot.classList.toggle('minimized');
-        if (chatbot.classList.contains('minimized')) {
-            icon.className = 'fas fa-plus';
-        } else {
-            icon.className = 'fas fa-minus';
-        }
-    }
-
-    // Utility Methods
     showMessage(message) {
         if (this.map) {
             L.popup()

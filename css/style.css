@@ -1,4 +1,4 @@
-/* style.css - COSMIC THEME */
+/* style.css - COSMIC THEME WITH SINGLE LOGO AND VIIRS FIX */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
@@ -114,6 +114,49 @@ body {
     }
 }
 
+/* Logo Styles - Single File Approach */
+.navbar-logo {
+    height: 32px;
+    width: auto;
+    filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.6));
+    transition: all 0.3s ease;
+}
+
+.navbar-logo:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 12px rgba(96, 165, 250, 0.8));
+}
+
+.loading-logo {
+    max-width: 120px;
+    height: auto;
+    filter: drop-shadow(0 0 20px rgba(96, 165, 250, 0.7));
+    animation: float 6s ease-in-out infinite;
+}
+
+.mode-selection-logo {
+    max-width: 140px;
+    height: auto;
+    filter: drop-shadow(0 0 25px rgba(96, 165, 250, 0.8));
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Update existing logo container styles */
+.logo-container {
+    display: inline-block;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Remove old logo icon styles */
+.logo-icon, .logo-icon-sm {
+    display: none;
+}
+
 /* Loading Screen */
 .loading-screen {
     position: fixed;
@@ -138,22 +181,6 @@ body {
     box-shadow: var(--glass-shadow);
     max-width: 500px;
     width: 90%;
-}
-
-.loading-content .logo-container {
-    display: inline-block;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    animation: float 6s ease-in-out infinite;
-}
-
-.loading-content .logo-icon {
-    font-size: 3rem;
-    color: var(--cosmic-primary);
-    filter: drop-shadow(0 0 20px rgba(96, 165, 250, 0.5));
 }
 
 .loading-features {
@@ -187,12 +214,6 @@ body {
     padding: 12px 0;
 }
 
-.logo-icon-sm {
-    font-size: 1.5rem;
-    color: var(--cosmic-primary);
-    filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.5));
-}
-
 .gradient-text {
     background: linear-gradient(135deg, var(--cosmic-primary), var(--cosmic-secondary));
     -webkit-background-clip: text;
@@ -221,6 +242,8 @@ body {
     color: rgba(255, 255, 255, 0.8);
     background: rgba(255, 255, 255, 0.05);
     transition: all 0.3s ease;
+    border-radius: 12px !important;
+    padding: 10px 20px !important;
 }
 
 .btn-outline-cosmic:hover {
@@ -273,10 +296,10 @@ body {
 .panel-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
-    margin: 10px 20px;
+    margin: 0 20px;
 }
 
-/* Control Panel */
+/* Control Panel - FIXED */
 .control-panel {
     position: fixed;
     top: 80px;
@@ -286,45 +309,131 @@ body {
     transition: all 0.3s ease;
 }
 
-.control-panel .btn-group-vertical {
-    padding: 0 15px 15px;
+.control-panel .layer-controls {
+    padding: 15px;
 }
 
+.control-panel .btn-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
 
-/* Data Layers Panel */
+.control-panel .btn {
+    border-radius: 12px !important;
+    padding: 12px 15px !important;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+}
+
+.control-panel .btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+    border-color: var(--cosmic-primary);
+}
+
+/* Basemap Container and Dropdown */
+.basemap-container {
+    position: relative;
+}
+
+.basemap-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    /* FIX: Changed background to a near-opaque dark color for better visibility */
+    background: rgba(10, 15, 28, 0.95);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    /* FIX: Stronger blue shadow for better visual depth */
+    box-shadow: 0 0 30px rgba(96, 165, 250, 0.5);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 10px;
+    display: none;
+    z-index: 1001;
+}
+
+.basemap-dropdown.show {
+    display: block;
+}
+
+.basemap-option {
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    /* Ensure default option text is bright */
+    color: rgba(255, 255, 255, 0.9); 
+}
+
+.basemap-option:hover {
+    /* FIX: Increased hover opacity for better contrast */
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.basemap-option.active {
+    /* FIX: Increased active opacity for better contrast and set text to pure white */
+    background: rgba(96, 165, 250, 0.4);
+    color: white; 
+}
+
+.basemap-option i {
+    width: 20px;
+    margin-right: 8px;
+}
+
+/* Data Layers Panel - FIXED WITH PROPER CHECKBOX ALIGNMENT */
 .data-layers-panel {
     position: fixed;
     top: 80px;
     right: 20px;
     z-index: 1000;
-    width: 220px; /* Slightly wider for better spacing */
+    width: 260px;
 }
 
 .layer-controls {
-    padding: 40px; /* Increased from 15px for better spacing */
+    padding: 20px;
 }
 
 .cosmic-check {
-    margin-bottom: 15px; /* Increased from 12px */
-    padding: 10px 0; /* Increased from 8px 0 */
-}
-
-.cosmic-check .form-check-label {
-    color: rgba(255, 255, 255, 0.9); /* Better contrast */
-    font-size: 0.9rem;
     display: flex;
     align-items: center;
-    padding-left: 8px; /* Added padding */
+    margin-bottom: 15px;
+    padding: 8px 0;
+    padding-left: 10px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
 }
 
-/* Add more space between checkboxes */
-.cosmic-check + .cosmic-check {
-    margin-top: 5px;
+.cosmic-check:hover {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .cosmic-check .form-check-input {
     background-color: rgba(255, 255, 255, 0.1);
     border: 1px solid var(--glass-border);
+    width: 18px;
+    height: 18px;
+    margin-top: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
 }
 
 .cosmic-check .form-check-input:checked {
@@ -333,21 +442,34 @@ body {
 }
 
 .cosmic-check .form-check-label {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.9);
     font-size: 0.85rem;
     display: flex;
     align-items: center;
+    cursor: pointer;
+    order: 2;
+}
+
+.cosmic-check .form-check-label i {
+    width: 20px;
+    margin-right: 8px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 /* Map Container */
 .cosmic-map {
-    height: calc(100vh - 60px);
-    width: 100%;
+    height: calc(100vh - 60px) !important;
+    width: 100% !important;
     background: linear-gradient(135deg, #1e3a8a, #0f172a);
     border-radius: 0;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    z-index: 1;
 }
 
-/* Legend */
+/* Legend - FIXED WITH NEW COLOR THEORY COLORS */
 .legend {
     position: fixed;
     bottom: 20px;
@@ -363,7 +485,11 @@ body {
 .legend-item {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+}
+
+.legend-item:last-child {
+    margin-bottom: 0;
 }
 
 .legend-color {
@@ -376,13 +502,38 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Updated legend colors using color theory */
+.legend-color.heatmap-excellent {
+    background: linear-gradient(135deg, #1a237e, #283593); /* Deep Blue */
+}
+
+.legend-color.heatmap-good {
+    background: linear-gradient(135deg, #0277bd, #0288d1); /* Sky Blue */
+}
+
+.legend-color.heatmap-moderate {
+    background: linear-gradient(135deg, #ff9800, #ffb74d); /* Orange */
+}
+
+.legend-color.heatmap-high {
+    background: linear-gradient(135deg, #e65100, #ff6f00); /* Deep Orange */
+}
+
+.legend-color.heatmap-very-high {
+    background: linear-gradient(135deg, #b71c1c, #d32f2f); /* Red */
+}
+
+.legend-color.heatmap-extreme {
+    background: linear-gradient(135deg, #4a148c, #7b1fa2); /* Purple */
+}
+
 .legend-label {
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.8);
     font-weight: 500;
 }
 
-/* Analysis Panel */
+/* Analysis Panel - FIXED */
 .analysis-panel {
     position: fixed;
     top: 50%;
@@ -409,6 +560,7 @@ body {
     border-bottom: 1px solid var(--glass-border);
     color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
+    padding: 15px 20px;
 }
 
 .btn-close-cosmic {
@@ -426,55 +578,60 @@ body {
     color: white;
 }
 
-/* Cosmic Buttons */
+/* Cosmic Buttons - FIXED */
 .btn-cosmic-primary {
     background: linear-gradient(135deg, var(--cosmic-primary), #3b82f6);
     border: none;
     color: white;
-    border-radius: 12px;
+    border-radius: 12px !important;
     font-weight: 500;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(96, 165, 250, 0.3);
+    padding: 12px 24px !important;
 }
 
 .btn-cosmic-success {
     background: linear-gradient(135deg, var(--cosmic-success), #059669);
     border: none;
     color: white;
-    border-radius: 12px;
+    border-radius: 12px !important;
     font-weight: 500;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    padding: 12px 24px !important;
 }
 
 .btn-cosmic-info {
     background: linear-gradient(135deg, var(--cosmic-info), #0891b2);
     border: none;
     color: white;
-    border-radius: 12px;
+    border-radius: 12px !important;
     font-weight: 500;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+    padding: 12px 24px !important;
 }
 
 .btn-cosmic-warning {
     background: linear-gradient(135deg, var(--cosmic-warning), #d97706);
     border: none;
     color: white;
-    border-radius: 12px;
+    border-radius: 12px !important;
     font-weight: 500;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    padding: 12px 24px !important;
 }
 
 .btn-cosmic-danger {
     background: linear-gradient(135deg, var(--cosmic-danger), #dc2626);
     border: none;
     color: white;
-    border-radius: 12px;
+    border-radius: 12px !important;
     font-weight: 500;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    padding: 12px 24px !important;
 }
 
 .btn-cosmic-primary:hover,
@@ -486,7 +643,7 @@ body {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Chatbot */
+/* Chatbot - FIXED */
 .chatbot-container {
     position: fixed;
     bottom: 20px;
@@ -578,6 +735,7 @@ body {
 .cosmic-input-group {
     background: rgba(255, 255, 255, 0.05);
     border-top: 1px solid var(--glass-border);
+    padding: 15px;
 }
 
 .cosmic-input {
@@ -585,6 +743,7 @@ body {
     border: 1px solid var(--glass-border);
     color: white;
     border-radius: 12px;
+    padding: 12px 15px !important;
 }
 
 .cosmic-input:focus {
@@ -640,12 +799,92 @@ body {
         padding: 30px 20px;
         margin: 20px;
     }
+
+    /* Responsive logo sizes */
+    .navbar-logo {
+        height: 28px;
+    }
+    
+    .loading-logo {
+        max-width: 100px;
+    }
+    
+    .mode-selection-logo {
+        max-width: 120px;
+    }
+    
+    .logo-container {
+        padding: 15px;
+    }
+    
+    .control-panel .btn {
+        padding: 10px 12px !important;
+        font-size: 0.8rem;
+    }
 }
 
-/* Leaflet Customizations */
+@media (max-width: 576px) {
+    .navbar-logo {
+        height: 24px;
+    }
+    
+    .loading-logo {
+        max-width: 80px;
+    }
+    
+    .mode-selection-logo {
+        max-width: 100px;
+    }
+    
+    .logo-container {
+        padding: 12px;
+    }
+    
+    .control-panel,
+    .data-layers-panel {
+        width: 160px !important;
+    }
+    
+    .control-panel .btn {
+        padding: 8px 10px !important;
+        font-size: 0.75rem;
+    }
+    
+    .basemap-dropdown {
+        width: 150px;
+        left: -50px;
+    }
+}
+
+/* Leaflet Customizations - VIIRS WITH PROPER Z-INDEX */
 .leaflet-container {
     background: linear-gradient(135deg, #1e3a8a, #0f172a);
     font-family: 'Inter', sans-serif;
+}
+
+/* Ensure VIIRS layer is NOT above markers and popups */
+.leaflet-layer:has(.leaflet-tile[src*="VIIRS"]) {
+    z-index: 200 !important; /* Lower z-index */
+}
+
+/* Ensure markers and popups are on top */
+.leaflet-marker-pane {
+    z-index: 600 !important;
+}
+
+.leaflet-popup-pane {
+    z-index: 700 !important;
+}
+
+.leaflet-tile-pane .leaflet-layer:first-child {
+    z-index: 200 !important;
+}
+
+/* Specific targeting for VIIRS tiles */
+.leaflet-tile[src*="VIIRS"],
+.leaflet-tile[src*="viirs"],
+.leaflet-tile[src*="earthdata"] {
+    z-index: 200 !important;
 }
 
 .leaflet-popup-content-wrapper {
@@ -707,6 +946,7 @@ body {
 .export-buttons .btn {
     flex: 1;
     font-size: 0.8rem;
+    padding: 8px 12px !important;
 }
 
 /* Smooth animations */
@@ -723,4 +963,210 @@ body {
 /* Loading spinner customization */
 .spinner-border {
     border-width: 2px;
+}
+
+/* Collapsible Panel Styles */
+.panel-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+    position: relative;
+    padding-right: 40px !important;
+}
+
+.panel-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.panel-body {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.panel-collapsed .panel-body {
+    display: none;
+    height: 0;
+    opacity: 0;
+}
+
+.collapse-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.3s ease;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+}
+
+.panel-collapsed .collapse-icon {
+    transform: translateY(-50%) rotate(-90deg);
+}
+
+/* Ensure panels maintain their structure */
+.control-panel .panel-body,
+.data-layers-panel .panel-body,
+.legend .panel-body,
+.analysis-panel .panel-body,
+.chatbot-container .panel-body {
+    padding: 0;
+}
+
+/* Adjust existing panel structures */
+.layer-controls {
+    padding: 15px;
+}
+
+.legend-items {
+    padding: 15px 20px;
+}
+
+/* Keep the chat input visible when collapsed */
+.chatbot-container .cosmic-input-group {
+    padding: 15px;
+}
+
+/* Prevent the close button in analysis panel from triggering collapse */
+.analysis-panel .panel-header {
+    cursor: default;
+    padding-right: 15px !important;
+}
+
+.analysis-panel .collapse-icon {
+    right: 40px;
+}
+
+/* Ensure proper spacing in all panels */
+.cosmic-panel {
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed {
+    max-height: 50px;
+    overflow: hidden;
+}
+
+/* Smooth transitions for all panels */
+.control-panel,
+.data-layers-panel,
+.legend,
+.analysis-panel,
+.chatbot-container {
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+/* FIXED Collapsible Panel Styles */
+.panel-header {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+    padding-right: 40px !important;
+}
+
+.panel-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.panel-body {
+    transition: all 0.3s ease;
+    overflow: hidden;
+    max-height: 1000px;
+    opacity: 1;
+}
+
+.panel-collapsed .panel-body {
+    max-height: 0;
+    opacity: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+}
+
+.collapse-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.3s ease;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+}
+
+.panel-collapsed .collapse-icon {
+    transform: translateY(-50%) rotate(-90deg);
+}
+
+/* Ensure proper panel heights */
+.control-panel .panel-body,
+.data-layers-panel .panel-body,
+.legend .panel-body,
+.chatbot-container .panel-body {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Keep analysis panel header not collapsible */
+.analysis-panel .panel-header {
+    cursor: default;
+    padding-right: 15px !important;
+}
+
+.analysis-panel .collapse-icon {
+    display: none;
+}
+
+/* Fix panel transitions */
+.cosmic-panel {
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed {
+    min-height: auto;
+}
+
+/* Ensure layer controls maintain spacing */
+.layer-controls {
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed .layer-controls {
+    padding: 0;
+    margin: 0;
+}
+
+/* Fix legend items */
+.legend-items {
+    padding: 15px 20px;
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed .legend-items {
+    padding: 0;
+    margin: 0;
+}
+
+/* Ensure chatbot messages area maintains height */
+.chat-messages {
+    height: 250px;
+    transition: height 0.3s ease;
+}
+
+.panel-collapsed .chat-messages {
+    height: 0;
+    overflow: hidden;
+}
+
+/* Fix cosmic input group */
+.cosmic-input-group {
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed .cosmic-input-group {
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
 }
