@@ -7,4 +7,4 @@
 
 </div>
 
-A WebGIS platform to help normal people find astronomical observation spots and allow scientists and researchers to perform analysis using light pollution data.
+A WebGIS platform that enables everyday users to discover prime astronomical observation sites while empowering scientists and researchers to conduct light pollution data analysis.
