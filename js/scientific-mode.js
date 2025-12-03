@@ -131,16 +131,36 @@ class ScientificMode {
         });
     }
 
-    async performStatisticalAnalysis(layer) {
+async performStatisticalAnalysis(layer) {
         const bounds = layer.getBounds();
-        const area = layer.getArea ? layer.getArea() : 1000000;
+        
+        // --- FIX: Calculating Real Area ---
+        // 1. Get the lat/lngs of the polygon
+        const latLngs = layer.getLatLngs()[0];
+        
+        // 2. Calculate geodesic area in square meters using Leaflet GeometryUtil
+        // (This utility is available because leaflet.draw is included)
+        let areaSqMeters = L.GeometryUtil.geodesicArea(latLngs);
+        
+        // 3. Fallback if calculation fails
+        if (!areaSqMeters || areaSqMeters === 0) {
+            areaSqMeters = 1000000; // Default fallback
+        }
+        
+        // 4. Update the variable name to be distinct if needed, or just use 'area'
+        // We use 'area' here to match the rest of your existing code logic
+        const area = areaSqMeters; 
+        // ----------------------------------
         
         this.webGIS.showMessage('📈 Performing statistical analysis with real data...');
         
+        // Generate sample points within bounds
         const samplePoints = this.generateSamplePoints(bounds, 50);
         const analysisData = [];
         
         for (const point of samplePoints) {
+            // Note: This still hits the simulated data in DataManager
+            // To use REAL data, you must update DataManager.getDataAtPoint
             const data = await this.webGIS.dataManager.getDataAtPoint(point.lat, point.lng);
             analysisData.push({
                 lat: point.lat,

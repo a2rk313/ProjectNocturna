@@ -1,6 +1,7 @@
 // js/n8n-config.js
 const N8N_CONFIG = {
     webhookUrl: 'http://localhost:5678/webhook/chatbot', // Replace with your actual n8n URL
+    actionBotUrl: '',
     timeout: 10000, // 10 second timeout
     fallbackEnabled: true
 };

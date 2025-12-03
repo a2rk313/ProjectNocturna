@@ -770,89 +770,265 @@ body {
     display: block;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .control-panel,
-    .data-layers-panel {
-        width: 180px !important;
-        left: 10px;
-        right: 10px;
-    }
-    
-    .legend {
-        left: 10px;
-        bottom: 10px;
-        min-width: 160px;
-    }
-    
-    .chatbot-container {
-        width: calc(100% - 20px);
-        right: 10px;
-        bottom: 10px;
-    }
-    
-    .analysis-panel {
-        width: 95%;
-    }
-    
-    .loading-content {
-        padding: 30px 20px;
-        margin: 20px;
-    }
+/* Collapsible Panel Styles */
+.panel-header {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+    padding-right: 40px !important;
+}
 
-    /* Responsive logo sizes */
-    .navbar-logo {
-        height: 28px;
+.panel-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.panel-body {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    max-height: 1000px;
+    opacity: 1;
+}
+
+.panel-collapsed .panel-body {
+    max-height: 0;
+    opacity: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+}
+
+.collapse-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.3s ease;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+}
+
+.panel-collapsed .collapse-icon {
+    transform: translateY(-50%) rotate(-90deg);
+}
+
+/* Ensure proper panel heights */
+.control-panel .panel-body,
+.data-layers-panel .panel-body,
+.legend .panel-body,
+.chatbot-container .panel-body {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Keep analysis panel header not collapsible */
+.analysis-panel .panel-header {
+    cursor: default;
+    padding-right: 15px !important;
+}
+
+.analysis-panel .collapse-icon {
+    display: none;
+}
+
+/* Fix panel transitions */
+.cosmic-panel {
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed {
+    min-height: auto;
+}
+
+/* Ensure layer controls maintain spacing */
+.layer-controls {
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed .layer-controls {
+    padding: 0;
+    margin: 0;
+}
+
+/* Fix legend items */
+.legend-items {
+    padding: 15px 20px;
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed .legend-items {
+    padding: 0;
+    margin: 0;
+}
+
+/* Ensure chatbot messages area maintains height */
+.chat-messages {
+    height: 250px;
+    transition: height 0.3s ease;
+}
+
+.panel-collapsed .chat-messages {
+    height: 0;
+    overflow: hidden;
+}
+
+/* Fix cosmic input group */
+.cosmic-input-group {
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.panel-collapsed .cosmic-input-group {
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+
+/* ================================================= */
+/* RESPONSIVENESS ADJUSTMENTS (NEW)         */
+/* ================================================= */
+
+/* 1. Large Tablet / Small Laptop (max-width: 1200px) */
+@media (max-width: 1200px) {
+    .control-panel {
+        width: 200px;
     }
-    
-    .loading-logo {
-        max-width: 100px;
+    .data-layers-panel {
+        width: 240px;
     }
-    
-    .mode-selection-logo {
-        max-width: 120px;
-    }
-    
-    .logo-container {
-        padding: 15px;
-    }
-    
-    .control-panel .btn {
-        padding: 10px 12px !important;
-        font-size: 0.8rem;
+    .chatbot-container {
+        width: 320px;
     }
 }
 
-@media (max-width: 576px) {
+/* 2. Tablet / Vertical Tablet (max-width: 992px) */
+@media (max-width: 992px) {
+    .control-panel {
+        width: 180px;
+        left: 10px;
+        right: auto; /* Ensure it stays on the left */
+        top: 75px;
+    }
+
+    /* Stack Data Layers Panel below Control Panel */
+    .data-layers-panel {
+        width: 180px;
+        right: auto;
+        left: 10px;
+        top: 400px; /* Adjust based on control panel max height (~325px) + gap */
+    }
+
+    .legend {
+        left: auto;
+        right: 10px; /* Move legend to the right side */
+        bottom: 10px;
+        min-width: 180px;
+    }
+
+    .chatbot-container {
+        width: 300px;
+        right: 10px;
+        bottom: 200px; /* Move chatbot up to make room for legend/data panel if they get close */
+    }
+    
+    .analysis-panel {
+        max-width: 500px;
+    }
+}
+
+/* 3. Mobile Phone (max-width: 768px) - Full-Width Bottom Stacking */
+@media (max-width: 768px) {
+    /* Navbar Adjustment */
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
     .navbar-logo {
         height: 24px;
     }
-    
-    .loading-logo {
-        max-width: 80px;
+    .btn-outline-cosmic {
+        padding: 8px 12px !important;
+        font-size: 0.8rem;
+    }
+
+    /* Map Space Adjustment - Push Map down slightly to give room for navbar elements on small screens */
+    .cosmic-map {
+        top: 56px; 
+        height: calc(100vh - 56px);
     }
     
-    .mode-selection-logo {
-        max-width: 100px;
-    }
-    
-    .logo-container {
-        padding: 12px;
-    }
-    
+    /* Panel Reset to Bottom/Full-Width */
     .control-panel,
+    .data-layers-panel,
+    .legend {
+        position: fixed;
+        left: 10px !important;
+        right: 10px !important;
+        width: calc(100% - 20px) !important;
+        top: auto !important; /* Clear fixed top positions */
+        margin: 0 auto;
+    }
+
+    /* Vertical Stacking from Bottom Up (Legend -> Data Layers -> Control) */
+    .legend {
+        bottom: 10px;
+        z-index: 1002; /* Highest priority */
+    }
+    
     .data-layers-panel {
-        width: 160px !important;
+        bottom: 80px; /* Positioned above the legend (approx legend height + gap) */
+        z-index: 1001; 
     }
     
-    .control-panel .btn {
-        padding: 8px 10px !important;
-        font-size: 0.75rem;
+    .control-panel {
+        bottom: 150px; /* Positioned above the data layers panel */
+        z-index: 1000;
+    }
+
+    /* Hide/Shrink Chatbot on Mobile to avoid screen clutter */
+    .chatbot-container {
+        width: 60px; /* Minimized width */
+        height: 60px;
+        right: 10px;
+        bottom: 250px; /* Positioned away from the other bottom panels */
+        overflow: hidden;
+        border-radius: 50%;
+        box-shadow: 0 4px 15px rgba(96, 165, 250, 0.4);
     }
     
+    .chatbot-container .card-body {
+        display: none;
+    }
+    
+    .chatbot-container .panel-header {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    /* Analysis Panel - Keep Centered */
+    .analysis-panel {
+        max-width: 90%;
+        max-height: 90vh;
+    }
+    
+    /* Basemap Dropdown - Adjust position for full width panel */
     .basemap-dropdown {
-        width: 150px;
-        left: -50px;
+        left: 0 !important;
+        bottom: 100%;
+    }
+}
+
+/* 4. Small Mobile (max-width: 576px) */
+@media (max-width: 576px) {
+    /* Further compacting button text */
+    .control-panel .btn i {
+        margin-right: 5px;
+    }
+    
+    .control-panel .btn span {
+        font-size: 0.8rem;
     }
 }
 
@@ -963,210 +1139,4 @@ body {
 /* Loading spinner customization */
 .spinner-border {
     border-width: 2px;
-}
-
-/* Collapsible Panel Styles */
-.panel-header {
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.3s ease;
-    position: relative;
-    padding-right: 40px !important;
-}
-
-.panel-header:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-.panel-body {
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.panel-collapsed .panel-body {
-    display: none;
-    height: 0;
-    opacity: 0;
-}
-
-.collapse-icon {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    transition: transform 0.3s ease;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.8rem;
-}
-
-.panel-collapsed .collapse-icon {
-    transform: translateY(-50%) rotate(-90deg);
-}
-
-/* Ensure panels maintain their structure */
-.control-panel .panel-body,
-.data-layers-panel .panel-body,
-.legend .panel-body,
-.analysis-panel .panel-body,
-.chatbot-container .panel-body {
-    padding: 0;
-}
-
-/* Adjust existing panel structures */
-.layer-controls {
-    padding: 15px;
-}
-
-.legend-items {
-    padding: 15px 20px;
-}
-
-/* Keep the chat input visible when collapsed */
-.chatbot-container .cosmic-input-group {
-    padding: 15px;
-}
-
-/* Prevent the close button in analysis panel from triggering collapse */
-.analysis-panel .panel-header {
-    cursor: default;
-    padding-right: 15px !important;
-}
-
-.analysis-panel .collapse-icon {
-    right: 40px;
-}
-
-/* Ensure proper spacing in all panels */
-.cosmic-panel {
-    transition: all 0.3s ease;
-}
-
-.panel-collapsed {
-    max-height: 50px;
-    overflow: hidden;
-}
-
-/* Smooth transitions for all panels */
-.control-panel,
-.data-layers-panel,
-.legend,
-.analysis-panel,
-.chatbot-container {
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-}
-
-/* FIXED Collapsible Panel Styles */
-.panel-header {
-    position: relative;
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.3s ease;
-    padding-right: 40px !important;
-}
-
-.panel-header:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-.panel-body {
-    transition: all 0.3s ease;
-    overflow: hidden;
-    max-height: 1000px;
-    opacity: 1;
-}
-
-.panel-collapsed .panel-body {
-    max-height: 0;
-    opacity: 0;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden;
-}
-
-.collapse-icon {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    transition: transform 0.3s ease;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.8rem;
-}
-
-.panel-collapsed .collapse-icon {
-    transform: translateY(-50%) rotate(-90deg);
-}
-
-/* Ensure proper panel heights */
-.control-panel .panel-body,
-.data-layers-panel .panel-body,
-.legend .panel-body,
-.chatbot-container .panel-body {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Keep analysis panel header not collapsible */
-.analysis-panel .panel-header {
-    cursor: default;
-    padding-right: 15px !important;
-}
-
-.analysis-panel .collapse-icon {
-    display: none;
-}
-
-/* Fix panel transitions */
-.cosmic-panel {
-    transition: all 0.3s ease;
-}
-
-.panel-collapsed {
-    min-height: auto;
-}
-
-/* Ensure layer controls maintain spacing */
-.layer-controls {
-    padding: 15px;
-    transition: all 0.3s ease;
-}
-
-.panel-collapsed .layer-controls {
-    padding: 0;
-    margin: 0;
-}
-
-/* Fix legend items */
-.legend-items {
-    padding: 15px 20px;
-    transition: all 0.3s ease;
-}
-
-.panel-collapsed .legend-items {
-    padding: 0;
-    margin: 0;
-}
-
-/* Ensure chatbot messages area maintains height */
-.chat-messages {
-    height: 250px;
-    transition: height 0.3s ease;
-}
-
-.panel-collapsed .chat-messages {
-    height: 0;
-    overflow: hidden;
-}
-
-/* Fix cosmic input group */
-.cosmic-input-group {
-    padding: 15px;
-    transition: all 0.3s ease;
-}
-
-.panel-collapsed .cosmic-input-group {
-    padding: 0;
-    margin: 0;
-    opacity: 0;
-    height: 0;
-    overflow: hidden;
 }
