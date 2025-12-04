@@ -66,23 +66,39 @@ class DataManager {
 
     async loadVIIRSTileLayer() {
         try {
-            console.log('🌃 Loading VIIRS nighttime lights layer...');
+            console.log('🌃 Loading NASA VIIRS layer (GIBS)...');
+            
+            // 1. Create a dedicated Pane
             if (!this.webGIS.map.getPane('viirsPane')) {
                 this.webGIS.map.createPane('viirsPane');
-                this.webGIS.map.getPane('viirsPane').style.zIndex = 200;
+                
+                // FIX: Set Z-Index to 350. 
+                // (Base Map is 200. Overlays are 400. This sits nicely in between)
+                this.webGIS.map.getPane('viirsPane').style.zIndex = 350;
+                
+                // Allow clicks to pass through to the map
+                this.webGIS.map.getPane('viirsPane').style.pointerEvents = 'none';
             }
             
-            return L.tileLayer(this.datasets.viirs.url, {
-                attribution: 'NASA VIIRS Nighttime Lights',
-                maxZoom: 8,
-                opacity: 0.7,
+            // FIX: Use the official GIBS endpoint. 
+            // This URL structure is the specific standard for the 2012 City Lights layer.
+            const url = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
+
+            return L.tileLayer(url, {
+                attribution: 'Imagery © NASA/GSFC',
+                opacity: 0.8, // Increased opacity slightly for visibility
                 pane: 'viirsPane',
-                errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+                minZoom: 1,
+                maxZoom: 18,        
+                maxNativeZoom: 8,   // Crucial: Tells Leaflet to stretch tiles after zoom 8
+                tms: false,         // Standard XYZ
+                crossOrigin: true   // Fixes some canvas rendering issues
             });
+
         } catch (error) {
             console.error('❌ Failed to load VIIRS layer:', error);
+            // Fallback to OpenStreetMap if NASA fails
             return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: 'OpenStreetMap (VIIRS fallback)',
                 opacity: 0.5
             });
         }

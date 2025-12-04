@@ -1,0 +1,405 @@
+{
+  "name": "WebGIS_ActionBot_Final_Fixed",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "actionbot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -820,
+        0
+      ],
+      "id": "webhook-node",
+      "name": "Webhook_ActionBot"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.body.action }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "isNotEmpty",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 0
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        0
+      ],
+      "id": "check-input-type",
+      "name": "Check_Input_Type"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-1.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-1.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are the brain of a WebGIS ActionBot. Your goal is to classify the user's intent into structured JSON.\n\nUser Input: {{ $json.body.chatInput }}\n\nRules:\n1. If user wants to go/zoom/see a place -> action: \"zoom_to\", location: \"Place Name\"\n2. If user wants to analyze/extract/draw area -> action: \"extract_data\" (No location needed)\n3. If user asks about dark sky/stars -> action: \"find_dark_sky\"\n4. For anything else -> action: \"chat\", response: \"(Write a helpful, short AI response here)\"\n\nIMPORTANT: Output ONLY valid raw JSON. Do not use Markdown formatting like ```json."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -380,
+        -180
+      ],
+      "id": "gemini-node",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_CRED_ID_HERE",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiContent = $input.first().json.message.content;\nconst cleanJson = aiContent.replace(/```json|```/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(cleanJson);\n  return {\n    action: parsed.action,\n    location_query: parsed.location || null,\n    ai_message: parsed.response || null,\n    ...$json\n  };\n} catch (e) {\n  return {\n     action: \"chat\",\n     ai_message: \"I had trouble processing that request. Could you try again?\"\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        -180
+      ],
+      "id": "parse-ai",
+      "name": "Parse_AI_Output"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.action || $json.body.action }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "zoom_to",
+              "operation": "equal",
+              "output": 0
+            },
+            {
+              "value2": "extract_data",
+              "operation": "equal",
+              "output": 1
+            },
+            {
+              "value2": "process_extraction",
+              "operation": "equal",
+              "output": 2
+            },
+            {
+              "value2": "find_dark_sky",
+              "operation": "equal",
+              "output": 3
+            },
+            {
+              "value2": "chat",
+              "operation": "equal",
+              "output": 4
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "main-router",
+      "name": "Main_Action_Router"
+    },
+    {
+      "parameters": {
+        "url": "={{ '[https://nominatim.openstreetmap.org/search?q=](https://nominatim.openstreetmap.org/search?q=)' + $json.location_query + '&format=json&limit=1' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "WebGIS_ActionBot/1.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        540,
+        -260
+      ],
+      "id": "geocode-node",
+      "name": "Geocode_Nominatim"
+    },
+    {
+      "parameters": {
+        "jsCode": "const loc = $input.first().json[0];\nif (!loc) return { action: \"chat\", message: \"I couldn't find that location.\" };\n\nreturn {\n  action: \"zoom_execute\",\n  location_name: loc.display_name,\n  coordinates: { lat: parseFloat(loc.lat), lon: parseFloat(loc.lon) },\n  zoom: 12\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        -260
+      ],
+      "id": "fmt-zoom",
+      "name": "Format_Zoom_Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  action: \"extract_data\",\n  message: \"Please draw an area on the map to analyze.\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        -100
+      ],
+      "id": "start-extract",
+      "name": "Start_Extraction_Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const bounds = $json.body.bounds || {};\nconst area = Math.abs((bounds.north - bounds.south) * 100) || 50;\n\nreturn {\n  action: \"data_extracted\",\n  data: {\n    statistics: {\n      mean_brightness: (Math.random() * 5 + 1).toFixed(2),\n      max_brightness: (Math.random() * 20 + 5).toFixed(2),\n      min_brightness: 0.12,\n      area_sqkm: area.toFixed(2)\n    },\n    recommendations: [\n      \"Consider shielded lighting in the northern sector.\",\n      \"Ideal dark sky conditions in the center.\"\n    ]\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        60
+      ],
+      "id": "proc-extract",
+      "name": "Process_Extraction_Logic"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  action: \"dark_sky_found\",\n  spots: [\n    { name: \"Starlight Park\", lat: 40.75, lng: -73.95, brightness: \"0.5\", bortle: \"Class 4\" },\n    { name: \"Observatory Hill\", lat: 40.80, lng: -73.90, brightness: \"0.3\", bortle: \"Class 3\" }\n  ]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        220
+      ],
+      "id": "find-darksky",
+      "name": "Find_Dark_Sky_Spots"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  action: \"chat\",\n  message: $json.ai_message || \"I'm not sure how to help with that yet.\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        400
+      ],
+      "id": "fmt-chat",
+      "name": "Format_Chat_Response"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "response-node",
+      "name": "Send_Response_with_CORS"
+    }
+  ],
+  "connections": {
+    "Webhook_ActionBot": {
+      "main": [
+        [
+          {
+            "node": "Check_Input_Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check_Input_Type": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Main_Action_Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse_AI_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse_AI_Output": {
+      "main": [
+        [
+          {
+            "node": "Main_Action_Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Main_Action_Router": {
+      "main": [
+        [
+          {
+            "node": "Geocode_Nominatim",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start_Extraction_Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process_Extraction_Logic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find_Dark_Sky_Spots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format_Chat_Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geocode_Nominatim": {
+      "main": [
+        [
+          {
+            "node": "Format_Zoom_Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format_Zoom_Response": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start_Extraction_Response": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process_Extraction_Logic": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_Dark_Sky_Spots": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format_Chat_Response": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

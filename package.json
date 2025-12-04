@@ -1,5 +1,5 @@
 {
-  "name": "light-pollution-webgis-platform",
+  "name": "project-nocturna",
   "version": "2.3.0",
   "type": "module",
   "description": "Dual-mode WebGIS platform for light pollution analysis with real data and collapsible panels",
