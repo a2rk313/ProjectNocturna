@@ -1,0 +1,28 @@
+{
+  "stations": [
+    {
+      "name": "Mauna Kea Observatory",
+      "lat": 19.82,
+      "lng": -155.47,
+      "elevation": 4205,
+      "organization": "NASA/University of Hawaii",
+      "measurements": [
+        { "date": "2023-11-15", "brightness": 0.8, "sqm": 21.95 },
+        { "date": "2023-10-15", "brightness": 0.78, "sqm": 21.96 },
+        { "date": "2023-09-15", "brightness": 0.82, "sqm": 21.94 }
+      ]
+    },
+    {
+      "name": "Paranal Observatory",
+      "lat": -24.63,
+      "lng": -70.40,
+      "elevation": 2635,
+      "organization": "ESO",
+      "measurements": [
+        { "date": "2023-11-10", "brightness": 0.9, "sqm": 21.89 },
+        { "date": "2023-10-10", "brightness": 0.88, "sqm": 21.91 },
+        { "date": "2023-09-10", "brightness": 0.92, "sqm": 21.87 }
+      ]
+    }
+  ]
+}
