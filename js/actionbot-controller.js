@@ -162,6 +162,8 @@
             console.log('⚡ Executing Action:', actionData.action);
             
             switch (actionData.action) {
+                // --- FIX APPLIED HERE: Added 'zoom' case ---
+                case 'zoom':
                 case 'zoom_to':
                 case 'zoom_execute':
                     this.executeZoom(actionData);
@@ -194,7 +196,10 @@
         executeZoom(actionData) {
             // Handle various coordinate formats that LLMs might return
             const lat = actionData.lat || (actionData.coordinates ? actionData.coordinates.lat : null);
-            const lng = actionData.lng || (actionData.coordinates ? actionData.coordinates.lng : (actionData.coordinates ? actionData.coordinates.lon : null));
+            
+            // --- FIX APPLIED HERE: Added 'actionData.lon' to the check ---
+            const lng = actionData.lng || actionData.lon || (actionData.coordinates ? actionData.coordinates.lng : (actionData.coordinates ? actionData.coordinates.lon : null));
+            
             const zoom = actionData.zoom || actionData.zoom_level || 10;
             
             if (lat && lng && this.webGIS.map) {

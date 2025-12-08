@@ -1,4 +1,4 @@
-// js/app.js - FIXED INITIALIZATION ORDER
+// js/app.js - ZOOM CONTROLS POSITIONED BOTTOM-RIGHT
 class LightPollutionWebGIS {
     constructor() {
         this.map = null;
@@ -36,27 +36,21 @@ class LightPollutionWebGIS {
         this.showLoadingScreen();
         
         try {
-            // 1. Test N8N Connection
             this.n8nAvailable = await this.testN8NConnection();
             console.log(`n8n ${this.n8nAvailable ? 'available' : 'unavailable'}`);
             
-            // 2. Initialize UI & Map
             this.initializeUI();
             await this.initializeMap();
             
-            // 3. Initialize Data Manager
             this.dataManager = new DataManager();
             this.dataManager.webGIS = this; 
             
-            // 4. Initialize ActionBot GLOBALLY (Before Modes)
-            // This ensures it is ready when scientific/citizen modes load
             if (typeof window.ActionBotController !== 'undefined') {
                 this.actionBot = new window.ActionBotController(this);
                 this.actionBot.initialize();
                 console.log('🤖 ActionBot globally initialized');
             }
 
-            // 5. Load Data & Modes
             await this.loadLightPollutionData();
             this.initializeModeFunctionality();
             
@@ -81,9 +75,7 @@ class LightPollutionWebGIS {
             console.warn('⚠️ N8N URL not configured');
             return false;
         }
-        
         try {
-            // Test with a simple ping
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -95,7 +87,6 @@ class LightPollutionWebGIS {
                 }),
                 signal: AbortSignal.timeout(5000)
             });
-            
             const isConnected = response.ok;
             console.log(`🌐 N8N ${isConnected ? 'connected' : 'not responding'}`);
             return isConnected;
@@ -156,10 +147,15 @@ class LightPollutionWebGIS {
                 this.map = L.map('map', {
                     center: [30, 0],
                     zoom: 2,
-                    zoomControl: true,
+                    zoomControl: false, // Disable default
                     attributionControl: true
                 });
-                this.map.zoomControl.setPosition('topright');
+
+                // ✅ MOVE ZOOM TO TOP-LEFT
+                // (CSS will shift it slightly right to clear the sidebar)
+                L.control.zoom({
+                    position: 'topleft'
+                }).addTo(this.map);
                 
                 this.drawnItems = new L.FeatureGroup();
                 this.drawnItems.addTo(this.map);
@@ -293,7 +289,6 @@ class LightPollutionWebGIS {
     }
 
     initializePanelCollapse() {
-        // Initialize any collapsed panels from localStorage if needed
         const savedCollapsed = localStorage.getItem('collapsedPanels');
         if (savedCollapsed) {
             this.collapsedPanels = new Set(JSON.parse(savedCollapsed));
@@ -427,23 +422,21 @@ class LightPollutionWebGIS {
         this.map.on('click', handler);
     }
 
-    planRoute() {
-        const [start, end] = this.routePoints;
-        this.routingControl = L.Routing.control({
-            waypoints: [L.latLng(start.lat, start.lng), L.latLng(end.lat, end.lng)],
-            routeWhileDragging: true,
-            lineOptions: { styles: [{color: 'blue', opacity: 0.7, weight: 6}] }
-        }).addTo(this.map);
-        this.analysisMode = null;
-    }
-
     clearAll() {
         if (this.drawnItems) this.drawnItems.clearLayers();
         if (this.routingControl) {
             this.map.removeControl(this.routingControl);
             this.routingControl = null;
         }
+        if (this.citizenMode) {
+             this.citizenMode.clearObservationSpots();
+             if (this.citizenMode.userMarker) {
+                 this.map.removeLayer(this.citizenMode.userMarker);
+                 this.citizenMode.userMarker = null;
+             }
+        }
         document.querySelectorAll('.leaflet-marker-icon').forEach(m => m.remove());
+        document.querySelectorAll('.leaflet-marker-shadow').forEach(s => s.remove()); 
         document.querySelectorAll('.leaflet-popup-pane > *').forEach(p => p.remove());
         this.showMessage('🗑️ Map cleared.');
     }
@@ -493,27 +486,20 @@ class LightPollutionWebGIS {
         if (message) {
             this.addChatMessage('user', message);
             input.value = '';
-            
-            // This method is Overridden by ActionBot if initialized
             const response = await this.generateAIResponse(message);
             this.addChatMessage('assistant', response);
         }
     }
 
     async generateAIResponse(message) {
-        // Check if N8N is supposed to be available
         if (this.n8nAvailable === false) {
             return "I'm running in basic mode. N8N ActionBot server is not available.";
         }
-        
         try {
-            // If ActionBot is initialized, let it handle the response
             if (this.actionBot && typeof this.actionBot.processUserMessage === 'function') {
                 const response = await this.actionBot.processUserMessage(message);
                 return response.message || "I processed your request.";
             }
-            
-            // Local fallback responses
             const lowerMsg = message.toLowerCase();
             if (lowerMsg.includes('dark') || lowerMsg.includes('star')) {
                 return "Try clicking 'Find Dark Sky Spots' button or use the draw tool to analyze an area.";
@@ -521,7 +507,6 @@ class LightPollutionWebGIS {
             if (lowerMsg.includes('zoom') || lowerMsg.includes('go to')) {
                 return "Use the map controls to navigate, or try 'Zoom to London' in the chat.";
             }
-            
             return "I'm running in basic mode. For advanced features, ensure N8N server is running.";
         } catch (error) {
             console.error('Chat response error:', error);

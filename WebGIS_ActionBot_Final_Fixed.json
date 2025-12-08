@@ -1,0 +1,592 @@
+{
+  "name": "WebGIS_ActionBot_Final_Fixed",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "actionbot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        432
+      ],
+      "id": "3f73c0d4-8384-45ad-9f64-02b5ffba97d4",
+      "name": "Webhook_ActionBot",
+      "webhookId": "53b5a512-6d9b-4b71-a9a8-d3228204d289"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are the brain of a WebGIS ActionBot. Your goal is to classify the user's intent into structured JSON.\n\nUser Input: {{ $json.body.chatInput }}\n\nRules:\n1. If user wants to go/zoom/see a place -> action: \"zoom_to\", location: \"Place Name\"\n2. If user wants to analyze/extract/draw area -> action: \"extract_data\" (No location needed)\n3. If user asks about dark sky/stars -> action: \"find_dark_sky\"\n4. For anything else -> action: \"chat\", response: \"(Write a helpful, short AI response here)\"\n\nIMPORTANT: Output ONLY valid raw JSON. Do not use Markdown formatting like ```json."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        176
+      ],
+      "id": "c141eb38-a31b-458b-b53a-b2dd69492679",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "sa38XJDOWdfRWGio",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get the JSON data\nconst inputData = $input.first().json;\n\n// 2. CRITICAL FIX: Add the specific Gemini path found in your screenshot\n// Check 'content.parts[0].text' first, then fall back to others\nconst aiContent = (inputData.content && inputData.content.parts && inputData.content.parts[0] && inputData.content.parts[0].text) \n                  || inputData.response \n                  || inputData.text \n                  || inputData.output \n                  || (inputData.message && inputData.message.content);\n\n// Safety check\nif (!aiContent) {\n  return {\n    action: \"chat\",\n    ai_message: \"Error: Could not find AI response. keys found: \" + Object.keys(inputData).join(\", \")\n  };\n}\n\n// 3. Clean markdown and parse\nconst cleanJson = aiContent.replace(/```json|```/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(cleanJson);\n  return {\n    action: parsed.action,\n    location_query: parsed.location || null,\n    ai_message: parsed.response || parsed.message || \"Action processed.\",\n    ...inputData\n  };\n} catch (e) {\n  // Fallback for plain text responses\n  return {\n     action: \"chat\",\n     ai_message: cleanJson,\n     ...inputData\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        0
+      ],
+      "id": "34ad7071-798c-48d4-ab13-a4d90cd8a69b",
+      "name": "Parse_AI_Output"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://nominatim.openstreetmap.org/search?q=' + $json.location_query + '&format=json&limit=1' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "WebGIS_ActionBot/1.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b8e13d5d-c3a2-43fe-87b7-4bd52f3070bc",
+      "name": "Geocode_Nominatim"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the data from the previous node\nconst data = $input.item.json;\n\n// Check if latitude and longitude exist\nif (data.lat && data.lon) {\n  const latNum = parseFloat(data.lat);\n  const lonNum = parseFloat(data.lon);\n\n  return {\n    action: \"zoom\",\n    // We send ALL common formats to ensure the map understands one of them\n    lat: latNum,\n    lon: lonNum,\n    lng: lonNum,        // Common alternative for longitude\n    latitude: latNum,\n    longitude: lonNum,\n    center: [latNum, lonNum], // Common array format\n    zoom: 12,\n    message: `Zooming to ${data.display_name}...`\n  };\n} else {\n  return {\n    action: \"chat\",\n    message: \"I couldn't find that location.\"\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        0
+      ],
+      "id": "8b4bf9a5-b44d-489c-a4d3-28059f0210d4",
+      "name": "Format_Zoom_Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  action: \"extract_data\",\n  message: \"Please draw an area on the map to analyze.\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        160
+      ],
+      "id": "e6684f34-886a-45a1-9177-34823e163e23",
+      "name": "Start_Extraction_Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const bounds = $json.body.bounds || {};\nconst area = Math.abs((bounds.north - bounds.south) * 100) || 50;\n\nreturn {\n  action: \"data_extracted\",\n  data: {\n    statistics: {\n      mean_brightness: (Math.random() * 5 + 1).toFixed(2),\n      max_brightness: (Math.random() * 20 + 5).toFixed(2),\n      min_brightness: 0.12,\n      area_sqkm: area.toFixed(2)\n    },\n    recommendations: [\n      \"Consider shielded lighting in the northern sector.\",\n      \"Ideal dark sky conditions in the center.\"\n    ]\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        320
+      ],
+      "id": "28ec332b-8256-44c6-b962-f6d93e3b644b",
+      "name": "Process_Extraction_Logic"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  action: \"dark_sky_found\",\n  spots: [\n    { name: \"Starlight Park\", lat: 40.75, lng: -73.95, brightness: \"0.5\", bortle: \"Class 4\" },\n    { name: \"Observatory Hill\", lat: 40.80, lng: -73.90, brightness: \"0.3\", bortle: \"Class 3\" }\n  ]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        480
+      ],
+      "id": "1fe3e15e-edda-4fd4-aa33-3ca7501fcd83",
+      "name": "Find_Dark_Sky_Spots"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        768,
+        272
+      ],
+      "id": "d521f0f2-e508-45ef-b995-fe7f14c9aeda",
+      "name": "Send_Response_with_CORS"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "0fe959cb-5b4b-4674-921d-0862681ca883"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "0"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2d2ba519-24c7-44bc-8767-0e5d2719d324",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -1136,
+        432
+      ],
+      "id": "83356656-901f-412e-b97d-6d2d49f5fd3f",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action || $json.body.action }}",
+                    "rightValue": "zoom_to",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "939c7a84-b793-4f97-a051-ba8ba142c072"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "0"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "686448f6-6d0a-420e-aa03-f9424c36a222",
+                    "leftValue": "={{ $json.action || $json.body.action }}",
+                    "rightValue": "extract_data",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7ecbd725-2893-445f-8914-36aa0e18f1e3",
+                    "leftValue": "={{ $json.action || $json.body.action }}",
+                    "rightValue": "process_extraction",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "2"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "348c61e5-ded3-4923-a0a2-38068d2570de",
+                    "leftValue": "={{ $json.action || $json.body.action }}",
+                    "rightValue": "process_extraction",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "2"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "82ee79ef-29d6-4f7f-bcc7-82d8759189d3",
+                    "leftValue": "={{ $json.action || $json.body.action }}",
+                    "rightValue": "find_dark_sky",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "3"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "571d4250-c181-431b-a7db-1276a2e04a7b",
+                    "leftValue": "={{ $json.action || $json.body.action }}",
+                    "rightValue": "chat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "4"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -384,
+        336
+      ],
+      "id": "91f43105-09b1-4af7-85d9-0dcd6fa48aa8",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  action: \"chat\",\n  message: $json.ai_message || \"I'm not sure how to help with that yet.\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        656
+      ],
+      "id": "4d7e0b24-8570-4532-967d-a3dbc9b837b4",
+      "name": "Format_Chat_Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook_ActionBot": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse_AI_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse_AI_Output": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geocode_Nominatim": {
+      "main": [
+        [
+          {
+            "node": "Format_Zoom_Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format_Zoom_Response": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start_Extraction_Response": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process_Extraction_Logic": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_Dark_Sky_Spots": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Geocode_Nominatim",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start_Extraction_Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process_Extraction_Logic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [
+          {
+            "node": "Find_Dark_Sky_Spots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format_Chat_Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format_Chat_Response": {
+      "main": [
+        [
+          {
+            "node": "Send_Response_with_CORS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "13860fe0-7527-4997-bfc4-dd11b8f32315",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6503a244fd48d95d6091fd8583860016b755730fe1f217c0b50b1974de64a2df"
+  },
+  "id": "yw03Uew7sKfvR7EJ",
+  "tags": []
+}
