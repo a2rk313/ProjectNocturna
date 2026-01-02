@@ -1,123 +1,90 @@
-// js/scientific-mode.js - FIXED DOUBLE INIT
-class ScientificMode {
+// js/scientific-mode.js
+export class ScientificMode {
     constructor(webGIS) {
         this.webGIS = webGIS;
-        this.analysisResults = new Map();
-        
-        // FIX: Grab the GLOBAL ActionBot created in app.js
-        // Do NOT set this to null or create 'new ActionBotController'
         this.actionBot = webGIS.actionBot; 
     }
 
     initialize() {
         console.log('✅ Scientific mode initialized');
-        // FIX: Removed 'this.actionBot.initialize()' from here.
-        // It is already running globally.
         this.setupScientificTools();
     }
 
     setupScientificTools() {
-        this.setupButtonListener('timeSeries', () => this.enableTimeSeriesAnalysis());
-        this.setupButtonListener('statisticalAnalysis', () => this.enableStatisticalAnalysis());
-        this.setupButtonListener('dataExport', () => this.showExportOptions());
-        this.setupButtonListener('modelPredictions', () => this.showModelPredictions());
+        const bind = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
+        bind('timeSeries', () => this.enableTimeSeriesAnalysis());
+        bind('statisticalAnalysis', () => this.enableStatisticalAnalysis());
+        bind('dataExport', () => this.showExportOptions());
+        bind('energyCalc', () => this.calculateEnergyWaste());
     }
 
-    setupButtonListener(id, handler) {
-        const element = document.getElementById(id);
-        if (element) element.addEventListener('click', handler);
-    }
+    async calculateEnergyWaste() {
+        let center = this.webGIS.map.getCenter();
+        let areaSqKm = 1.0; 
+        let sourceLabel = "Map Center View";
+        let isPolygon = false;
 
-    enableTimeSeriesAnalysis() {
-        this.webGIS.showMessage('📈 Click map to analyze trends (2012-2023)');
-        this.webGIS.analysisMode = 'timeSeries';
+        const drawnLayers = this.webGIS.drawnItems.getLayers();
+        if (drawnLayers.length > 0) {
+            const layer = drawnLayers[drawnLayers.length - 1]; 
+            if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+                center = layer.getBounds().getCenter();
+                const areaSqMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                areaSqKm = Math.max(0.01, (areaSqMeters / 1_000_000));
+                sourceLabel = "Selected Polygon";
+                isPolygon = true;
+            }
+        } else if (this.webGIS.uiMarkers.getLayers().length > 0) {
+            const markers = this.webGIS.uiMarkers.getLayers();
+            center = markers[markers.length - 1].getLatLng(); 
+            sourceLabel = "Selected Marker";
+        }
+
+        this.webGIS.showMessage(`⚡ Analyzing ${sourceLabel}...`);
         
-        const clickHandler = async (e) => {
-            await this.analyzeTimeSeries(e.latlng.lat, e.latlng.lng);
-            this.webGIS.map.off('click', clickHandler);
-        };
-        this.webGIS.map.on('click', clickHandler);
-    }
+        const data = await this.webGIS.dataManager.getDataAtPoint(center.lat, center.lng);
+        const sqm = data.light_pollution && !isNaN(parseFloat(data.light_pollution.sqm)) 
+                    ? parseFloat(data.light_pollution.sqm) : 18.0;
+        
+        const radiance = Math.pow(10, (26.2 - sqm) / 2.5); 
+        const annualWastedKwh = Math.round(radiance * 5000 * areaSqKm); 
+        const annualCost = Math.round(annualWastedKwh * 0.15); 
+        const co2Tons = (annualWastedKwh * 0.0007).toFixed(2); 
 
-    async analyzeTimeSeries(lat, lng) {
-        this.webGIS.showMessage('🔄 Loading historical data...');
-        // Mock data for time series (since real historical API is not free)
-        const analysisContent = `
-            <h6>📈 Time Series Analysis</h6>
-            <p><strong>Location:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
-            <p>Historical data projected from 2012 baseline.</p>
-            <div class="alert alert-info mt-3"><small>Data Source: Statistical Trend Model</small></div>
+        const areaDisplay = areaSqKm < 0.1 ? (areaSqKm * 100).toFixed(1) + " hectares" : areaSqKm.toFixed(2) + " km²";
+
+        const content = `
+            <div class="text-center">
+                <span class="badge ${isPolygon ? 'bg-primary' : 'bg-secondary'} mb-2">${sourceLabel}</span>
+                <h6 class="text-warning">Target Area: ${areaDisplay}</h6>
+                
+                <div class="py-3">
+                    <i class="fas fa-bolt fa-3x text-warning mb-2"></i>
+                    <h2>${annualWastedKwh.toLocaleString()} kWh</h2>
+                    <p class="mb-0">Estimated Annual Wasted Energy</p>
+                </div>
+                
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="p-2 border border-secondary rounded bg-dark">
+                            <h4 class="text-danger mb-0">$${annualCost.toLocaleString()}</h4>
+                            <small class="text-light">Loss</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 border border-secondary rounded bg-dark">
+                            <h4 class="text-danger mb-0">${co2Tons} t</h4>
+                            <small class="text-light">CO₂</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
-        this.webGIS.showAnalysisPanel('Time Series', analysisContent);
+
+        this.webGIS.showAnalysisPanel('⚡ Energy & CO₂ Impact', content);
     }
 
-    enableStatisticalAnalysis() {
-        this.webGIS.showMessage('📊 Draw a polygon for statistical analysis');
-        this.webGIS.analysisMode = 'statistical';
-        
-        new L.Draw.Polygon(this.webGIS.map).enable();
-        
-        this.webGIS.map.on(L.Draw.Event.CREATED, (e) => {
-            this.webGIS.drawnItems.addLayer(e.layer);
-            this.performStatisticalAnalysis(e.layer);
-        });
-    }
-
-    async performStatisticalAnalysis(layer) {
-        const latLngs = layer.getLatLngs()[0];
-        
-        // REAL AREA CALCULATION
-        let areaSqMeters = 0;
-        if (typeof L.GeometryUtil !== 'undefined') {
-            areaSqMeters = L.GeometryUtil.geodesicArea(latLngs);
-        }
-        if (!areaSqMeters) areaSqMeters = 1000000; // Fallback
-        
-        const areaKm = (areaSqMeters / 1000000).toFixed(2);
-        
-        this.webGIS.showMessage('📈 Analyzing real data...');
-        
-        const bounds = layer.getBounds();
-        const samplePoints = this.generateSamplePoints(bounds, 20);
-        
-        const analysisData = [];
-        for (const point of samplePoints) {
-            // This calls the REAL data manager now
-            const data = await this.webGIS.dataManager.getDataAtPoint(point.lat, point.lng);
-            analysisData.push(data.viirsValue);
-        }
-        
-        const avg = (analysisData.reduce((a, b) => a + b, 0) / analysisData.length).toFixed(2);
-        
-        const analysisContent = `
-            <h6>📊 Statistical Analysis</h6>
-            <p><strong>Area:</strong> ${areaKm} km²</p>
-            <p><strong>Avg Brightness:</strong> ${avg} μcd/m²</p>
-            <p><strong>Samples:</strong> ${samplePoints.length}</p>
-        `;
-        
-        this.webGIS.showAnalysisPanel('Statistical Analysis', analysisContent);
-    }
-
-    generateSamplePoints(bounds, count) {
-        const points = [];
-        const north = bounds.getNorth();
-        const south = bounds.getSouth();
-        const east = bounds.getEast();
-        const west = bounds.getWest();
-        for (let i = 0; i < count; i++) {
-            points.push({
-                lat: south + Math.random() * (north - south),
-                lng: west + Math.random() * (east - west)
-            });
-        }
-        return points;
-    }
-
-    showExportOptions() {
-        this.webGIS.showAnalysisPanel('Data Export', '<button class="btn btn-success" onclick="webGIS.scientificMode.executeExport()">Download Data</button>');
-    }
-
-    executeExport() { this.webGIS.showMessage('📦 Exporting data...'); }
-    showModelPredictions() { this.webGIS.showMessage('🔮 Prediction models require historical DB.'); }
+    enableTimeSeriesAnalysis() { this.webGIS.showMessage("Feature: Time Series Analysis"); }
+    enableStatisticalAnalysis() { this.webGIS.showMessage("Feature: Statistical Analysis"); }
+    showExportOptions() { this.webGIS.showMessage("Feature: Export"); }
 }

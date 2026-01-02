@@ -5,22 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Nocturna - Explore the Night Sky</title>
     
-    <link rel="icon" type="image/x-icon" href="./images/logo.png">
+    <link rel="icon" type="image/png" href="./images/logo.png">
     
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
@@ -46,11 +40,6 @@
             </div>
             <h4 class="text-white mb-2">Launching Project Nocturna</h4>
             <p class="text-light opacity-75">Initializing <span id="loadingMode" class="fw-bold">...</span> Mode</p>
-            <div class="loading-features mt-3">
-                <span class="loading-feature">🛰️ Loading Satellite Data</span>
-                <span class="loading-feature">🌍 Processing Maps</span>
-                <span class="loading-feature">🌟 Initializing Tools</span>
-            </div>
         </div>
     </div>
 
@@ -75,210 +64,93 @@
     <div id="map" class="cosmic-map"></div>
 
     <div class="control-panel cosmic-panel" id="controlPanel">
-        <div class="panel-header">
-            <h6 id="panelTitle">Stargazing Tools</h6>
-        </div>
-        <div class="panel-divider"></div>
-        <div class="panel-body">
-            <div id="citizenTools" class="layer-controls">
-                <div class="d-flex flex-column gap-2 w-100">
-                    <button class="btn btn-cosmic-primary" id="findObservatories">
-                        <i class="fas fa-landmark me-2"></i>Find Observatories
-                    </button>
-                    <button class="btn btn-cosmic-info" id="moonPhase">
-                        <i class="fas fa-moon me-2"></i>Moon Phase
-                    </button>
-                    <button class="btn btn-cosmic-info" id="weatherCheck">
-                        <i class="fas fa-cloud me-2"></i>Weather Check
-                    </button>
-                    <button class="btn btn-cosmic-primary" id="findDarkSky">
-                        <i class="fas fa-star me-2"></i>Find Dark Sky Spots
-                    </button>
-                </div>
+        <div class="panel-header"><h6 id="panelTitle">Tools</h6></div>
+        
+        <div class="panel-body p-3">
+            <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 1: Define Target</h6>
+            <div class="d-grid gap-2 mb-3">
+                <button class="btn btn-cosmic-info" id="drawPolygon">
+                    <i class="fas fa-draw-polygon me-2"></i>Select Region
+                </button>
+                <button class="btn btn-cosmic-info" id="dropMarker">
+                    <i class="fas fa-map-marker-alt me-2"></i>Pick Location
+                </button>
+                <button class="btn btn-cosmic-danger" id="clearAll">
+                    <i class="fas fa-eraser me-2"></i>Clear Selection
+                </button>
+            </div>
+
+            <div class="panel-divider my-3"></div>
+
+            <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 2: Run Analysis</h6>
+            
+            <div id="citizenTools" class="d-grid gap-2">
+                <button class="btn btn-cosmic-success" id="astroForecast"><i class="fas fa-meteor me-2"></i>Astro Forecast</button>
+                <button class="btn btn-cosmic-primary" id="findObservatories"><i class="fas fa-landmark me-2"></i>Find Observatories</button>
+                <button class="btn btn-cosmic-primary" id="findDarkSky"><i class="fas fa-star me-2"></i>Dark Sky Parks</button>
+                <button class="btn btn-cosmic-info" id="moonPhase"><i class="fas fa-moon me-2"></i>Moon Phase</button>
+                <button class="btn btn-cosmic-info" id="weatherCheck"><i class="fas fa-cloud me-2"></i>Weather Check</button>
             </div>
             
-            <div id="scientificTools" class="layer-controls" style="display: none;">
-                <div class="d-flex flex-column gap-2 w-100">
-                    <button class="btn btn-cosmic-warning" id="timeSeries">
-                        <i class="fas fa-chart-line me-2"></i>Time Series Analysis
-                    </button>
-                    <button class="btn btn-cosmic-warning" id="statisticalAnalysis">
-                        <i class="fas fa-calculator me-2"></i>Statistical Analysis
-                    </button>
-                    <button class="btn btn-cosmic-info" id="dataExport">
-                        <i class="fas fa-file-export me-2"></i>Data Export
-                    </button>
-                    <button class="btn btn-cosmic-primary" id="modelPredictions">
-                        <i class="fas fa-chart-bar me-2"></i>Model Predictions
-                    </button>
-                </div>
+            <div id="scientificTools" class="d-grid gap-2" style="display: none;">
+                <button class="btn btn-cosmic-danger" id="energyCalc"><i class="fas fa-solar-panel me-2"></i>Energy Estimator</button>
+                <button class="btn btn-cosmic-warning" id="timeSeries"><i class="fas fa-chart-line me-2"></i>Time Series</button>
+                <button class="btn btn-cosmic-warning" id="statisticalAnalysis"><i class="fas fa-calculator me-2"></i>Stats</button>
+                <button class="btn btn-cosmic-info" id="dataExport"><i class="fas fa-file-export me-2"></i>Export</button>
             </div>
             
-            <div class="panel-divider"></div>
-            <div class="layer-controls">
-                <div class="d-flex flex-column gap-2 w-100">
-                    <button class="btn btn-cosmic-primary" id="drawPolygon">
-                        <i class="fas fa-draw-polygon me-2"></i>Draw Analysis Area
-                    </button>
-                    <button class="btn btn-cosmic-info" id="compareLocations">
-                        <i class="fas fa-balance-scale me-2"></i>Compare Locations
-                    </button>
-                    <button class="btn btn-cosmic-info" id="planRoute">
-                        <i class="fas fa-route me-2"></i>Plan Observation Route
-                    </button>
-                    <button class="btn btn-cosmic-danger" id="clearAll">
-                        <i class="fas fa-trash me-2"></i>Clear All
-                    </button>
-                </div>
-            </div>
+            <div class="panel-divider my-3"></div>
             
-            <div class="panel-divider"></div>
-            <div class="layer-controls">
-                <div class="basemap-container position-relative">
-                    <button class="btn btn-cosmic-info w-100 d-flex align-items-center justify-content-between" id="basemapSwitcher">
-                        <span>
-                            <i class="fas fa-layer-group me-2"></i>Change Basemap
-                        </span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="basemap-dropdown cosmic-panel" id="basemapDropdown">
-                        <div class="basemap-option active" data-basemap="osm">
-                            <i class="fas fa-map me-2"></i>OpenStreetMap
-                        </div>
-                        <div class="basemap-option" data-basemap="dark">
-                            <i class="fas fa-moon me-2"></i>Dark Map
-                        </div>
-                        <div class="basemap-option" data-basemap="satellite">
-                            <i class="fas fa-satellite me-2"></i>Satellite
-                        </div>
-                        <div class="basemap-option" data-basemap="terrain">
-                            <i class="fas fa-mountain me-2"></i>Terrain
-                        </div>
-                    </div>
+            <div class="d-grid gap-2">
+                <button class="btn btn-cosmic-info" id="planRoute"><i class="fas fa-route me-2"></i>Plan Route</button>
+                <button class="btn btn-cosmic-info" id="compareLocations"><i class="fas fa-balance-scale me-2"></i>Compare</button>
+            </div>
+
+            <div class="mt-3">
+                <button class="btn btn-cosmic-info w-100 d-flex align-items-center justify-content-between" id="basemapSwitcher">
+                    <span><i class="fas fa-layer-group me-2"></i>Basemap</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="basemap-dropdown cosmic-panel" id="basemapDropdown">
+                    <div class="basemap-option active" data-basemap="osm"><i class="fas fa-map me-2"></i>OpenStreetMap</div>
+                    <div class="basemap-option" data-basemap="satellite"><i class="fas fa-satellite me-2"></i>Satellite</div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="data-layers-panel cosmic-panel" id="dataLayersPanel">
-        <div class="panel-header">
-            <h6>Data Layers</h6>
-        </div>
-        <div class="panel-divider"></div>
-        <div class="panel-body">
-            <div class="layer-controls">
-                <div class="cosmic-check">
-                    <input class="form-check-input" type="checkbox" id="viirsLayer" checked>
-                    <label class="form-check-label" for="viirsLayer">
-                        <i class="fas fa-satellite me-2"></i>VIIRS Nighttime Lights
-                    </label>
-                </div>
-                <div class="cosmic-check">
-                    <input class="form-check-input" type="checkbox" id="worldAtlasLayer">
-                    <label class="form-check-label" for="worldAtlasLayer">
-                        <i class="fas fa-globe-americas me-2"></i>World Atlas Model
-                    </label>
-                </div>
-                <div class="cosmic-check">
-                    <input class="form-check-input" type="checkbox" id="heatmapLayer">
-                    <label class="form-check-label" for="heatmapLayer">
-                        <i class="fas fa-fire me-2"></i>Light Pollution Heatmap
-                    </label>
-                </div>
-                <div class="cosmic-check">
-                    <input class="form-check-input" type="checkbox" id="groundMeasurements">
-                    <label class="form-check-label" for="groundMeasurements">
-                        <i class="fas fa-map-marker-alt me-2"></i>Ground Measurements
-                    </label>
-                </div>
-                <div class="cosmic-check">
-                    <input class="form-check-input" type="checkbox" id="darkSkyParks" checked>
-                    <label class="form-check-label" for="darkSkyParks">
-                        <i class="fas fa-star me-2"></i>Dark Sky Parks
-                    </label>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="legend cosmic-panel" id="legendPanel">
-        <div class="panel-header">
-            <h6>Light Pollution Legend</h6>
-        </div>
-        <div class="panel-body">
-            <div class="legend-items">
-                <div class="legend-item">
-                    <div class="legend-color heatmap-excellent"></div>
-                    <span class="legend-label">Excellent (0-1.5 μcd/m²)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color heatmap-good"></div>
-                    <span class="legend-label">Good (1.5-3 μcd/m²)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color heatmap-moderate"></div>
-                    <span class="legend-label">Moderate (3-8 μcd/m²)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color heatmap-high"></div>
-                    <span class="legend-label">High (8-27 μcd/m²)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color heatmap-very-high"></div>
-                    <span class="legend-label">Very High (>27 μcd/m²)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color heatmap-extreme"></div>
-                    <span class="legend-label">Extreme (>80 μcd/m²)</span>
-                </div>
-            </div>
+        <div class="panel-header"><h6>Layers</h6></div>
+        <div class="panel-body p-3">
+            <div class="cosmic-check"><input class="form-check-input" type="checkbox" id="viirsLayer" checked><label class="form-check-label"><i class="fas fa-satellite me-2"></i>VIIRS Night Lights</label></div>
+            <div class="cosmic-check"><input class="form-check-input" type="checkbox" id="darkSkyParks" checked><label class="form-check-label"><i class="fas fa-star me-2"></i>Dark Sky Parks (WMS)</label></div>
+            <div class="cosmic-check"><input class="form-check-input" type="checkbox" id="groundMeasurements"><label class="form-check-label"><i class="fas fa-map-marker-alt me-2"></i>Ground Stations (DB)</label></div>
         </div>
     </div>
 
     <div id="analysisPanel" class="analysis-panel cosmic-panel" style="display: none;">
         <div class="cosmic-card">
-            <div class="cosmic-card-header d-flex justify-content-between align-items-center p-3 panel-header">
+            <div class="panel-header d-flex justify-content-between">
                 <h6 id="analysisTitle">Analysis</h6>
-                <button class="btn-close-cosmic" id="closeAnalysis">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button class="btn-close-cosmic" id="closeAnalysis"><i class="fas fa-times"></i></button>
             </div>
-            <div class="panel-body card-body">
-                <div id="analysisContent" class="cosmic-scrollbar" style="max-height: 400px; overflow-y: auto;">
-                    </div>
-            </div>
+            <div class="panel-body p-3" id="analysisContent"></div>
         </div>
     </div>
 
     <div class="chatbot-container cosmic-panel" id="chatbotPanel">
         <div class="cosmic-card">
-            <div class="cosmic-card-header d-flex justify-content-between align-items-center p-3 panel-header">
-                <div class="d-flex align-items-center">
-                    <div class="message-avatar me-2">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div>
-                        <h6 id="assistantName" class="mb-0">Lumina</h6>
-                        <small class="text-light opacity-75">Light Pollution Assistant</small>
-                    </div>
-                </div>
-            </div>
+            <div class="panel-header"><h6 id="assistantName">Lumina</h6></div>
             <div class="panel-body card-body">
                 <div class="chat-messages cosmic-scrollbar" id="chat-messages">
                     <div class="chat-message assistant cosmic-message">
-                        <div class="message-avatar">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <div class="message-content">
-                            <strong>Lumina:</strong> <span id="welcomeMessage">Hello! I'm Lumina, your light pollution assistant. I can help you find dark sky areas and analyze light pollution data.</span>
-                        </div>
+                        <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                        <div class="message-content"><strong>Lumina:</strong> <span id="welcomeMessage">Hello! Select a region to begin analysis.</span></div>
                     </div>
                 </div>
-                <div class="cosmic-input-group input-group p-3">
+                <div class="cosmic-input-group">
                     <input type="text" id="user-input" class="form-control cosmic-input" placeholder="Ask about light pollution...">
-                    <button class="btn btn-cosmic-primary" type="button" id="send-message">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <button class="btn btn-cosmic-primary" id="send-message"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
         </div>
@@ -290,54 +162,19 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
     <script src="./js/utils.js"></script>
     <script src="./js/n8n-config.js"></script>
     <script src="./js/api-config.js"></script>
-    <script src="./js/data-manager.js"></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/citizen-mode.js"></script>
     <script src="./js/actionbot-controller.js"></script>
-    <script src="./js/scientific-mode.js"></script>
-    <script src="./js/app.js"></script>
-    <script src="./js/actionbot-controller.js"></script>
-
+    <!-- <script src="./js/app.js"></script> -->
+    <script src="./js/event-bus.js"></script>
+    <script type="module" src="./js/webgis.js"></script>
     <script>
-        // Add interactive effects for the cosmic theme
         document.addEventListener('DOMContentLoaded', function() {
-            // Add floating animation to particles
-            const particles = document.querySelectorAll('.particle');
-            particles.forEach((particle, index) => {
-                particle.style.animationDelay = `${index * 3}s`;
-            });
-
-            // Add hover effects to cosmic buttons
-            const cosmicButtons = document.querySelectorAll('.btn-cosmic-primary, .btn-cosmic-success, .btn-cosmic-info, .btn-cosmic-warning, .btn-cosmic-danger');
-            cosmicButtons.forEach(btn => {
-                btn.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-2px)';
-                });
-                btn.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0)';
-                });
-            });
-
-            // Close dropdown when clicking outside
-            document.addEventListener('click', function() {
-                const basemapDropdown = document.getElementById('basemapDropdown');
-                if (basemapDropdown) {
-                    basemapDropdown.classList.remove('show');
-                }
-            });
-
-            // Prevent dropdown from closing when clicking inside
             const basemapDropdown = document.getElementById('basemapDropdown');
-            if (basemapDropdown) {
-                basemapDropdown.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                });
-            }
+            document.addEventListener('click', function() { if (basemapDropdown) basemapDropdown.classList.remove('show'); });
+            if (basemapDropdown) basemapDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
         });
     </script>
 </body>
