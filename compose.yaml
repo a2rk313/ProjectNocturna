@@ -3,52 +3,60 @@ version: '3.8'
 services:
   db:
     image: docker.io/postgis/postgis:15-3.3
-    container_name: projectnocturna_db_1
+    container_name: projectnocturna_db
     restart: always
-    # 👇 BYPASS BRIDGE NETWORKING
+    # 👇 REQUIRED for nested containers
     network_mode: host
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: nocturna
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    # Ports are ignored in host mode, but good to keep for reference
-    # It will listen on port 5432 of the Debian container directly
+      - postgres_data:/var/lib/postgresql/data:Z
+      - ./database_setup.sql:/docker-entrypoint-initdb.d/init.sql:Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   geoserver:
     image: docker.io/kartoza/geoserver:2.24.1
-    container_name: projectnocturna_geoserver_1
+    container_name: projectnocturna_geoserver
     restart: always
-    # 👇 BYPASS BRIDGE NETWORKING
+    # 👇 REQUIRED for nested containers
     network_mode: host
     environment:
-      - GEOSERVER_ADMIN_PASSWORD=geoserver
-      - GEOSERVER_ADMIN_USER=admin
-      - CORS_ENABLED=true
-      - CORS_ALLOWED_ORIGINS=*
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      CORS_ENABLED: "true"
+      CORS_ALLOWED_ORIGINS: "*"
     volumes:
-      - ./geoserver_data:/opt/geoserver/data_dir
-    # depends_on doesn't wait for ports in host mode, but helps startup order
+      - ./geoserver_data:/opt/geoserver/data_dir:Z
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   app:
     build: .
-    container_name: projectnocturna_app_1
+    container_name: projectnocturna_app
     restart: always
-    # 👇 BYPASS BRIDGE NETWORKING
+    command: sh -c "npm run seed && npm start"
+    # 👇 REQUIRED for nested containers
     network_mode: host
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      # 👇 HOST IS NOW LOCALHOST because they share the same IP
-      - DB_HOST=localhost
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=nocturna
-      - DB_PORT=5432
-      - NODE_ENV=production
+      # 👇 Connects to localhost because of host networking
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      NODE_ENV: production
+      ADMIN_SECRET: ${ADMIN_SECRET}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
 
 volumes:
   postgres_data:

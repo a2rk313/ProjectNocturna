@@ -1,83 +1,47 @@
 /**
  * DataManager - Handles data fetching and processing.
- * UPDATED: Uses Node.js/PostGIS Backend + GeoServer WMS
+ * Refactored to separate data logic from UI/Map rendering.
  */
 export class DataManager {
-    constructor(webGIS) {
-        this.webGIS = webGIS;
-        this.apiBaseUrl = 'http://localhost:3000/api'; // Backend URL
-        this.stationsLayer = L.layerGroup(); // Initialize layer group
+    constructor() {
+        // FIX: Use relative path. The browser resolves this automatically.
+        // This works for localhost, Docker, and production domains.
+        this.apiBaseUrl = '/api'; 
     }
 
-    // --- NEW FUNCTION REQUIRED BY WEBGIS.JS ---
-    async loadStationsLayer(map) {
-        console.log("🌍 Loading stations from Database...");
-        
+    /**
+     * Fetches the list of station measurements from the backend.
+     * @returns {Promise<Array>} List of station objects
+     */
+    async fetchStations() {
+        console.log("🌍 Fetching stations from API...");
         try {
             const response = await fetch(`${this.apiBaseUrl}/stations`);
             if (!response.ok) throw new Error('Network response was not ok');
-            
-            const stations = await response.json();
-
-            // Clear previous layers
-            this.stationsLayer.clearLayers();
-
-            stations.forEach(station => {
-                // Color code based on SQM
-                const sqm = parseFloat(station.sqm);
-                let color = '#ff0000'; // Poor
-                if (sqm > 21) color = '#00ff00'; // Excellent
-                else if (sqm > 19) color = '#ffff00'; // Fair
-
-                const marker = L.circleMarker([station.lat, station.lng], {
-                    radius: 5,
-                    fillColor: color,
-                    color: "#000",
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                });
-
-                marker.bindPopup(`
-                    <strong>Sky Quality Meter</strong><br>
-                    <b>SQM:</b> ${sqm}<br>
-                    <b>Mag:</b> ${station.mag || 'N/A'}<br>
-                    <b>Date:</b> ${station.date_observed}
-                `);
-
-                marker.addTo(this.stationsLayer);
-            });
-
-            // Add to map
-            this.stationsLayer.addTo(map);
-            console.log(`✅ Loaded ${stations.length} stations.`);
-            
+            return await response.json();
         } catch (error) {
-            console.error("❌ Error loading stations:", error);
+            console.error("❌ Error fetching stations:", error);
+            return [];
         }
     }
 
-    // --- REQUIREMENT 4: LAYER FROM GEOSERVER ---
-    async loadGeoServerLayer() {
-        console.log('🌍 Loading WMS layer from GeoServer...');
-        
-        try {
-            const wmsLayer = L.tileLayer.wms('http://localhost:8080/geoserver/nocturna/wms', {
-                layers: 'nocturna:dark_sky_parks', 
-                format: 'image/png',
-                transparent: true,
-                version: '1.1.0',
-                attribution: 'GeoServer Local Layer',
-                zIndex: 400
-            });
-            return wmsLayer;
-        } catch (e) {
-            console.error("GeoServer WMS Failed:", e);
-            return null;
-        }
+    /**
+     * Constructs the GeoServer WMS URL dynamically based on the current host.
+     * Assumes GeoServer is running on port 8080.
+     */
+    getGeoServerURL() {
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        // If behind a reverse proxy (like Nginx), this might need adjustment to just '/geoserver/...'
+        // For this Docker setup, direct port access is used:
+        return `${protocol}//${hostname}:8080/geoserver/nocturna/wms`;
     }
 
-    // --- REQUIREMENT 3: DATA FROM POSTGIS ---
+    /**
+     * Fetches detailed measurement data for a specific point.
+     * @param {number} lat 
+     * @param {number} lng 
+     */
     async getDataAtPoint(lat, lng) {
         try {
             const response = await fetch(`${this.apiBaseUrl}/measurement?lat=${lat}&lng=${lng}`);
@@ -85,12 +49,17 @@ export class DataManager {
             
             const dbData = await response.json();
             
+            // Try to fetch precise elevation, fallback to DB value
             let elevation = dbData.elevation + " m";
             try {
                 const elevResp = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
                 const elevJson = await elevResp.json();
-                if (elevJson.elevation && elevJson.elevation.length > 0) elevation = elevJson.elevation[0] + " m";
-            } catch(e) {}
+                if (elevJson.elevation && elevJson.elevation.length > 0) {
+                    elevation = elevJson.elevation[0] + " m";
+                }
+            } catch(e) {
+                // Ignore external API failure
+            }
 
             return {
                 light_pollution: {
@@ -120,38 +89,9 @@ export class DataManager {
         }
     }
 
-    // Kept for backward compatibility if needed
-    async loadGroundMeasurements() {
-        return this.loadStationsLayer(this.webGIS.map);
-    }
-
-    async loadVIIRSTileLayer() {
-        return L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg', {
-            attribution: 'Imagery © NASA/GSFC', opacity: 0.8
-        });
-    }
-
-    async loadWorldAtlasLayer() {
-        return L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg', {
-            attribution: 'NASA Black Marble', opacity: 1.0
-        });
-    }
-
-    async loadHeatmapLayer() {
-        const bounds = this.webGIS.map.getBounds();
-        const points = [];
-        const north = bounds.getNorth(); const south = bounds.getSouth();
-        const east = bounds.getEast(); const west = bounds.getWest();
-        
-        for (let i = 0; i < 150; i++) {
-            const lat = south + Math.random() * (north - south);
-            const lng = west + Math.random() * (east - west);
-            const intensity = Math.random();
-            points.push([lat, lng, intensity]);
-        }
-        return L.heatLayer(points, { radius: 25, blur: 15, maxZoom: 12, minOpacity: 0.3 });
-    }
-
+    /**
+     * Utility: Converts SQM brightness to Bortle scale.
+     */
     sqmToBortle(sqm) {
         if (!sqm) return "Unknown";
         if (sqm >= 21.99) return "1 (Excellent)";
@@ -163,5 +103,10 @@ export class DataManager {
         if (sqm >= 18.38) return "7 (Suburban/Urban)";
         if (sqm >= 17.80) return "8 (City)";
         return "9 (Inner City)";
+    }
+
+    // Helper to get external tile layers (Configuration only)
+    getVIIRSTileUrl() {
+        return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
     }
 }
