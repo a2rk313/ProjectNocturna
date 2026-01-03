@@ -1,4 +1,4 @@
-export class CitizenMode {
+class CitizenMode {
     constructor(webGIS) {
         this.webGIS = webGIS;
     }
@@ -9,18 +9,34 @@ export class CitizenMode {
     }
 
     setupTools() {
+        console.log('🔧 Setting up Citizen Mode tools...');
+        
         const bind = (id, fn) => { 
             const el = document.getElementById(id); 
+            console.log(`🔍 Looking for element: ${id}`, el);
             if(el) {
+                // Remove existing listeners
                 const newEl = el.cloneNode(true);
                 el.parentNode.replaceChild(newEl, el);
-                newEl.addEventListener('click', fn);
+                
+                // Add new listener
+                newEl.addEventListener('click', (e) => {
+                    console.log(`🖱️ Button clicked: ${id}`);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fn();
+                });
+                console.log(`✅ Bound listener to: ${id}`);
+            } else {
+                console.warn(`❌ Element not found: ${id}`);
             }
         };
         
         bind('findObservatories', () => this.findObservatories());
         bind('astroForecast', () => this.astroForecast());
         bind('dropMarker', () => this.locateUser()); // Mapped 'Pick Location' to Locate User
+        
+        console.log('🎯 Citizen Mode tools setup complete');
     }
 
     // --- RESTORED: LOCATE USER WITH FALLBACK ---
@@ -66,7 +82,15 @@ export class CitizenMode {
                 body: JSON.stringify({ query })
             });
 
-            if (!response.ok) throw new Error("Proxy Error");
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Invalid response format: Expected JSON');
+            }
+
             const data = await response.json();
             
             if (!data.elements || data.elements.length === 0) {
@@ -77,8 +101,9 @@ export class CitizenMode {
 
             window.SystemBus.emit('map:add_markers', { data: data.elements });
             window.SystemBus.emit('system:message', `✅ Found ${data.elements.length} observatories!`);
-        } catch (e) {
-            console.error(e);
+        } catch (error) {
+            console.error('Observatory search error:', error);
+            window.SystemBus.emit('system:message', `⚠️ Search failed: ${error.message}. Showing fallback locations.`);
             this.loadFallbackObservatories();
         }
     }
@@ -126,3 +151,6 @@ export class CitizenMode {
         }
     }
 }
+
+// Make available globally
+window.CitizenMode = CitizenMode;

@@ -5,8 +5,8 @@ services:
     image: docker.io/postgis/postgis:15-3.3
     container_name: projectnocturna_db
     restart: always
-    # Use host networking for Podman compatibility
-    network_mode: host
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -15,7 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data:Z
       - ./database_setup.sql:/docker-entrypoint-initdb.d/init.sql:Z
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,8 +24,8 @@ services:
     image: docker.io/kartoza/geoserver:2.24.1
     container_name: projectnocturna_geoserver
     restart: always
-    # Use host networking for Podman compatibility
-    network_mode: host
+    ports:
+      - "8080:8080"
     environment:
       GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
       GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
@@ -43,15 +43,14 @@ services:
       dockerfile: Containerfile
     container_name: projectnocturna_app
     restart: always
+    ports:
+      - "3000:3000"
     command: sh -c "npm run seed && npm start"
-    # Use host networking for Podman compatibility
-    network_mode: host
     depends_on:
       db:
         condition: service_healthy
     environment:
-      # Connect to localhost because of host networking
-      DB_HOST: localhost
+      DB_HOST: db
       DB_PORT: 5432
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Nocturna - Debug Mode</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <div id="map" style="height: 100vh; width: 100%;"></div>
+    
+    <!-- Debug Panel -->
+    <div style="position: fixed; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">
+        <h6>Debug Panel</h6>
+        <button class="btn btn-sm btn-primary" onclick="testEventBus()">Test Event Bus</button>
+        <button class="btn btn-sm btn-success" onclick="testCitizenMode()">Test Citizen Mode</button>
+        <button class="btn btn-sm btn-warning" onclick="testScientificMode()">Test Scientific Mode</button>
+        <div id="debug-output" style="margin-top: 10px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <!-- Control Panel -->
+    <div style="position: fixed; bottom: 20px; left: 20px; z-index: 1000; background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 300px;">
+        <h6>Control Panel</h6>
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary" id="findObservatories">Find Observatories</button>
+            <button class="btn btn-success" id="astroForecast">Astro Forecast</button>
+            <button class="btn btn-warning" id="switchMode">Switch Mode</button>
+            <button class="btn btn-danger" id="clearAll">Clear All</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Load scripts in correct order with error handling -->
+    <script>
+        function debugLog(message) {
+            const output = document.getElementById('debug-output');
+            output.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        function loadScript(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = () => {
+                debugLog('✅ Loaded: ' + src);
+                callback();
+            };
+            script.onerror = () => {
+                debugLog('❌ Failed to load: ' + src);
+                callback();
+            };
+            document.head.appendChild(script);
+        }
+
+        // Load scripts in order
+        const scripts = [
+            './js/event-bus.js',
+            './js/data-manager.js',
+            './js/citizen-mode.js',
+            './js/scientific-mode.js',
+            './js/webgis.js'
+        ];
+
+        let currentScript = 0;
+        function loadNextScript() {
+            if (currentScript < scripts.length) {
+                loadScript(scripts[currentScript], loadNextScript);
+                currentScript++;
+            } else {
+                debugLog('🎉 All scripts loaded!');
+                initializeApp();
+            }
+        }
+
+        function initializeApp() {
+            // Test if everything is loaded
+            debugLog('SystemBus exists: ' + (typeof window.SystemBus !== 'undefined'));
+            debugLog('DataManager exists: ' + (typeof window.DataManager !== 'undefined'));
+            debugLog('CitizenMode exists: ' + (typeof window.CitizenMode !== 'undefined'));
+            debugLog('ScientificMode exists: ' + (typeof window.ScientificMode !== 'undefined'));
+            debugLog('WebGIS exists: ' + (typeof window.WebGIS !== 'undefined'));
+            
+            // Wait for WebGIS to initialize
+            setTimeout(() => {
+                if (window.webGIS) {
+                    debugLog('🗺️ WebGIS initialized successfully!');
+                    setupButtonListeners();
+                } else {
+                    debugLog('❌ WebGIS failed to initialize');
+                }
+            }, 2000);
+        }
+
+        function setupButtonListeners() {
+            debugLog('Setting up button listeners...');
+            
+            // Test buttons directly
+            document.getElementById('findObservatories').addEventListener('click', () => {
+                debugLog('🔭 Find Observatories button clicked!');
+                if (window.webGIS && window.webGIS.currentMode === 'citizen') {
+                    // Trigger citizen mode observatory search
+                    window.SystemBus.emit('system:message', '🔭 Scanning for observatories...');
+                    setTimeout(() => {
+                        window.SystemBus.emit('system:message', '✅ Found 3 observatories (demo)');
+                    }, 1000);
+                } else {
+                    debugLog('❌ Not in citizen mode');
+                }
+            });
+
+            document.getElementById('astroForecast').addEventListener('click', () => {
+                debugLog('🌤️ Astro Forecast button clicked!');
+                window.SystemBus.emit('system:message', '🌤️ Checking weather...');
+                setTimeout(() => {
+                    window.SystemBus.emit('system:message', '☀️ Excellent conditions!');
+                }, 1000);
+            });
+
+            document.getElementById('switchMode').addEventListener('click', () => {
+                debugLog('🔄 Switch Mode button clicked!');
+                if (window.webGIS) {
+                    const newMode = window.webGIS.currentMode === 'citizen' ? 'scientific' : 'citizen';
+                    window.webGIS.setMode(newMode);
+                    debugLog('📝 Switched to ' + newMode + ' mode');
+                }
+            });
+
+            document.getElementById('clearAll').addEventListener('click', () => {
+                debugLog('🗑️ Clear All button clicked!');
+                window.SystemBus.emit('system:message', '🗑️ Map cleared.');
+            });
+
+            debugLog('✅ Button listeners set up!');
+        }
+
+        // Test functions
+        function testEventBus() {
+            debugLog('Testing Event Bus...');
+            window.SystemBus.on('test:event', (data) => {
+                debugLog('📡 Event received: ' + data);
+            });
+            window.SystemBus.emit('test:event', 'Hello from debug!');
+        }
+
+        function testCitizenMode() {
+            debugLog('Testing Citizen Mode...');
+            if (window.CitizenMode) {
+                const citizenMode = new window.CitizenMode(window.webGIS);
+                citizenMode.initialize();
+                debugLog('✅ Citizen Mode initialized');
+            } else {
+                debugLog('❌ CitizenMode not available');
+            }
+        }
+
+        function testScientificMode() {
+            debugLog('Testing Scientific Mode...');
+            if (window.ScientificMode) {
+                const scientificMode = new window.ScientificMode(window.webGIS);
+                scientificMode.initialize();
+                debugLog('✅ Scientific Mode initialized');
+            } else {
+                debugLog('❌ ScientificMode not available');
+            }
+        }
+
+        // Start loading scripts
+        debugLog('🚀 Starting debug session...');
+        loadNextScript();
+    </script>
+</body>
+</html>

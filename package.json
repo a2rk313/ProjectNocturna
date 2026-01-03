@@ -7,7 +7,12 @@
   "scripts": {
     "start": "node js/server.js",
     "dev": "concurrently \"nodemon js/server.js\" \"live-server --port=8081 --watch=js,css,html,data\"",
-    "seed": "node -e 'require(\"./js/server.js\").seedDatabase()'"
+    "dev:local": "cp .env.local .env && npm run dev",
+    "dev:podman": "cp .env.podman .env && podman-compose up --build",
+    "podman:build": "podman build -t project-nocturna -f Containerfile .",
+    "podman:run": "podman run -p 3000:3000 -e DB_HOST=host.containers.internal -e DB_PORT=5432 -e DB_USER=postgres -e DB_PASSWORD=your_secure_password_here -e DB_NAME=nocturna project-nocturna",
+    "seed": "node -e 'require(\"./js/server.js\").seedDatabase()'",
+    "seed:force": "curl -X POST http://localhost:3000/api/seed-db"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",

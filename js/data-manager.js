@@ -2,7 +2,7 @@
  * DataManager - Handles data fetching and processing.
  * Refactored to separate data logic from UI/Map rendering.
  */
-export class DataManager {
+class DataManager {
     constructor() {
         // FIX: Use relative path. The browser resolves this automatically.
         // This works for localhost, Docker, and production domains.
@@ -110,3 +110,6 @@ export class DataManager {
         return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
     }
 }
+
+// Make available globally
+window.DataManager = DataManager;

@@ -1,11 +1,7 @@
-import { DataManager } from './data-manager.js';
-import { CitizenMode } from './citizen-mode.js';
-import { ScientificMode } from './scientific-mode.js';
-
 class WebGIS {
     constructor() {
         this.map = null;
-        this.dataManager = new DataManager();
+        this.dataManager = new window.DataManager();
         this.currentMode = 'citizen'; 
         this.actionBot = null; // Restored ActionBot
         this.activeLayers = new Map(); // Track layers
@@ -13,7 +9,7 @@ class WebGIS {
 
         // Feature Groups
         this.drawnItems = new L.FeatureGroup();
-        this.uiMarkers = new L.layerGroup();
+        this.uiMarkers = L.layerGroup();
         this.heatmapLayer = null; 
         this.drawControl = null;
 
@@ -79,6 +75,7 @@ class WebGIS {
         if (labels.loading) labels.loading.innerText = mode.charAt(0).toUpperCase() + mode.slice(1);
         
         if (mode === 'citizen') {
+            console.log('🌍 Switching to Citizen Mode...');
             if(labels.indicator) { labels.indicator.innerText = 'Citizen Mode'; labels.indicator.className = 'badge bg-success ms-2'; }
             if(labels.title) labels.title.innerText = 'Stargazing Tools';
             if(labels.botName) labels.botName.innerText = 'Lumina';
@@ -89,7 +86,10 @@ class WebGIS {
             
             this.toggleDrawControl(false);
             this.toggleHeatmap(false);
-            new CitizenMode(this).initialize();
+            
+            const citizenMode = new window.CitizenMode(this);
+            citizenMode.initialize();
+            console.log('✅ Citizen Mode initialized');
 
         } else {
             if(labels.indicator) { labels.indicator.innerText = 'Scientific Mode'; labels.indicator.className = 'badge bg-warning ms-2'; }
@@ -102,7 +102,7 @@ class WebGIS {
 
             this.toggleDrawControl(true);
             this.toggleHeatmap(true);
-            new ScientificMode(this).initialize();
+            new window.ScientificMode(this).initialize();
         }
     }
 
@@ -172,20 +172,13 @@ class WebGIS {
     toggleDrawControl(show) {
         if (show) {
             if (!this.drawControl) {
-                this.drawControl = new L.Control.Draw({
-                    edit: { featureGroup: this.drawnItems },
-                    draw: { polygon: { showArea: true }, rectangle: true, marker: true, circle: false, polyline: false, circlemarker: false }
-                });
+                this.initializeDrawControl();
+            } else {
+                this.map.addControl(this.drawControl);
             }
-            this.map.addControl(this.drawControl);
-            this.map.on(L.Draw.Event.CREATED, (e) => {
-                this.drawnItems.addLayer(e.layer);
-                window.SystemBus.emit('system:message', "✅ Shape drawn.");
-            });
         } else {
             if (this.drawControl) {
                 this.map.removeControl(this.drawControl);
-                this.map.off(L.Draw.Event.CREATED);
             }
             this.drawnItems.clearLayers();
         }
@@ -270,6 +263,38 @@ class WebGIS {
     hideLoadingScreen() {
         const loader = document.getElementById('loadingScreen');
         if (loader) setTimeout(() => loader.style.display = 'none', 500);
+    }
+
+    // --- RESTORED: showMessage method for backward compatibility ---
+    showMessage(message) {
+        window.SystemBus.emit('system:message', message);
+    }
+
+    // --- ADDED: initializeDrawControl method for ActionBot compatibility ---
+    initializeDrawControl() {
+        console.log('🎨 Initializing draw control for ActionBot...');
+        if (!this.drawControl) {
+            this.drawControl = new L.Control.Draw({
+                edit: { featureGroup: this.drawnItems },
+                draw: { 
+                    polygon: { showArea: true }, 
+                    rectangle: true, 
+                    marker: true, 
+                    circle: false, 
+                    polyline: false, 
+                    circlemarker: false 
+                }
+            });
+            this.map.addControl(this.drawControl);
+            
+            // Add event listener for created shapes
+            this.map.on(L.Draw.Event.CREATED, (e) => {
+                this.drawnItems.addLayer(e.layer);
+                window.SystemBus.emit('system:message', "✅ Shape drawn.");
+            });
+            
+            console.log('✅ Draw control initialized');
+        }
     }
 }
 
