@@ -188,3 +188,53 @@ body {
     font-size: 0.8rem;
 }
 .routing-drag-handle:active { cursor: grabbing; }
+
+/* --- LANDING PAGE STYLES --- */
+.hero-title {
+    font-weight: 800;
+    background: linear-gradient(to right, #fff, #a5f3fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(165, 243, 252, 0.3);
+}
+
+.mode-card {
+    background: rgba(16, 24, 45, 0.6);
+    border: 1px solid rgba(0, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.mode-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: #00d2ff;
+    box-shadow: 0 10px 40px rgba(0, 210, 255, 0.2);
+}
+
+.mode-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 15px rgba(0, 210, 255, 0.4));
+}
+
+.animate-up {
+    animation: fadeInUp 1s ease-out;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Ensure Loading Screen Transition works */
+.loading-screen {
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+}

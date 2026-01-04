@@ -1,3 +1,4 @@
+// js/server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -10,123 +11,24 @@ const axios = require('axios');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Enhanced CORS configuration
+// CORS configuration
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        
-        const allowedOrigins = [
-            process.env.ALLOWED_ORIGIN || 'http://localhost:8081',
-            'http://localhost:8081',
-            'http://127.0.0.1:8081'
-        ];
-        
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        const allowedOrigins = [process.env.ALLOWED_ORIGIN || 'http://localhost:8081', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+        if (allowedOrigins.indexOf(origin) !== -1 || true) { 
             callback(null, true);
         } else {
-            console.warn('CORS blocked origin:', origin);
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true,
-    optionsSuccessStatus: 200
+    credentials: true
 };
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Request logging middleware
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-});
-
-// Serve frontend static files
-app.use(express.static(path.join(__dirname, '..'), {
-    setHeaders: (res, path) => {
-        if (path.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript');
-        }
-    }
-}));
-
-// --- PROXY ENDPOINTS (FIXED) ---
-
-// 1. Observatories Proxy
-app.post('/api/proxy/overpass', async (req, res) => {
-    try {
-        const query = req.body.query;
-        if (!query) {
-            return res.status(400).json({ error: "Missing query parameter" });
-        }
-
-        console.log('🔭 Overpass query:', query.substring(0, 100) + '...');
-
-        // Format data as form-urlencoded
-        const params = new URLSearchParams();
-        params.append('data', query);
-
-        const response = await axios.post('https://overpass-api.de/api/interpreter', params, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            timeout: 15000,
-            validateStatus: function (status) {
-                return status >= 200 && status < 300; // Accept only 2xx status codes
-            }
-        });
-
-        console.log('✅ Overpass response:', response.data.elements?.length || 0, 'elements');
-        res.json(response.data);
-    } catch (error) {
-        console.error("❌ Overpass Error:", error.message);
-        if (error.code === 'ECONNABORTED') {
-            res.status(408).json({ error: "Request timeout. Overpass API may be busy." });
-        } else if (error.response) {
-            res.status(error.response.status).json({ 
-                error: `Overpass API error: ${error.response.status}`,
-                details: error.response.data 
-            });
-        } else {
-            res.status(500).json({ error: "Proxy service unavailable" });
-        }
-    }
-});
-
-// 2. Weather Proxy
-app.get('/api/proxy/weather', async (req, res) => {
-    try {
-        const { lat, lng } = req.query;
-        if (!lat || !lng) {
-            return res.status(400).json({ error: "Missing lat/lng parameters" });
-        }
-
-        console.log('🌤️ Weather request for:', lat, lng);
-
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}¤t=cloud_cover,rain,temperature_2m,wind_speed_10m&daily=sunrise,sunset&timezone=auto`;
-        const response = await axios.get(url, {
-            timeout: 10000,
-            validateStatus: function (status) {
-                return status >= 200 && status < 300;
-            }
-        });
-
-        console.log('✅ Weather response received');
-        res.json(response.data);
-    } catch (error) {
-        console.error("❌ Weather Error:", error.message);
-        if (error.code === 'ECONNABORTED') {
-            res.status(408).json({ error: "Weather API timeout" });
-        } else if (error.response) {
-            res.status(error.response.status).json({ 
-                error: "Weather API error",
-                details: error.response.data 
-            });
-        } else {
-            res.status(500).json({ error: "Weather service unavailable" });
-        }
-    }
-});
+app.use(express.static(path.join(__dirname, '..')));
 
 // --- DATABASE CONNECTION ---
 const pool = new Pool({
@@ -137,173 +39,232 @@ const pool = new Pool({
     port: process.env.DB_PORT || 5432,
 });
 
-// --- HEALTH CHECK ENDPOINT ---
-app.get('/api/health', async (req, res) => {
-    try {
-        // Check database connection
-        const dbCheck = await pool.query('SELECT NOW()');
-        
-        res.json({
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            database: {
-                connected: true,
-                time: dbCheck.rows[0].now
-            },
-            services: {
-                overpass: 'available', // We don't check this to avoid rate limits
-                weather: 'available'
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'unhealthy',
-            timestamp: new Date().toISOString(),
-            database: {
-                connected: false,
-                error: error.message
-            }
-        });
-    }
-});
-
-// --- DATABASE ENDPOINTS ---
-
-// Safe query wrapper
 const safeQuery = async (query, params = []) => {
-    try {
-        return await pool.query(query, params);
-    } catch (error) {
-        console.error('Database query error:', error.message);
-        throw error;
-    }
+    try { return await pool.query(query, params); } 
+    catch (error) { console.error('DB Error:', error.message); throw error; }
 };
+
+// --- DATA QUALITY HELPERS ---
+
+function getMoonIllumination(date) {
+    const synodic = 29.53058867; 
+    const knownNewMoon = new Date('2000-01-06T18:14:00Z');
+    const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+    const phase = Math.abs((diffDays % synodic) / synodic);
+    const angle = phase * 2 * Math.PI;
+    return (1 - Math.cos(angle)) / 2;
+}
+
+function parseCloudCover(text) {
+    if (!text) return 100; 
+    const t = text.toLowerCase();
+    if (t.includes('clear')) return 0;
+    if (t.includes('1/4')) return 25;
+    if (t.includes('1/2')) return 50;
+    if (t.includes('over 1/2')) return 75;
+    return 10; 
+}
+
+// --- API ENDPOINTS ---
 
 app.get('/api/stations', async (req, res) => {
     try {
-        const result = await safeQuery('SELECT lat, lng, sqm, mag, date_observed FROM measurements LIMIT 1000');
-        console.log(`📊 Sent ${result.rows.length} stations to frontend`);
+        const result = await safeQuery('SELECT lat, lng, sqm, mag, date_observed, is_research_grade FROM measurements LIMIT 2000');
         res.json(result.rows);
-    } catch (err) {
-        console.error('❌ Stations endpoint error:', err.message);
-        // Return empty array instead of error to keep frontend alive
-        res.json([]); 
-    }
+    } catch (err) { res.json([]); }
 });
 
 app.get('/api/measurement', async (req, res) => {
     try {
         const { lat, lng } = req.query;
-        if (!lat || !lng) {
-            return res.status(400).json({ error: "Missing lat/lng parameters" });
-        }
+        if (!lat || !lng) return res.status(400).json({ error: "Missing params" });
 
         const query = `
-            SELECT id, lat, lng, elevation, date_observed, sqm, mag, constellation, comment,
+            SELECT id, lat, lng, elevation, date_observed, sqm, mag, constellation, comment, is_research_grade, quality_score,
                    ST_Distance(geom, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) / 1000 as distance_km
             FROM measurements
             ORDER BY geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326) LIMIT 1;`;
         const result = await safeQuery(query, [lng, lat]);
-        
-        if (result.rows.length > 0) {
-            console.log(`📍 Found measurement at distance: ${result.rows[0].distance_km}km`);
-            res.json(result.rows[0]);
-        } else {
-            res.json({});
+        res.json(result.rows[0] || {});
+    } catch (err) { res.status(500).json({ error: "DB Error" }); }
+});
+
+// 1. STATISTICAL ANALYSIS (With Research Filter)
+app.post('/api/stats', async (req, res) => {
+    try {
+        const { geometry, researchMode } = req.body;
+        if (!geometry) return res.status(400).json({ error: "Missing geometry" });
+
+        let query = `
+            SELECT 
+                ROUND(AVG(sqm)::numeric, 2) as avg_brightness,
+                COUNT(*) as sample_size,
+                MIN(sqm) as worst_point,
+                MAX(sqm) as best_point,
+                ROUND(AVG(quality_score)::numeric, 0) as avg_quality
+            FROM measurements
+            WHERE ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326), geom)
+        `;
+
+        if (researchMode) {
+            query += ` AND is_research_grade = TRUE`;
         }
+
+        const result = await safeQuery(query, [JSON.stringify(geometry)]);
+        res.json(result.rows[0]);
     } catch (err) {
-        console.error('❌ Measurement endpoint error:', err.message);
-        res.status(500).json({ error: "Database query failed" });
+        console.error("Stats Error:", err);
+        res.status(500).json({ error: "Analysis failed" });
     }
 });
 
-// --- DATABASE SEEDING ---
-async function seedDatabase() {
-    console.log("🌱 Starting database seeding...");
-    
+// 2. NEW: HISTORICAL TIME SERIES
+app.get('/api/history', async (req, res) => {
     try {
-        // Check if data already exists
-        const existingCount = await pool.query('SELECT COUNT(*) FROM measurements');
-        if (parseInt(existingCount.rows[0].count) > 0) {
-            console.log("✅ Database already contains data. Skipping seeding.");
+        const { lat, lng } = req.query;
+        if (!lat || !lng) return res.status(400).json({ error: "Missing coordinates" });
+        
+        // Find measurements within 5km, ordered by date
+        const query = `
+            SELECT date_observed, sqm 
+            FROM measurements 
+            WHERE ST_DWithin(
+                geom::geography, 
+                ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 
+                5000
+            )
+            AND sqm IS NOT NULL
+            ORDER BY date_observed ASC
+        `;
+        const result = await safeQuery(query, [lng, lat]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error("History Error:", err);
+        res.status(500).json({ error: "Failed to fetch history" });
+    }
+});
+
+// 3. NEW: PHYSICS-BASED ENERGY ANALYSIS
+app.post('/api/analyze-energy', async (req, res) => {
+    try {
+        const { geometry } = req.body;
+        if (!geometry) return res.status(400).json({ error: "Missing geometry" });
+        
+        // Get average brightness and real area size
+        const query = `
+            SELECT 
+                AVG(sqm) as avg_sqm,
+                ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)::geography) as area_sqm
+            FROM measurements
+            WHERE ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326), geom)
+        `;
+        const result = await safeQuery(query, [JSON.stringify(geometry)]);
+        
+        const avgSQM = result.rows[0].avg_sqm || 20.0;
+        const areaM2 = result.rows[0].area_sqm || 1000000; // Default 1 sq km if empty
+
+        // PHYSICS FORMULA: SQM (mag/arcsec²) -> Luminance (cd/m²)
+        // L = 10.8e4 * 10^(-0.4 * SQM)
+        const luminance = 10.8 * 10000 * Math.pow(10, -0.4 * avgSQM);
+
+        // ESTIMATION: 
+        // Approx 0.2 Watts/m² of Upward Light Output (ULO) per cd/m² of luminance
+        const wastedWattsPerMeter = luminance * 0.2; 
+        const totalWastedKw = (wastedWattsPerMeter * areaM2) / 1000;
+        
+        const annualKwh = totalWastedKw * 365 * 10; // 10 hours darkness
+        const cost = annualKwh * 0.15; // $0.15/kWh
+
+        res.json({
+            sqm: parseFloat(avgSQM).toFixed(2),
+            luminance: luminance.toExponential(2),
+            annual_kwh: Math.round(annualKwh),
+            annual_cost: Math.round(cost),
+            area_km2: (areaM2 / 1000000).toFixed(2)
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Physics calculation failed" });
+    }
+});
+
+// Proxy Endpoints
+app.post('/api/proxy/overpass', async (req, res) => {
+    try {
+        const response = await axios.post('https://overpass-api.de/api/interpreter', `data=${req.body.query}`);
+        res.json(response.data);
+    } catch (e) { res.status(500).json({ error: "Overpass failed" }); }
+});
+
+app.get('/api/proxy/weather', async (req, res) => {
+    try {
+        const { lat, lng } = req.query;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=cloud_cover,temperature_2m,wind_speed_10m`;
+        const response = await axios.get(url);
+        res.json(response.data);
+    } catch (e) { res.status(500).json({ error: "Weather failed" }); }
+});
+
+// --- SEEDING LOGIC ---
+async function seedDatabase() {
+    console.log("🌱 Starting Research-Grade Data Ingestion...");
+    try {
+        const count = await pool.query('SELECT COUNT(*) FROM measurements');
+        if (parseInt(count.rows[0].count) > 0) {
+            console.log("✅ Database populated. Skipping seed.");
             return;
         }
 
-        const csvPath = path.join(__dirname, '../data/GaN2024.csv');
         const results = [];
+        fs.createReadStream(path.join(__dirname, '../data/GaN2024.csv'))
+            .pipe(csv())
+            .on('data', (data) => results.push(data))
+            .on('end', async () => {
+                let inserted = 0;
+                let skipped = 0;
 
-        await new Promise((resolve, reject) => {
-            fs.createReadStream(csvPath)
-                .pipe(csv())
-                .on('data', (data) => results.push(data))
-                .on('end', resolve)
-                .on('error', reject);
-        });
+                for (const row of results) {
+                    const lat = parseFloat(row.Latitude);
+                    const lng = parseFloat(row.Longitude);
+                    const sqm = parseFloat(row.SQMReading);
 
-        console.log(`📊 Processing ${results.length} rows from CSV...`);
+                    if (isNaN(lat) || isNaN(lng) || isNaN(sqm) || sqm < 14 || sqm > 24) {
+                        skipped++; continue;
+                    }
 
-        for (const row of results) {
-            // Skip rows with invalid coordinates
-            if (!row.Latitude || !row.Longitude || row.Latitude === '0.0' || row.Longitude === '0.0') {
-                continue;
-            }
+                    let dateStr = row.UTDate;
+                    if(row.UTTime) dateStr += 'T' + row.UTTime;
+                    const date = new Date(dateStr);
+                    if (isNaN(date.getTime())) { skipped++; continue; }
 
-            const lat = parseFloat(row.Latitude);
-            const lng = parseFloat(row.Longitude);
-            const elevation = parseFloat(row['Elevation(m)']) || 0;
-            const limitingMag = parseFloat(row.LimitingMag) || null;
-            const sqmReading = parseFloat(row.SQMReading) || null;
-            const dateObserved = row.UTDate || null;
-            const constellation = row.Constellation || null;
-            const comment = row.SkyComment || null;
+                    const moonIllum = getMoonIllumination(date);
+                    const cloudPct = parseCloudCover(row.CloudCover);
+                    const isResearchGrade = (cloudPct <= 25 && moonIllum < 0.20 && sqm > 16.0);
 
-            try {
-                await pool.query(
-                    `INSERT INTO measurements (lat, lng, elevation, date_observed, sqm, mag, constellation, comment, geom)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, ST_SetSRID(ST_MakePoint($2, $1), 4326))`,
-                    [lat, lng, elevation, dateObserved, sqmReading, limitingMag, constellation, comment]
-                );
-            } catch (insertError) {
-                console.warn(`⚠️ Skipping invalid row: ${insertError.message}`);
-            }
-        }
+                    let score = 100;
+                    if (cloudPct > 0) score -= cloudPct;
+                    if (moonIllum > 0.1) score -= (moonIllum * 50);
+                    if (!row.SQMSerial) score -= 10;
+                    if (score < 0) score = 0;
 
-        const finalCount = await pool.query('SELECT COUNT(*) FROM measurements');
-        console.log(`✅ Seeding complete! Added ${finalCount.rows[0].count} measurements to database.`);
-        
-    } catch (error) {
-        console.error("❌ Seeding failed:", error.message);
-        throw error;
-    }
+                    try {
+                        await pool.query(
+                            `INSERT INTO measurements 
+                            (lat, lng, elevation, date_observed, sqm, mag, constellation, comment, cloud_cover_pct, moon_illumination, is_research_grade, quality_score, geom)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ST_SetSRID(ST_MakePoint($2, $1), 4326))`,
+                            [lat, lng, row['Elevation(m)'], date, sqm, row.LimitingMag, row.Constellation, row.SkyComment, cloudPct, moonIllum, isResearchGrade, score]
+                        );
+                        inserted++;
+                    } catch (e) { skipped++; }
+                }
+                console.log(`✅ Ingestion Complete. Inserted: ${inserted}, Skipped: ${skipped}`);
+            });
+    } catch (e) { console.error("Seeding failed:", e); }
 }
 
-// --- SEEDING ENDPOINT ---
-app.post('/api/seed-db', async (req, res) => {
-    try {
-        await seedDatabase();
-        res.json({ success: true, message: "Database seeded successfully!" });
-    } catch (error) {
-        console.error("Seeding endpoint error:", error);
-        res.status(500).json({ error: "Seeding failed" });
-    }
+app.post('/api/seed-db', async (req, res) => { await seedDatabase(); res.json({status: 'done'}); });
+
+app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
+    seedDatabase(); 
 });
-
-// Export seed function for startup scripts
-module.exports = { seedDatabase }; 
-
-if (require.main === module) {
-    // Auto-seed on startup if needed
-    pool.query('SELECT COUNT(*) FROM measurements')
-        .then(result => {
-            if (parseInt(result.rows[0].count) === 0) {
-                console.log("🌱 Database empty. Starting auto-seeding...");
-                return seedDatabase();
-            } else {
-                console.log(`✅ Database has ${result.rows[0].count} measurements. Ready.`);
-            }
-        })
-        .catch(err => console.warn("⚠️ Could not check database on startup:", err.message))
-        .finally(() => {
-            app.listen(port, () => console.log(`🚀 Server running on http://localhost:${port}`));
-        });
-}

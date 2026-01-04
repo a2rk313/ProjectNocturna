@@ -1,3 +1,4 @@
+// js/scientific-mode.js
 class ScientificMode {
     constructor(webGIS) {
         this.webGIS = webGIS;
@@ -5,7 +6,8 @@ class ScientificMode {
 
     initialize() {
         this.setupTools();
-        window.SystemBus.emit('system:message', "🔬 Scientific Mode: Drawing enabled.");
+        this.addResearchToggle();
+        window.SystemBus.emit('system:message', "🔬 Scientific Mode: Physics engine active.");
     }
 
     setupTools() {
@@ -19,114 +21,215 @@ class ScientificMode {
         };
 
         bind('energyCalc', () => this.calculateEnergyWaste());
-        bind('timeSeries', () => this.analyzeTimeSeries()); // Restored
-        bind('statisticalAnalysis', () => this.performStats()); // Restored
+        bind('timeSeries', () => this.analyzeTimeSeries());
+        bind('statisticalAnalysis', () => this.performStats());
+        bind('dataExport', () => this.exportData());
     }
 
-    // --- RESTORED: TIME SERIES ---
-    analyzeTimeSeries() {
-        const center = this.webGIS.map.getCenter();
-        window.SystemBus.emit('system:message', '🔄 Loading historical data...');
-        
-        const content = `
-            <div class="text-center">
-                <h6>Location: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}</h6>
-                <p>Trend (2012-2024): <strong>+12% Brightness</strong></p>
-                <div class="alert alert-info"><small>Data Source: Statistical Trend Model (Mock)</small></div>
-            </div>
-        `;
-        window.SystemBus.emit('ui:show_modal', { title: "📈 Time Series", content: content });
+    addResearchToggle() {
+        const container = document.getElementById('scientificTools');
+        if (!document.getElementById('researchToggle')) {
+            const toggleDiv = document.createElement('div');
+            toggleDiv.className = 'form-check form-switch text-light mt-2 p-2 rounded bg-dark border border-secondary';
+            toggleDiv.innerHTML = `<input class="form-check-input" type="checkbox" id="researchToggle"><label class="form-check-label" for="researchToggle"><i class="fas fa-filter text-info me-1"></i> Research Grade</label>`;
+            container.prepend(toggleDiv);
+        }
     }
 
-    // --- RESTORED: STATISTICAL ANALYSIS ---
-    performStats() {
-        const layers = this.webGIS.drawnItems.getLayers();
-        if (layers.length === 0) {
-            window.SystemBus.emit('system:message', "⚠️ Draw a polygon first.");
-            return;
-        }
-        
-        const layer = layers[layers.length - 1];
-        let areaKm = 0;
-        // Simple Area Calc
-        if(layer.getLatLngs) {
-            // Very rough approximation if GeometryUtil is missing
-            areaKm = (Math.random() * 5 + 1).toFixed(2); 
+    // --- HELPER: Handle Point vs Polygon Selection ---
+    getAnalysisGeometry() {
+        const selection = this.webGIS.getSelection();
+        if (!selection) return null;
+
+        // If Polygon, use it directly
+        if (selection.type === 'Polygon' || selection.type === 'MultiPolygon') {
+            return selection.geometry;
         }
 
-        const content = `
-            <div class="text-center">
-                <h6>Polygon Analysis</h6>
-                <p>Area: <strong>${areaKm} km²</strong></p>
-                <p>Avg Brightness: <strong>${(Math.random()*10).toFixed(2)} μcd/m²</strong></p>
-                <p>Sample Points: <strong>20</strong></p>
-            </div>
-        `;
-        window.SystemBus.emit('ui:show_modal', { title: "📊 Statistics", content: content });
+        // If Point (Marker/GPS), create a virtual 10km buffer (0.1 deg)
+        if (selection.type === 'Point') {
+            const lat = selection.center.lat;
+            const lng = selection.center.lng;
+            const r = 0.05; // ~5km radius
+            
+            return {
+                type: "Polygon",
+                coordinates: [[
+                    [lng - r, lat - r],
+                    [lng + r, lat - r],
+                    [lng + r, lat + r],
+                    [lng - r, lat + r],
+                    [lng - r, lat - r]
+                ]]
+            };
+        }
+        return null;
     }
 
-    calculateEnergyWaste() {
-        // Check if drawnItems exists and has layers
-        if (!this.webGIS.drawnItems) {
-            window.SystemBus.emit('system:message', "⚠️ Drawing tools not initialized.");
-            return;
+    // --- REAL TIME SERIES (Chart.js) ---
+    async analyzeTimeSeries() {
+        const selection = this.webGIS.getSelection();
+        if (!selection) {
+             window.SystemBus.emit('system:message', "⚠️ Select a location first.");
+             return;
         }
 
-        const layers = this.webGIS.drawnItems.getLayers();
-        if (layers.length === 0) {
-            window.SystemBus.emit('system:message', "⚠️ Draw a polygon first.");
-            return;
-        }
+        const center = selection.center;
+        window.SystemBus.emit('system:message', "📈 Fetching historical data...");
 
-        // Get the most recent drawn layer
-        const layer = layers[layers.length - 1];
-        let areaKm = 0;
+        try {
+            const response = await fetch(`/api/history?lat=${center.lat}&lng=${center.lng}`);
+            const data = await response.json();
 
-        // Calculate area if possible
-        if (layer && layer.getLatLngs) {
-            try {
-                // Use Leaflet's GeometryUtil if available, otherwise fallback
-                if (typeof L.GeometryUtil !== 'undefined' && L.GeometryUtil.geodesicArea) {
-                    const latLngs = layer.getLatLngs()[0]; // Get first ring
-                    const areaSqMeters = L.GeometryUtil.geodesicArea(latLngs);
-                    areaKm = (areaSqMeters / 1000000).toFixed(2);
-                } else {
-                    // Fallback: Mock calculation based on layer bounds
-                    const bounds = layer.getBounds();
-                    const width = L.latLng(
-                        bounds.getNorthEast().lat,
-                        bounds.getNorthEast().lng
-                    ).distanceTo(L.latLng(bounds.getNorthEast().lat, bounds.getSouthWest().lng));
-                    const height = L.latLng(
-                        bounds.getNorthEast().lat,
-                        bounds.getNorthEast().lng
-                    ).distanceTo(L.latLng(bounds.getSouthWest().lat, bounds.getNorthEast().lng));
-                    areaKm = ((width * height) / 1000000).toFixed(2);
-                }
-            } catch (error) {
-                console.warn('Area calculation failed:', error);
-                areaKm = (Math.random() * 5 + 1).toFixed(2); // Fallback
+            if (data.length < 2) {
+                window.SystemBus.emit('system:message', "⚠️ Not enough historical data here.");
+                return;
             }
-        } else {
-            areaKm = (Math.random() * 5 + 1).toFixed(2); // Mock for simplicity
+
+            // Prepare Data
+            const labels = data.map(d => new Date(d.date_observed).getFullYear());
+            const values = data.map(d => d.sqm);
+
+            // Create Canvas
+            const canvasId = 'chart_' + Date.now();
+            const content = `
+                <div class="text-center">
+                    <h6>Historical Trend (5km Radius)</h6>
+                    <canvas id="${canvasId}" width="400" height="200"></canvas>
+                </div>
+            `;
+
+            window.SystemBus.emit('ui:show_modal', { title: "📈 Light Pollution Trend", content: content });
+
+            // Render Chart
+            setTimeout(() => {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Sky Brightness (SQM)',
+                            data: values,
+                            borderColor: '#00ffff',
+                            backgroundColor: 'rgba(0, 255, 255, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: 'white' } } },
+                        scales: {
+                            y: { 
+                                reverse: true, // Higher SQM = Darker
+                                title: { display: true, text: 'Darkness (Mag/arcsec²)', color: '#aaa' },
+                                ticks: { color: '#fff' }
+                            },
+                            x: { ticks: { color: '#fff' } }
+                        }
+                    }
+                });
+            }, 500);
+
+        } catch (e) {
+            console.error(e);
+            window.SystemBus.emit('system:message', "❌ Trend analysis failed.");
+        }
+    }
+
+    // --- PHYSICS-BASED ENERGY CALCULATOR ---
+    async calculateEnergyWaste() {
+        const geometry = this.getAnalysisGeometry();
+        if (!geometry) {
+             window.SystemBus.emit('system:message', "⚠️ Select a region first.");
+             return;
+        }
+        
+        window.SystemBus.emit('system:message', "⚡ Calculating radiance flux...");
+
+        try {
+            const response = await fetch('/api/analyze-energy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geometry })
+            });
+
+            const stats = await response.json();
+
+            const content = `
+                <div class="text-center">
+                    <h5 class="text-warning">Physics-Based Analysis</h5>
+                    <div class="row mt-3 text-start">
+                        <div class="col-6"><small class="text-muted">Avg SQM</small><br><strong>${stats.sqm}</strong></div>
+                        <div class="col-6"><small class="text-muted">Luminance</small><br><strong>${stats.luminance} cd/m²</strong></div>
+                    </div>
+                    <hr class="border-secondary">
+                    <h3 class="mb-0">${stats.annual_kwh.toLocaleString()} kWh</h3>
+                    <p class="text-muted small">Est. Wasted Upward Energy / Year</p>
+                    <h4 class="text-danger">$${stats.annual_cost.toLocaleString()}</h4>
+                    <small class="text-light opacity-50">Area: ${stats.area_km2} km²</small>
+                </div>
+            `;
+            window.SystemBus.emit('ui:show_modal', { title: "⚡ Energy Waste Model", content: content });
+
+        } catch (e) {
+            console.error(e);
+            window.SystemBus.emit('system:message', "❌ Calculation failed.");
+        }
+    }
+
+    // --- ENHANCED STATS ---
+    async performStats() {
+        const geometry = this.getAnalysisGeometry();
+        if (!geometry) {
+             window.SystemBus.emit('system:message', "⚠️ Select a region first.");
+             return;
         }
 
-        // Energy calculations based on area
-        const kwh = Math.round(areaKm * 6000); // 6000 kWh per km²
-        const cost = Math.round(kwh * 0.16); // $0.16 per kWh
-        
-        const content = `
-            <div class="text-center">
-                <h5 class="text-warning">Area Analysis</h5>
-                <h3>${kwh.toLocaleString()} kWh</h3>
-                <p class="text-muted">Est. Annual Wasted Energy</p>
-                <h4 class="text-danger">$${cost.toLocaleString()}</h4>
-                <small class="text-muted">Area: ${areaKm} km²</small>
-            </div>
-        `;
-        window.SystemBus.emit('ui:show_modal', { title: "⚡ Energy Estimator", content: content });
+        const researchMode = document.getElementById('researchToggle')?.checked || false;
+        window.SystemBus.emit('system:message', `🔄 Calculating stats...`);
+
+        try {
+            const response = await fetch('/api/stats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geometry, researchMode }) 
+            });
+            
+            const stats = await response.json();
+            
+            const content = `
+                <div class="text-center">
+                    <h6>${researchMode ? 'Research Grade' : 'Standard'} Analysis</h6>
+                    <div class="alert ${researchMode ? 'alert-info' : 'alert-secondary'} py-1 mb-2">
+                        <small>${researchMode ? 'Filtered for High Quality Data' : 'All Data Sources Included'}</small>
+                    </div>
+                    <table class="table table-sm table-dark table-bordered">
+                        <tr><td>Avg Brightness:</td><td><strong>${stats.avg_brightness || 'N/A'}</strong> mag/arcsec²</td></tr>
+                        <tr><td>Avg Data Quality:</td><td><span class="text-${stats.avg_quality > 80 ? 'success' : 'warning'}">${stats.avg_quality || 0}/100</span></td></tr>
+                        <tr><td>Sample Size:</td><td>${stats.sample_size} stations</td></tr>
+                    </table>
+                </div>
+            `;
+            window.SystemBus.emit('ui:show_modal', { title: "📊 Statistics", content: content });
+
+        } catch (error) {
+            window.SystemBus.emit('system:message', "❌ Analysis failed.");
+        }
+    }
+
+    exportData() {
+        const selection = this.webGIS.getSelection();
+        if (!selection) return;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(selection.geoJSON));
+        const node = document.createElement('a');
+        node.setAttribute("href", dataStr);
+        node.setAttribute("download", "nocturna_data.geojson");
+        document.body.appendChild(node);
+        node.click();
+        node.remove();
+        window.SystemBus.emit('system:message', "✅ Data exported.");
     }
 }
-
-// Make available globally
 window.ScientificMode = ScientificMode;
