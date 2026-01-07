@@ -14,11 +14,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
@@ -46,12 +44,11 @@
                 <span class="gradient-text">Project Nocturna</span>
                 <span id="modeIndicator" class="mode-badge ms-2"></span>
             </span>
-            
             <div class="d-flex">
-                <button class="btn btn-outline-cosmic btn-sm me-2" id="switchMode">
+                <button class="btn btn-outline-cosmic btn-sm me-2" id="switchMode" data-bs-toggle="tooltip" title="Toggle between Citizen (Simple) and Scientific (Advanced) tools">
                     <i class="fas fa-exchange-alt me-1"></i> Switch Mode
                 </button>
-                <button class="btn btn-outline-cosmic btn-sm" id="dataSources">
+                <button class="btn btn-outline-cosmic btn-sm" id="dataSources" data-bs-toggle="tooltip" title="View data attribution and API sources">
                     <i class="fas fa-database me-1"></i> Data Sources
                 </button>
             </div>
@@ -66,13 +63,16 @@
         <div class="panel-body p-3">
             <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 1: Define Target</h6>
             <div class="d-grid gap-2 mb-3">
-                <button class="btn btn-cosmic-info" id="drawPolygon">
+                <button class="btn btn-cosmic-info" id="drawPolygon" data-bs-toggle="tooltip" title="Draw a shape to analyze a specific region">
                     <i class="fas fa-draw-polygon me-2"></i>Select Region
                 </button>
-                <button class="btn btn-cosmic-info" id="dropMarker">
+                <button class="btn btn-cosmic-info" id="dropMarker" data-bs-toggle="tooltip" title="Click anywhere on the map to pinpoint a location">
                     <i class="fas fa-map-marker-alt me-2"></i>Pick Location
                 </button>
-                <button class="btn btn-cosmic-danger" id="clearAll">
+                <button class="btn btn-cosmic-info" id="gpsLocation" data-bs-toggle="tooltip" title="Use your device's GPS to find your current location">
+                    <i class="fas fa-crosshairs me-2"></i>Use My GPS
+                </button>
+                <button class="btn btn-cosmic-danger" id="clearAll" data-bs-toggle="tooltip" title="Remove all drawings and markers">
                     <i class="fas fa-eraser me-2"></i>Clear Selection
                 </button>
             </div>
@@ -82,24 +82,44 @@
             <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 2: Run Analysis</h6>
             
             <div id="citizenTools" class="d-grid gap-2">
-                <button class="btn btn-cosmic-success" id="astroForecast"><i class="fas fa-meteor me-2"></i>Astro Forecast</button>
-                <button class="btn btn-cosmic-primary" id="findObservatories"><i class="fas fa-landmark me-2"></i>Find Observatories</button>
-                <button class="btn btn-cosmic-primary" id="findDarkSky"><i class="fas fa-star me-2"></i>Dark Sky Parks</button>
-                <button class="btn btn-cosmic-info" id="moonPhase"><i class="fas fa-moon me-2"></i>Moon Phase</button>
-                <button class="btn btn-cosmic-info" id="weatherCheck"><i class="fas fa-cloud me-2"></i>Weather Check</button>
+                <button class="btn btn-cosmic-success" id="astroForecast" data-bs-toggle="tooltip" title="Check cloud cover & visibility for tonight">
+                    <i class="fas fa-meteor me-2"></i>Astro Forecast
+                </button>
+                <button class="btn btn-cosmic-primary" id="findObservatories" data-bs-toggle="tooltip" title="Locate observatories registered in OpenStreetMap">
+                    <i class="fas fa-landmark me-2"></i>Find Observatories
+                </button>
+                <button class="btn btn-cosmic-primary" id="findDarkSky" data-bs-toggle="tooltip" title="Locate nearby Certified Dark Sky Parks">
+                    <i class="fas fa-star me-2"></i>Dark Sky Parks
+                </button>
+                <button class="btn btn-cosmic-info" id="moonPhase" data-bs-toggle="tooltip" title="Check current moon illumination and rise times">
+                    <i class="fas fa-moon me-2"></i>Moon Phase
+                </button>
+                <button class="btn btn-cosmic-info" id="weatherCheck" data-bs-toggle="tooltip" title="Get real-time temperature and wind data">
+                    <i class="fas fa-cloud me-2"></i>Weather Check
+                </button>
             </div>
             
             <div id="scientificTools" class="d-grid gap-2" style="display: none;">
-                <button class="btn btn-cosmic-danger" id="energyCalc"><i class="fas fa-solar-panel me-2"></i>Energy Estimator</button>
-                <button class="btn btn-cosmic-warning" id="timeSeries"><i class="fas fa-chart-line me-2"></i>Time Series</button>
-                <button class="btn btn-cosmic-warning" id="statisticalAnalysis"><i class="fas fa-calculator me-2"></i>Stats</button>
-                <button class="btn btn-cosmic-info" id="dataExport"><i class="fas fa-file-export me-2"></i>Export</button>
+                <button class="btn btn-cosmic-danger" id="energyCalc" data-bs-toggle="tooltip" title="Estimate wasted energy based on upward radiance flux">
+                    <i class="fas fa-solar-panel me-2"></i>Energy Estimator
+                </button>
+                <button class="btn btn-cosmic-warning" id="timeSeries" data-bs-toggle="tooltip" title="Plot historical brightness trends (2012-2024)">
+                    <i class="fas fa-chart-line me-2"></i>Time Series
+                </button>
+                <button class="btn btn-cosmic-warning" id="statisticalAnalysis" data-bs-toggle="tooltip" title="Calculate mean SQM, variance, and data quality metrics">
+                    <i class="fas fa-calculator me-2"></i>Stats
+                </button>
+                <button class="btn btn-cosmic-info" id="dataExport" data-bs-toggle="tooltip" title="Download selected region data as GeoJSON">
+                    <i class="fas fa-file-export me-2"></i>Export
+                </button>
             </div>
             
             <div class="panel-divider my-3"></div>
             
             <div class="d-grid gap-2">
-                <button class="btn btn-cosmic-info" id="planRoute"><i class="fas fa-route me-2"></i>Plan Route</button>
+                <button class="btn btn-cosmic-info" id="planRoute" data-bs-toggle="tooltip" title="Find the darkest path between two points">
+                    <i class="fas fa-route me-2"></i>Plan Route
+                </button>
             </div>
 
             <div class="mt-3">
@@ -118,9 +138,18 @@
     <div class="data-layers-panel cosmic-panel" id="dataLayersPanel">
         <div class="panel-header"><h6>Layers</h6></div>
         <div class="panel-body p-3">
-            <div class="cosmic-check"><input class="form-check-input" type="checkbox" id="viirsLayer" checked><label class="form-check-label"><i class="fas fa-satellite me-2"></i>VIIRS Night Lights</label></div>
-            <div class="cosmic-check"><input class="form-check-input" type="checkbox" id="darkSkyParks" checked><label class="form-check-label"><i class="fas fa-star me-2"></i>Dark Sky Parks (WMS)</label></div>
-            <div class="cosmic-check"><input class="form-check-input" type="checkbox" id="groundMeasurements"><label class="form-check-label"><i class="fas fa-map-marker-alt me-2"></i>Ground Stations (DB)</label></div>
+            <div class="cosmic-check" data-bs-toggle="tooltip" title="Visible Infrared Imaging Radiometer Suite (Night Lights)">
+                <input class="form-check-input" type="checkbox" id="viirsLayer" checked>
+                <label class="form-check-label"><i class="fas fa-satellite me-2"></i>VIIRS Night Lights</label>
+            </div>
+            <div class="cosmic-check" data-bs-toggle="tooltip" title="International Dark-Sky Association Certified Places">
+                <input class="form-check-input" type="checkbox" id="darkSkyParks" checked>
+                <label class="form-check-label"><i class="fas fa-star me-2"></i>Dark Sky Parks (WMS)</label>
+            </div>
+            <div class="cosmic-check" data-bs-toggle="tooltip" title="Citizen Science Ground Measurements (SQM)">
+                <input class="form-check-input" type="checkbox" id="groundMeasurements">
+                <label class="form-check-label"><i class="fas fa-map-marker-alt me-2"></i>Ground Stations (DB)</label>
+            </div>
         </div>
     </div>
 
@@ -172,6 +201,13 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Bootstrap Tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            })
+
+            // Close Basemap dropdown on click outside
             const basemapDropdown = document.getElementById('basemapDropdown');
             document.addEventListener('click', function() { if (basemapDropdown) basemapDropdown.classList.remove('show'); });
             if (basemapDropdown) basemapDropdown.addEventListener('click', function(e) { e.stopPropagation(); });

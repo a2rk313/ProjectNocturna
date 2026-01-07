@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+  # ---------------------------------------------------------
+  # 1. DATA DOWNLOADER (The "Init" Container)
+  # ---------------------------------------------------------
+  downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile.etl
+    container_name: projectnocturna_downloader
+    # Pass credentials so it can log in to NASA
+    environment:
+      - EARTHDATA_USERNAME=${EARTHDATA_USERNAME}
+      - EARTHDATA_PASSWORD=${EARTHDATA_PASSWORD}
+    # Mount the shared volume to where the script saves files
+    volumes:
+      - geodata_shared:/app/geoserver_data/data_layers:Z
+    # This container runs once and exits
+    restart: "no"
+
+  # ---------------------------------------------------------
+  # 2. DATABASE
+  # ---------------------------------------------------------
   db:
     image: docker.io/postgis/postgis:15-3.3
     container_name: projectnocturna_db
@@ -20,6 +41,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------
+  # 3. GEOSERVER
+  # ---------------------------------------------------------
   geoserver:
     image: docker.io/kartoza/geoserver:2.24.1
     container_name: projectnocturna_geoserver
@@ -32,11 +56,20 @@ services:
       CORS_ENABLED: "true"
       CORS_ALLOWED_ORIGINS: "*"
     volumes:
+      # Mount the SAME volume to see the downloaded files
+      - geodata_shared:/opt/geoserver/data_dir/data_layers:Z
+      # Mount other config data normally
       - ./geoserver_data:/opt/geoserver/data_dir:Z
     depends_on:
       db:
         condition: service_healthy
+      # CRITICAL: Wait for downloader to finish before starting
+      downloader:
+        condition: service_completed_successfully
 
+  # ---------------------------------------------------------
+  # 4. APP
+  # ---------------------------------------------------------
   app:
     build:
       context: .
@@ -59,28 +92,9 @@ services:
       ADMIN_SECRET: ${ADMIN_SECRET}
       ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
 
-  # --- NEW: n8n Workflow Automation ---
-  n8n:
-    image: docker.io/n8nio/n8n:latest
-    container_name: projectnocturna_n8n
-    restart: always
-    ports:
-      - "5678:5678"  # Access UI at http://localhost:5678
-    environment:
-      - GENERIC_TIMEZONE=Asia/Karachi # Adjust to your timezone
-      - TZ=Asia/Karachi
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678/
-    volumes:
-      - n8n_data:/home/node/.n8n # Persist workflows
-    depends_on:
-      db:
-        condition: service_healthy
-
-# ... (other services remain the same) ...
-
+  # ---------------------------------------------------------
+  # 5. AUTOMATION (n8n)
+  # ---------------------------------------------------------
   n8n:
     image: docker.io/n8nio/n8n:latest
     container_name: projectnocturna_n8n
@@ -96,16 +110,15 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
     volumes:
       - n8n_data:/home/node/.n8n
-      # Mount your specific workflow file so n8n can see it
       - ./WebGIS_ActionBot_Final_Fixed.json:/tmp/workflow.json:Z
     depends_on:
       db:
         condition: service_healthy
-    # This command imports the workflow, then starts the server
     command: >
       /bin/sh -c "n8n import:workflow --input=/tmp/workflow.json && n8n start"
 
-
+# Define the shared volume
 volumes:
   postgres_data:
-  n8n_data: # Define the new volume
+  n8n_data:
+  geodata_shared:

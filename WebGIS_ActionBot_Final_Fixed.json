@@ -53,7 +53,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 1. Get the JSON data\nconst inputData = $input.first().json;\n\n// 2. CRITICAL FIX: Add the specific Gemini path found in your screenshot\n// Check 'content.parts[0].text' first, then fall back to others\nconst aiContent = (inputData.content && inputData.content.parts && inputData.content.parts[0] && inputData.content.parts[0].text) \n                  || inputData.response \n                  || inputData.text \n                  || inputData.output \n                  || (inputData.message && inputData.message.content);\n\n// Safety check\nif (!aiContent) {\n  return {\n    action: \"chat\",\n    ai_message: \"Error: Could not find AI response. keys found: \" + Object.keys(inputData).join(\", \")\n  };\n}\n\n// 3. Clean markdown and parse\nconst cleanJson = aiContent.replace(/```json|```/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(cleanJson);\n  return {\n    action: parsed.action,\n    location_query: parsed.location || null,\n    ai_message: parsed.response || parsed.message || \"Action processed.\",\n    ...inputData\n  };\n} catch (e) {\n  // Fallback for plain text responses\n  return {\n     action: \"chat\",\n     ai_message: cleanJson,\n     ...inputData\n  };\n}"
+        "jsCode": "// 1. Get the JSON data\nconst inputData = $input.first().json;\n\n// 2. CRITICAL FIX: Add the specific Gemini path\nconst aiContent = (inputData.content && inputData.content.parts && inputData.content.parts[0] && inputData.content.parts[0].text) \n                  || inputData.response \n                  || inputData.text \n                  || inputData.output \n                  || (inputData.message && inputData.message.content);\n\n// Safety check\nif (!aiContent) {\n  return {\n    action: \"chat\",\n    ai_message: \"Error: Could not find AI response. keys found: \" + Object.keys(inputData).join(\", \")\n  };\n}\n\n// 3. Clean markdown and parse\nconst cleanJson = aiContent.replace(/```json|```/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(cleanJson);\n  return {\n    action: parsed.action,\n    location_query: parsed.location || null,\n    ai_message: parsed.response || parsed.message || \"Action processed.\",\n    ...inputData\n  };\n} catch (e) {\n  return {\n     action: \"chat\",\n     ai_message: cleanJson,\n     ...inputData\n  };\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -66,7 +66,7 @@
     },
     {
       "parameters": {
-        "url": "={{ 'https://nominatim.openstreetmap.org/search?q=' + $json.location_query + '&format=json&limit=1' }}",
+        "url": "={{ '[https://nominatim.openstreetmap.org/search?q=](https://nominatim.openstreetmap.org/search?q=)' + $json.location_query + '&format=json&limit=1' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -89,7 +89,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get the data from the previous node\nconst data = $input.item.json;\n\n// Check if latitude and longitude exist\nif (data.lat && data.lon) {\n  const latNum = parseFloat(data.lat);\n  const lonNum = parseFloat(data.lon);\n\n  return {\n    action: \"zoom\",\n    // We send ALL common formats to ensure the map understands one of them\n    lat: latNum,\n    lon: lonNum,\n    lng: lonNum,        // Common alternative for longitude\n    latitude: latNum,\n    longitude: lonNum,\n    center: [latNum, lonNum], // Common array format\n    zoom: 12,\n    message: `Zooming to ${data.display_name}...`\n  };\n} else {\n  return {\n    action: \"chat\",\n    message: \"I couldn't find that location.\"\n  };\n}"
+        "jsCode": "const data = $input.item.json;\nif (data.lat && data.lon) {\n  const latNum = parseFloat(data.lat);\n  const lonNum = parseFloat(data.lon);\n  return {\n    action: \"zoom\",\n    lat: latNum,\n    lon: lonNum,\n    lng: lonNum,\n    center: [latNum, lonNum],\n    zoom: 12,\n    message: `Zooming to ${data.display_name}...`\n  };\n} else {\n  return {\n    action: \"chat\",\n    message: \"I couldn't find that location.\"\n  };\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -115,7 +115,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const bounds = $json.body.bounds || {};\nconst area = Math.abs((bounds.north - bounds.south) * 100) || 50;\n\nreturn {\n  action: \"data_extracted\",\n  data: {\n    statistics: {\n      mean_brightness: (Math.random() * 5 + 1).toFixed(2),\n      max_brightness: (Math.random() * 20 + 5).toFixed(2),\n      min_brightness: 0.12,\n      area_sqkm: area.toFixed(2)\n    },\n    recommendations: [\n      \"Consider shielded lighting in the northern sector.\",\n      \"Ideal dark sky conditions in the center.\"\n    ]\n  }\n};"
+        "jsCode": "// Prepare the Data for the Real Backend API\n// Convert simple Bounds to GeoJSON Polygon\nconst bounds = $json.body.bounds || { north: 0, south: 0, east: 0, west: 0 };\n\nconst geometry = {\n  type: \"Polygon\",\n  coordinates: [[\n    [bounds.west, bounds.north],\n    [bounds.east, bounds.north],\n    [bounds.east, bounds.south],\n    [bounds.west, bounds.south],\n    [bounds.west, bounds.north]\n  ]]\n};\n\nreturn {\n  geometry: geometry\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -123,8 +123,46 @@
         208,
         320
       ],
-      "id": "28ec332b-8256-44c6-b962-f6d93e3b644b",
-      "name": "Process_Extraction_Logic"
+      "id": "prepare_analysis_data",
+      "name": "Prepare_Analysis_Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://projectnocturna_app:3000/api/analyze-energy",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "geometry",
+              "value": "={{ $json.geometry }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        432,
+        320
+      ],
+      "id": "calculate_energy_api",
+      "name": "Calculate_Energy_API"
+    },
+    {
+      "parameters": {
+        "jsCode": "const stats = $input.item.json;\n\nreturn {\n  action: \"data_extracted\",\n  data: {\n    statistics: {\n      mean_brightness: stats.sqm,\n      annual_cost: stats.annual_cost,\n      annual_kwh: stats.annual_kwh,\n      area_sqkm: stats.area_km2\n    },\n    message: `Analysis Complete (Real Data):\\n- Avg Brightness: ${stats.sqm} mag/arcsec²\\n- Est. Annual Waste: ${stats.annual_kwh} kWh\\n- Est. Cost: $${stats.annual_cost}`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        320
+      ],
+      "id": "format_analysis_result",
+      "name": "Format_Analysis_Result"
     },
     {
       "parameters": {
@@ -161,7 +199,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        768,
+        960,
         272
       ],
       "id": "d521f0f2-e508-45ef-b995-fe7f14c9aeda",
@@ -486,7 +524,29 @@
         ]
       ]
     },
-    "Process_Extraction_Logic": {
+    "Prepare_Analysis_Data": {
+      "main": [
+        [
+          {
+            "node": "Calculate_Energy_API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate_Energy_API": {
+      "main": [
+        [
+          {
+            "node": "Format_Analysis_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format_Analysis_Result": {
       "main": [
         [
           {
@@ -544,7 +604,7 @@
         ],
         [
           {
-            "node": "Process_Extraction_Logic",
+            "node": "Prepare_Analysis_Data",
             "type": "main",
             "index": 0
           }
@@ -587,6 +647,5 @@
     "templateCredsSetupCompleted": true,
     "instanceId": "6503a244fd48d95d6091fd8583860016b755730fe1f217c0b50b1974de64a2df"
   },
-  "id": "yw03Uew7sKfvR7EJ",
   "tags": []
 }

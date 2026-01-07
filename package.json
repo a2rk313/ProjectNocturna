@@ -1,47 +1,43 @@
 {
   "name": "project-nocturna",
-  "version": "2.5.0",
+  "version": "3.1.0",
   "type": "commonjs",
-  "description": "Full-Stack WebGIS platform for light pollution analysis with PostGIS and GeoServer",
-  "main": "js/server.js",
+  "description": "Full-Stack WebGIS platform for light pollution analysis with Supabase and Vercel",
+  "main": "api/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
-    "start": "node js/server.js",
-    "dev": "concurrently \"nodemon js/server.js\" \"live-server --port=8081 --watch=js,css,html,data\"",
-    "dev:local": "cp .env.local .env && npm run dev",
-    "dev:podman": "cp .env.podman .env && podman-compose up --build",
-    "podman:build": "podman build -t project-nocturna -f Containerfile .",
-    "podman:run": "podman run -p 3000:3000 -e DB_HOST=host.containers.internal -e DB_PORT=5432 -e DB_USER=postgres -e DB_PASSWORD=your_secure_password_here -e DB_NAME=nocturna project-nocturna",
-    "seed": "node -e 'require(\"./js/server.js\").seedDatabase()'",
-    "seed:force": "curl -X POST http://localhost:3000/api/seed-db"
+    "start": "node api/index.js",
+    "dev": "concurrently \"nodemon api/index.js\" \"live-server --port=8081 --watch=js,css,html,data\"",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
-    "@turf/turf": "^6.5.0",
-    "axios": "^1.5.0",
-    "bootstrap": "^5.3.0",
-    "chart.js": "^4.4.0",
+    "@turf/turf": "^7.1.0",
+    "axios": "^1.7.9",
+    "bootstrap": "^5.3.3",
+    "chart.js": "^4.4.7",
     "cors": "^2.8.5",
-    "csv-parser": "^3.0.0",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
     "leaflet-routing-machine": "^3.2.12",
     "leaflet.heat": "^0.2.0",
-    "node-fetch": "^3.3.0",
     "papaparse": "^5.4.1",
-    "pg": "^8.11.3"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "json-server": "^0.17.4",
-    "live-server": "^1.2.0",
-    "nodemon": "^3.0.1"
+    "concurrently": "^9.1.0",
+    "live-server": "^1.2.2",
+    "nodemon": "^3.1.7"
   },
   "keywords": [
     "webgis",
     "light-pollution",
-    "postgis",
-    "geoserver"
+    "supabase",
+    "vercel",
+    "postgis"
   ],
   "author": "Light Pollution Research Team",
   "license": "MIT"
