@@ -6,7 +6,7 @@ class WebGIS {
         this.drawnItems = new L.FeatureGroup();
         this.uiMarkers = L.layerGroup();
         this.stationsLayer = L.layerGroup();
-        this.researchLayer = L.layerGroup(); // New: For WMS/Cloud layers
+        this.researchLayer = L.layerGroup(); // Holds the Red Polygons
         this.layers = {}; 
         this.drawControl = null;
 
@@ -16,11 +16,7 @@ class WebGIS {
         }
 
         this.initMap();
-        
-        // --- FIX START: Initialize Draw Control for ActionBot ---
         this.initializeDrawControl(); 
-        // --- FIX END ---
-        
         this.initUIListeners(); 
         this.initChatListeners();
         
@@ -30,18 +26,18 @@ class WebGIS {
             this.actionBot.initialize();
             console.log("✅ ActionBot Connected");
         } else {
-            console.warn("⚠️ ActionBotController not found. Check imports.");
+            console.warn("⚠️ ActionBotController not found.");
         }
 
         this.initEventBusListeners(); 
     }
 
     initMap() {
-        // 1. Map Setup - CHANGED: Global View for Cloud Deployment
+        // 1. Map Setup
         this.map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
         L.control.zoom({ position: 'topleft' }).addTo(this.map);
 
-        // 2. Base Layers - CHANGED: Added NASA Black Marble
+        // 2. Base Layers
         this.baseLayers = {
             "Dark Matter": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap, CARTO' }),
             "NASA Night Lights": L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg', {
@@ -50,18 +46,18 @@ class WebGIS {
             }),
             "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' })
         };
-        this.baseLayers["NASA Night Lights"].addTo(this.map); // Default for impact
+        this.baseLayers["NASA Night Lights"].addTo(this.map);
 
-        // 3. Add Feature Layers
+        // 3. Add Feature Layers (NOTE: researchLayer is NOT added by default anymore)
         this.map.addLayer(this.drawnItems);
         this.map.addLayer(this.uiMarkers);
         this.map.addLayer(this.stationsLayer);
-        this.map.addLayer(this.researchLayer);
+        // this.map.addLayer(this.researchLayer); <--- Removed so the Toggle controls it
 
-        // 4. Initialize Layer Control
+        // 4. Initialize Layer Control (Standard Leaflet Control)
         this.layerControl = L.control.layers(this.baseLayers, {}, { position: 'topright' }).addTo(this.map);
 
-        // 5. Load Data Layers
+        // 5. Load Data
         this.loadResearchLayer(); 
         this.initStationsLayer(); 
 
@@ -75,15 +71,11 @@ class WebGIS {
         });
     }
 
-    // --- NEW METHOD REQUIRED BY ACTIONBOT ---
     initializeDrawControl() {
         if (this.drawControl) return;
 
-        // Initialize the standard Leaflet Draw control
         this.drawControl = new L.Control.Draw({
-            edit: {
-                featureGroup: this.drawnItems
-            },
+            edit: { featureGroup: this.drawnItems },
             draw: {
                 polygon: { allowIntersection: false, showArea: true },
                 marker: true,
@@ -94,28 +86,22 @@ class WebGIS {
             }
         });
 
-        // Add to map so ActionBot can find it
         this.map.addControl(this.drawControl);
         
-        // Hide the default toolbar (optional)
+        // Hide default toolbar (we use custom buttons)
         const toolbar = document.querySelector('.leaflet-draw-toolbar');
         if (toolbar) toolbar.style.display = 'none';
     }
-    // ----------------------------------------
 
-    // --- CHANGED: Load Research Data (Cloud/WMS Ready) ---
     async loadResearchLayer() {
         console.log("📡 Connecting to Research Layer...");
         
-        // OPTION A: Cloud GeoServer (Render)
-        // Once you deploy to Render, replace the URL below:
+        // TODO: Replace with your actual Render URL when ready
         const geoserverUrl = "https://your-app-name.onrender.com/geoserver/nocturna/wms"; 
-        
-        // Check if we are in dev or prod (simple check)
         const isLocal = window.location.hostname === 'localhost';
 
         if (!isLocal) {
-            // Production: Use WMS
+            // Production: WMS
             const wmsLayer = L.tileLayer.wms(geoserverUrl, {
                 layers: 'nocturna:analysis_grid',
                 format: 'image/png',
@@ -124,9 +110,9 @@ class WebGIS {
                 attribution: "Analysis © Project Nocturna"
             });
             this.researchLayer.addLayer(wmsLayer);
-            this.layerControl.addOverlay(wmsLayer, "Research Analysis (WMS)");
+            // We don't add to layerControl here because we have a custom HTML toggle
         } else {
-            // Local Fallback: Try fetching the static file (legacy method)
+            // Local: GeoJSON
             try {
                 const response = await fetch('/geoserver_data/data_layers/analysis_results_real.geojson');
                 if (response.ok) {
@@ -135,21 +121,16 @@ class WebGIS {
                         style: { color: "#ff0000", weight: 2, fillColor: "#ff3333", fillOpacity: 0.4 }
                     });
                     this.researchLayer.addLayer(localLayer);
-                    this.layerControl.addOverlay(localLayer, "Research Analysis (Local)");
                 }
             } catch (e) { console.warn("Local research layer not found."); }
         }
     }
 
-    // --- RESTORED: Station Layer (Ground Sensors) ---
     async initStationsLayer() {
         try {
-            // CHANGED: Use relative API path for Vercel compatibility
             const res = await fetch('/api/stations');
             if (!res.ok) throw new Error("API Error");
             const stations = await res.json();
-
-            if (stations.length === 0) console.log("ℹ️ No stations found.");
 
             const markers = stations.map(s => {
                 const color = s.is_research_grade ? '#00ff00' : '#ffff00';
@@ -160,6 +141,7 @@ class WebGIS {
 
             this.stationsLayer.clearLayers();
             this.stationsLayer.addLayers(markers);
+            // Only add to standard control (custom toggle not needed for this)
             this.layerControl.addOverlay(this.stationsLayer, "Ground Sensors");
         } catch(e) {
             console.error("Station Load Error:", e);
@@ -218,33 +200,41 @@ class WebGIS {
             welcome: document.getElementById('welcomeMessage'),
             botName: document.getElementById('assistantName')
         };
+        const cTools = document.getElementById('citizenTools');
+        const sTools = document.getElementById('scientificTools');
 
         if (mode === 'citizen') {
+            // UI Updates
             if(indicator) { indicator.innerText = 'Citizen Mode'; indicator.className = 'badge bg-success ms-2 mode-badge'; }
             if(labels.title) labels.title.innerText = 'Stargazing Tools';
             if(labels.botName) labels.botName.innerText = 'Lumina';
             if(labels.welcome) labels.welcome.innerText = 'Hello! I\'m Lumina. Ask me to "Find dark sky spots".';
             
-            const cTools = document.getElementById('citizenTools');
-            const sTools = document.getElementById('scientificTools');
+            // Toggle Panels
             if(cTools) cTools.style.display = 'grid';
             if(sTools) sTools.style.display = 'none';
             
-            // Remove research toggle in citizen mode
-            const toggle = document.getElementById('researchToggleWrapper');
-            if (toggle) toggle.remove();
+            // MAP LOGIC: Force remove scientific layers
+            this.map.removeLayer(this.researchLayer);
 
             if(window.CitizenMode) new window.CitizenMode(this).initialize();
+
         } else {
+            // UI Updates
             if(indicator) { indicator.innerText = 'Scientific Mode'; indicator.className = 'badge bg-warning ms-2 mode-badge'; }
             if(labels.title) labels.title.innerText = 'Scientific Analysis';
             if(labels.botName) labels.botName.innerText = 'Lumina Pro';
             if(labels.welcome) labels.welcome.innerText = 'Scientific Mode active. Use draw tools to analyze areas.';
 
-            const cTools = document.getElementById('citizenTools');
-            const sTools = document.getElementById('scientificTools');
+            // Toggle Panels
             if(cTools) cTools.style.display = 'none';
             if(sTools) sTools.style.display = 'grid';
+
+            // MAP LOGIC: Check the toggle state to see if we should show layer
+            const toggle = document.getElementById('toggleResearchLayer');
+            if (toggle && toggle.checked) {
+                this.map.addLayer(this.researchLayer);
+            }
 
             if(window.ScientificMode) new window.ScientificMode(this).initialize();
         }
@@ -261,6 +251,19 @@ class WebGIS {
              const content = `<div class="text-start"><h6>Data Sources</h6><ul><li>GaN2024 Database</li><li>NASA VIIRS (2022-2023)</li><li>Open-Meteo API</li></ul></div>`;
             window.SystemBus.emit('ui:show_modal', { title: "📚 Data Sources", content: content });
         });
+
+        // --- NEW: Toggle Satellite Layer from Custom Checkbox ---
+        const researchToggle = document.getElementById('toggleResearchLayer');
+        if (researchToggle) {
+            researchToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.map.addLayer(this.researchLayer);
+                } else {
+                    this.map.removeLayer(this.researchLayer);
+                }
+            });
+        }
+        // -------------------------------------------------------
 
         const drawBtn = document.getElementById('drawPolygon');
         if (drawBtn) drawBtn.addEventListener('click', () => this.startTool('polygon'));
@@ -309,7 +312,6 @@ class WebGIS {
     }
 
     async generateAIResponse(message) {
-        // Fallback if n8n not connected
         return "I am ready. Use the buttons on the left to analyze the map.";
     }
 
