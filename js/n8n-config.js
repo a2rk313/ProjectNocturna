@@ -11,7 +11,19 @@ const N8N_CONFIG = {
     fallbackEnabled: true
 };
 
-// Polyfill for timeout (keep this)
+// --- FIX START: Expose to Window ---
+// This is required so actionbot-controller.js can read these settings
+if (typeof window !== 'undefined') {
+    window.N8N_CONFIG = N8N_CONFIG;
+}
+
+// Export for Node.js (if needed for backend testing)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = N8N_CONFIG;
+}
+// --- FIX END ---
+
+// Polyfill for timeout
 if (!AbortSignal.timeout) {
     AbortSignal.timeout = function(ms) {
         const controller = new AbortController();
