@@ -367,8 +367,24 @@ class WebGIS {
     }
 }
 
+// REPLACE THE BOTTOM OF js/webgis.js WITH THIS:
+
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Initialize the WebGIS Application
     window.webGIS = new WebGIS();
+
+    // 2. Read the URL parameter (e.g., ?mode=scientific)
     const params = new URLSearchParams(window.location.search);
-    window.webGIS.setMode(params.get('mode') || 'citizen');
+    const modeFromUrl = params.get('mode'); 
+
+    // 3. Debug Log to Console (So you can see it working)
+    console.log("🚀 App Launching... Detected Mode:", modeFromUrl);
+
+    // 4. Force Set the Mode
+    if (modeFromUrl === 'scientific') {
+        window.webGIS.setMode('scientific');
+    } else {
+        // Default to citizen for safety
+        window.webGIS.setMode('citizen');
+    }
 });
