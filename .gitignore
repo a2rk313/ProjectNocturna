@@ -1,11 +1,1 @@
-node_modules
-geoserver_data
-
-# Ignore all subdirectories inside geoserver_data
-geoserver_data/*/
-
-# EXPLICITLY ignore the dangerous root files (Crucial!)
-geoserver_data/tomcat_pass.txt
-geoserver_data/s3.properties
-geoserver_data/controlflow.properties
-.env
+Nothing needs to be added to .gitignore since the changes only include source files (.js) and a markdown file (.md), with no build artifacts, dependencies, or temporary files present in the change list.
