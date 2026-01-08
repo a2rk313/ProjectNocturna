@@ -68,6 +68,13 @@ class WebGIS {
             this.drawnItems.addLayer(layer);
             const type = e.layerType === 'marker' ? 'Point' : 'Region';
             window.SystemBus.emit('system:message', `✅ ${type} selected.`);
+            
+            // If in scientific mode, trigger area analysis
+            if (this.currentMode === 'scientific' && window.webGIS?.scientificMode) {
+                setTimeout(() => {
+                    window.webGIS.scientificMode.analyzeSelectedArea();
+                }, 500);
+            }
         });
     }
 
