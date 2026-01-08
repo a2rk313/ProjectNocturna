@@ -27,6 +27,136 @@ app.use(express.static(path.join(__dirname)));
 
 // =================== REAL DATA ENDPOINTS ===================
 
+// 1. NASA VIIRS Nighttime Lights - Year only (for /api/viirs/2023 format)
+app.get('/api/viirs/:year', async (req, res) => {
+  try {
+    const { year } = req.params;
+    const { bbox } = req.query;
+    
+    console.log(`🌍 NASA VIIRS Request: year=${year}, bbox=${bbox}`);
+    
+    // Check if NASA API key exists
+    if (!process.env.NASA_API_KEY) {
+      console.log('⚠️ NASA API key not configured, using sample data');
+      return res.json({
+        source: 'NASA VIIRS Nighttime Lights (Sample Data)',
+        year: year || 2023,
+        month: 'annual',
+        date: new Date().toISOString(),
+        count: 150,
+        avg_brightness: 15.3,
+        min_brightness: 0.5,
+        max_brightness: 85.2,
+        std_dev: 12.4,
+        data: generateSampleVIIRSData(bbox)
+      });
+    }
+    
+    let url;
+    if (bbox) {
+      try {
+        const [minLon, minLat, maxLon, maxLat] = bbox.split(',').map(Number);
+        // Validate bounding box
+        if (isNaN(minLon) || isNaN(minLat) || isNaN(maxLon) || isNaN(maxLat)) {
+          throw new Error('Invalid bounding box coordinates');
+        }
+        
+        // NASA FIRMS API format
+        url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/${minLat}/${minLon}/${maxLat}/${maxLon}/7`;
+      } catch (coordError) {
+        console.error('Bounding box error:', coordError);
+        return res.json({
+          source: 'NASA VIIRS (Sample - Invalid bbox)',
+          year: year || 2023,
+          count: 100,
+          data: generateSampleVIIRSData()
+        });
+      }
+    } else {
+      // Global data
+      url = `https://firms.modaps.eosdis.nasa.gov/api/country/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/WLD/7`;
+    }
+    
+    console.log(`🌐 Calling NASA API: ${url.replace(process.env.NASA_API_KEY, '***')}`);
+    
+    const response = await axios.get(url, { 
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Project-Nocturna/1.0'
+      }
+    });
+    
+    // Parse CSV response
+    const lines = response.data.split('\\n').filter(line => {
+      return line.trim() && !line.startsWith('#') && !line.startsWith('latitude');
+    });
+    
+    const data = lines.map(line => {
+      const [lat, lon, brightness, frp, confidence, date] = line.split(',');
+      return {
+        lat: parseFloat(lat) || 0,
+        lng: parseFloat(lon) || 0,
+        brightness: parseFloat(brightness) || 0,
+        frp: parseFloat(frp) || 0,
+        confidence: confidence || 'low',
+        date: date || new Date().toISOString().split('T')[0]
+      };
+    }).filter(d => d.brightness > 0);
+    
+    // Calculate statistics
+    const brightnessValues = data.map(d => d.brightness);
+    const avgBrightness = brightnessValues.length > 0 ? 
+      brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length : 15.3;
+    const maxBrightness = brightnessValues.length > 0 ? Math.max(...brightnessValues) : 85.2;
+    const minBrightness = brightnessValues.length > 0 ? Math.min(...brightnessValues) : 0.5;
+    
+    res.json({
+      source: 'NASA VIIRS Nighttime Lights (NOAA-20)',
+      year: year || 2023,
+      month: 'annual',
+      date: new Date().toISOString(),
+      count: data.length,
+      avg_brightness: avgBrightness.toFixed(2),
+      min_brightness: minBrightness.toFixed(2),
+      max_brightness: maxBrightness.toFixed(2),
+      std_dev: calculateStdDev(brightnessValues).toFixed(2),
+      data: data.slice(0, 1000) // Limit for performance
+    });
+    
+  } catch (error) {
+    console.error('❌ NASA VIIRS Error:', error.message);
+    
+    // Provide helpful error information
+    if (error.response) {
+      console.error(`NASA API Response: ${error.response.status} - ${error.response.statusText}`);
+      
+      // Handle specific NASA API errors
+      if (error.response.status === 401) {
+        console.error('NASA API key may be invalid or expired');
+      } else if (error.response.status === 403) {
+        console.error('NASA API access forbidden - check key permissions');
+      } else if (error.response.status === 429) {
+        console.error('NASA API rate limit exceeded');
+      }
+    }
+    
+    // Return comprehensive sample data
+    res.json({
+      source: 'NASA VIIRS Nighttime Lights (Sample - API Unavailable)',
+      year: req.params.year || 2023,
+      month: 'annual',
+      count: 150,
+      avg_brightness: '15.3',
+      min_brightness: '0.5',
+      max_brightness: '85.2',
+      std_dev: '12.4',
+      note: 'Using sample data due to NASA API unavailability. Sign up for a free NASA API key at https://earthdata.nasa.gov/',
+      data: generateSampleVIIRSData(req.query.bbox),
+      citation: 'Simulated data based on VIIRS DNB characteristics'
+    });
+  }
+});
+
 // 1. NASA VIIRS Nighttime Lights (Primary Source) - FIXED with better error handling
 app.get('/api/viirs/:year/:month?', async (req, res) => {
   try {
