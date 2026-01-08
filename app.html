@@ -17,6 +17,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css">
+    
+    <style>
+        /* Mode-specific tool visibility */
+        .mode-tools {
+            display: none !important;
+        }
+        .mode-tools.active {
+            display: grid !important;
+        }
+    </style>
 </head>
 <body>
     <div class="stars"></div>
@@ -36,14 +46,14 @@
             <span class="navbar-brand mb-0 h1 d-flex align-items-center">
                 <i class="fas fa-satellite me-2"></i> 
                 <span class="gradient-text">Project Nocturna</span>
-                <span id="modeIndicator" class="mode-badge ms-2"></span>
+                <span id="modeIndicator" class="mode-badge ms-2">Citizen Mode</span>
             </span>
             <div class="d-flex">
                 <button class="btn btn-outline-cosmic btn-sm me-2" id="switchMode">
                     <i class="fas fa-exchange-alt me-1"></i> Switch Mode
                 </button>
                 <button class="btn btn-outline-cosmic btn-sm" id="dataSources">
-                    <i class="fas fa-database me-1"></i> Data
+                    <i class="fas fa-database me-1"></i> Data Sources
                 </button>
             </div>
         </div>
@@ -51,8 +61,12 @@
 
     <div id="map" class="cosmic-map"></div>
 
+    <!-- Control Panel (Left Side) -->
     <div class="control-panel cosmic-panel" id="controlPanel">
-        <div class="panel-header"><h6 id="panelTitle">Tools</h6></div>
+        <div class="panel-header">
+            <h6 id="panelTitle">Stargazing Tools</h6>
+            <i class="collapse-icon fas fa-chevron-up"></i>
+        </div>
         
         <div class="panel-body p-3">
             <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 1: Select Area</h6>
@@ -72,40 +86,166 @@
 
             <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 2: Analyze</h6>
             
-            <div id="citizenTools" class="d-grid gap-2">
+            <!-- CITIZEN MODE TOOLS -->
+            <div id="citizenTools" class="mode-tools active d-grid gap-2">
                 <button class="btn btn-cosmic-success" id="astroForecast">
-                    <i class="fas fa-meteor me-2"></i>Astro Forecast
+                    <i class="fas fa-cloud-sun me-2"></i>Stargazing Forecast
                 </button>
-                <button class="btn btn-cosmic-primary" id="findDarkSky">
-                    <i class="fas fa-star me-2"></i>Dark Sky Parks
+                <button class="btn btn-cosmic-primary" id="findObservatories">
+                    <i class="fas fa-satellite-dish me-2"></i>Find Observatories
                 </button>
                 <button class="btn btn-cosmic-info" id="moonPhase">
                     <i class="fas fa-moon me-2"></i>Moon Phase
                 </button>
+                <button class="btn btn-cosmic-warning" id="darkSkyFinder">
+                    <i class="fas fa-star me-2"></i>Find Dark Sky Parks
+                </button>
+                <button class="btn btn-cosmic-info" id="gpsLocation">
+                    <i class="fas fa-location-dot me-2"></i>My Location
+                </button>
             </div>
             
-            <div id="scientificTools" class="d-grid gap-2" style="display: none;">
-                <button class="btn btn-cosmic-danger" id="energyCalc">
-                    <i class="fas fa-solar-panel me-2"></i>Energy Waste Calc
+            <!-- SCIENTIFIC MODE TOOLS -->
+            <div id="scientificTools" class="mode-tools d-grid gap-2">
+                <button class="btn btn-cosmic-purple" id="spectralAnalysis">
+                    <i class="fas fa-wave-square me-2"></i>Spectral Signature
                 </button>
-                <button class="btn btn-cosmic-warning" id="timeSeries">
-                    <i class="fas fa-chart-line me-2"></i>Historical Trends
+                <button class="btn btn-cosmic-success" id="scotobiologyImpact">
+                    <i class="fas fa-leaf me-2"></i>Scotobiology Impact
                 </button>
-                <button class="btn btn-cosmic-warning" id="statisticalAnalysis">
-                    <i class="fas fa-calculator me-2"></i>District Report
+                <button class="btn btn-cosmic-info" id="temporalDynamics">
+                    <i class="fas fa-clock me-2"></i>Temporal Dynamics
                 </button>
-                <button class="btn btn-cosmic-info" id="dataExport">
-                    <i class="fas fa-file-export me-2"></i>Export Data
+                <button class="btn btn-cosmic-warning" id="energyEconomics">
+                    <i class="fas fa-chart-pie me-2"></i>Energy Economics
                 </button>
+                <button class="btn btn-cosmic-primary" id="policySimulator">
+                    <i class="fas fa-gavel me-2"></i>Policy Simulator
+                </button>
+                <button class="btn btn-cosmic-purple" id="aiPredictive">
+                    <i class="fas fa-brain me-2"></i>AI Predictive Models
+                </button>
+                <button class="btn btn-cosmic-teal" id="multiSpectral">
+                    <i class="fas fa-satellite me-2"></i>Multi-spectral Analysis
+                </button>
+                <button class="btn btn-cosmic-amber" id="expertExport">
+                    <i class="fas fa-file-export me-2"></i>Research Export
+                </button>
+            </div>
+        </div>
+    </div>
 
-                <div class="mt-3 p-2 border border-secondary rounded">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="toggleResearchLayer">
-                        <label class="form-check-label text-warning" for="toggleResearchLayer">
-                            <i class="fas fa-satellite-dish me-1"></i> Show Satellite Hotspots
+    <!-- NEW: Combined Visualization & Base Layers Panel (Top Right) -->
+    <div class="data-layers-panel cosmic-panel" id="visualizationPanel">
+        <div class="panel-header">
+            <h6><i class="fas fa-layer-group me-2"></i>Visualization & Base Layers</h6>
+            <i class="collapse-icon fas fa-chevron-up"></i>
+        </div>
+        
+        <div class="panel-body p-3">
+            <!-- Base Maps Section -->
+            <h6 class="text-light opacity-75 mb-2">Base Maps</h6>
+            <div class="basemap-selector mb-3">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-sm btn-outline-light basemap-option active" data-basemap="dark">
+                        <i class="fas fa-moon me-2"></i>Dark Matter
+                    </button>
+                    <button class="btn btn-sm btn-outline-light basemap-option" data-basemap="viirs">
+                        <i class="fas fa-satellite me-2"></i>NASA VIIRS
+                    </button>
+                    <button class="btn btn-sm btn-outline-light basemap-option" data-basemap="satellite">
+                        <i class="fas fa-globe-americas me-2"></i>Satellite
+                    </button>
+                    <button class="btn btn-sm btn-outline-light basemap-option" data-basemap="topo">
+                        <i class="fas fa-mountain me-2"></i>Topographic
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel-divider my-3"></div>
+            
+            <!-- Visualization Layers Section -->
+            <h6 class="text-light opacity-75 mb-2">Research Layers</h6>
+            <div class="visualization-controls">
+                <!-- Real Data Layers -->
+                <div class="cosmic-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleVIIRS" checked>
+                    <label class="form-check-label text-light" for="toggleVIIRS">
+                        <i class="fas fa-satellite-dish me-2"></i>NASA VIIRS Data
+                        <span class="badge bg-info ms-1">Live</span>
+                    </label>
+                </div>
+                
+                <div class="cosmic-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleGroundStations" checked>
+                    <label class="form-check-label text-light" for="toggleGroundStations">
+                        <i class="fas fa-rss me-2"></i>SQM Network
+                        <span class="badge bg-success ms-1">Real-time</span>
+                    </label>
+                </div>
+                
+                <div class="cosmic-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleWorldAtlas">
+                    <label class="form-check-label text-light" for="toggleWorldAtlas">
+                        <i class="fas fa-globe me-2"></i>World Atlas
+                        <span class="badge bg-purple ms-1">Research</span>
+                    </label>
+                </div>
+                
+                <!-- Scientific Mode Only Layers -->
+                <div id="scientificLayers" style="display: none;">
+                    <div class="cosmic-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="toggleEcoImpact">
+                        <label class="form-check-label text-light" for="toggleEcoImpact">
+                            <i class="fas fa-leaf me-2"></i>Ecological Impact
+                        </label>
+                    </div>
+                    
+                    <div class="cosmic-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="toggleSpectral">
+                        <label class="form-check-label text-light" for="toggleSpectral">
+                            <i class="fas fa-palette me-2"></i>Spectral Analysis
+                        </label>
+                    </div>
+                    
+                    <div class="cosmic-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="toggleHeatmap">
+                        <label class="form-check-label text-light" for="toggleHeatmap">
+                            <i class="fas fa-fire me-2"></i>Pollution Hotspots
                         </label>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Layer Settings -->
+            <div id="layerSettings" class="mt-3 p-2 border border-secondary rounded" style="display: none;">
+                <h6 class="text-info mb-2"><i class="fas fa-sliders-h me-2"></i>Layer Settings</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label text-light small">Opacity: <span id="opacityValue">75</span>%</label>
+                    <input type="range" class="form-range" min="10" max="100" value="75" 
+                           id="layerOpacitySlider">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label text-light small">Point Size</label>
+                    <input type="range" class="form-range" min="3" max="15" value="6" 
+                           id="pointSizeSlider">
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-sm btn-outline-info" id="exportLayersBtn">
+                        <i class="fas fa-download me-2"></i>Export Data
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" id="resetLayersBtn">
+                        <i class="fas fa-redo me-2"></i>Reset Layers
+                    </button>
+                </div>
+            </div>
+
+            <div class="real-data-badge mt-3">
+                <i class="fas fa-database"></i>
+                <span>Research-Grade Data</span>
             </div>
         </div>
     </div>
@@ -117,13 +257,13 @@
                 <button class="btn-close-cosmic" id="closeAnalysis"><i class="fas fa-times"></i></button>
             </div>
             <div class="panel-body p-3" id="analysisContent">
-                </div>
+            </div>
         </div>
     </div>
 
     <div class="chatbot-container cosmic-panel" id="chatbotPanel">
         <div class="cosmic-card">
-            <div class="panel-header"><h6 id="assistantName">Lumina AI</h6></div>
+            <div class="panel-header"><h6 id="assistantName">Lumina</h6></div>
             <div class="panel-body card-body">
                 <div class="chat-messages cosmic-scrollbar" id="chat-messages">
                     <div class="chat-message assistant cosmic-message">
@@ -145,13 +285,15 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     
+    <script src="./js/config.js"></script>
     <script src="./js/event-bus.js"></script>
+    <script src="./js/api-client.js"></script>
     <script src="./js/data-manager.js"></script>
-    
+    <script src="./js/api-config.js"></script>
     <script src="./js/actionbot-controller.js"></script>
     <script src="./js/citizen-mode.js"></script>
     <script src="./js/scientific-mode.js"></script>
-    
+    <script src="./js/n8n-config.js"></script>
     <script src="./js/webgis.js"></script>
 
     <script>

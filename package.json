@@ -1,44 +1,26 @@
 {
   "name": "project-nocturna",
-  "version": "3.1.0",
-  "type": "commonjs",
-  "description": "Full-Stack WebGIS platform for light pollution analysis with Supabase and Vercel",
-  "main": "api/index.js",
-  "engines": {
-    "node": ">=20.0.0"
-  },
+  "version": "1.0.0",
+  "description": "Real-time light pollution monitoring platform",
+  "main": "server.js",
   "scripts": {
-    "start": "node api/index.js",
-    "dev": "concurrently \"nodemon api/index.js\" \"live-server --port=8081 --watch=js,css,html,data\"",
-    "deploy": "vercel --prod"
+    "dev": "NODE_ENV=development node server.js",
+    "start": "NODE_ENV=production node server.js",
+    "vercel-dev": "vercel dev",
+    "vercel-deploy": "vercel --prod",
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
-    "@turf/turf": "^7.1.0",
-    "axios": "^1.7.9",
-    "bootstrap": "^5.3.3",
-    "chart.js": "^4.4.7",
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "leaflet": "^1.9.4",
-    "leaflet-draw": "^1.0.4",
-    "leaflet-routing-machine": "^3.2.12",
-    "leaflet.heat": "^0.2.0",
-    "papaparse": "^5.4.1",
-    "pg": "^8.13.1"
+    "dotenv": "^16.3.0",
+    "express": "^4.18.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
-    "live-server": "^1.2.2",
-    "nodemon": "^3.1.7"
+    "@vercel/node": "^2.3.0"
   },
-  "keywords": [
-    "webgis",
-    "light-pollution",
-    "supabase",
-    "vercel",
-    "postgis"
-  ],
-  "author": "Light Pollution Research Team",
-  "license": "MIT"
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

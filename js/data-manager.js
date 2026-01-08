@@ -1,12 +1,11 @@
 /**
  * DataManager - Handles data fetching and processing.
- * Refactored to separate data logic from UI/Map rendering.
+ * Browser-safe version.
  */
 class DataManager {
     constructor() {
-        // FIX: Use relative path. The browser resolves this automatically.
-        // This works for localhost, Docker, and production domains.
-        this.apiBaseUrl = '/api'; 
+        // Use environment-aware configuration
+        this.apiBaseUrl = window.AppConfig ? window.AppConfig.getApiUrl('') : '/api';
     }
 
     /**
@@ -16,7 +15,11 @@ class DataManager {
     async fetchStations() {
         console.log("🌍 Fetching stations from API...");
         try {
-            const response = await fetch(`${this.apiBaseUrl}/stations`);
+            const url = window.AppConfig ? 
+                window.AppConfig.getApiUrl('stations') : 
+                '/api/stations';
+            
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Network response was not ok');
             return await response.json();
         } catch (error) {
@@ -26,64 +29,43 @@ class DataManager {
     }
 
     /**
-     * Constructs the GeoServer WMS URL dynamically based on the current host.
-     * Assumes GeoServer is running on port 8080.
-     */
-    getGeoServerURL() {
-        const protocol = window.location.protocol;
-        const hostname = window.location.hostname;
-        // If behind a reverse proxy (like Nginx), this might need adjustment to just '/geoserver/...'
-        // For this Docker setup, direct port access is used:
-        return `${protocol}//${hostname}:8080/geoserver/nocturna/wms`;
-    }
-
-    /**
      * Fetches detailed measurement data for a specific point.
      * @param {number} lat 
      * @param {number} lng 
      */
     async getDataAtPoint(lat, lng) {
         try {
-            const response = await fetch(`${this.apiBaseUrl}/measurement?lat=${lat}&lng=${lng}`);
+            const url = window.AppConfig ? 
+                window.AppConfig.getApiUrl(`measurement?lat=${lat}&lng=${lng}`) :
+                `/api/measurement?lat=${lat}&lng=${lng}`;
+            
+            const response = await fetch(url);
             if (!response.ok) throw new Error('DB Error');
             
             const dbData = await response.json();
             
-            // Try to fetch precise elevation, fallback to DB value
-            let elevation = dbData.elevation + " m";
-            try {
-                const elevResp = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
-                const elevJson = await elevResp.json();
-                if (elevJson.elevation && elevJson.elevation.length > 0) {
-                    elevation = elevJson.elevation[0] + " m";
-                }
-            } catch(e) {
-                // Ignore external API failure
-            }
-
             return {
                 light_pollution: {
                     sqm: dbData.sqm,
                     bortle: this.sqmToBortle(dbData.sqm),
                     limiting_mag: dbData.mag,
-                    source: "PostGIS Database (Realtime)"
+                    source: "Supabase Database"
                 },
                 location: {
                     lat: lat,
                     lng: lng,
-                    elevation: elevation,
-                    nearest_observation_km: parseFloat(dbData.distance_km).toFixed(2)
+                    elevation: "N/A",
+                    nearest_observation_km: parseFloat(dbData.distance_km || 0).toFixed(2)
                 },
                 metadata: {
                     date_observed: dbData.date_observed,
-                    constellation: dbData.constellation,
                     comment: dbData.comment
                 }
             };
         } catch (error) {
             console.error(error);
             return { 
-                error: "Database unavailable.",
+                error: "API unavailable.",
                 location: { lat, lng, elevation: "N/A" }
             };
         }
@@ -105,9 +87,9 @@ class DataManager {
         return "9 (Inner City)";
     }
 
-    // Helper to get external tile layers (Configuration only)
+    // Helper to get external tile layers
     getVIIRSTileUrl() {
-        return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
+        return 'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
     }
 }
 
