@@ -99,7 +99,12 @@ class WebGIS {
             const data = await response.json();
             
             if (data.data && data.data.length > 0) {
-                // Create heatmap layer
+                // Create heatmap layer if leaflet.heat plugin is available
+                if (typeof L.heatLayer !== 'function') {
+                    console.warn('VIIRS data load failed: L.heatLayer function not available');
+                    return;
+                }
+                
                 const heatData = data.data.map(point => [point.lat, point.lng, point.brightness]);
                 
                 this.viirsLayer = L.heatLayer(heatData, {

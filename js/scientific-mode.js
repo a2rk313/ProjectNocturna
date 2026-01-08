@@ -362,6 +362,13 @@ class ScientificMode {
                 return;
             }
             
+            // Check if leaflet.heat plugin is available
+            if (typeof L.heatLayer !== 'function') {
+                console.error('Heatmap error: L.heatLayer function not available');
+                window.SystemBus.emit('system:message', "❌ Heatmap plugin not available");
+                return;
+            }
+            
             // Create heatmap layer using Leaflet.heat plugin
             const heatData = viirsData.map(point => [point.lat, point.lng, point.brightness || 1]);
             
