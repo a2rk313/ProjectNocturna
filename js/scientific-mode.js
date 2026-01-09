@@ -609,6 +609,11 @@ class ScientificMode {
             
             const realData = await response.json();
             
+            // Check if we got an error response from the server
+            if (realData.error || !response.ok) {
+                throw new Error(realData.message || 'Failed to fetch spectral data');
+            }
+            
             const area = this.calculateArea(geometry);
             
             const content = `
@@ -660,7 +665,9 @@ class ScientificMode {
             console.error('Spectral analysis error:', error);
             window.SystemBus.emit('ui:show_modal', {
                 title: "Spectral Analysis Error",
-                content: `<p>Failed to fetch real data. Please try again later.</p>`
+                content: `<p>Failed to fetch real data. Please check your NASA API key configuration.</p>
+                          <p><strong>Tip:</strong> Get a free NASA API key at <a href="https://earthdata.nasa.gov/" target="_blank">earthdata.nasa.gov</a> and add it to your .env file as NASA_API_KEY.</p>
+                          <p>Error details: ${error.message}</p>`
             });
         }
     }
@@ -864,6 +871,11 @@ class ScientificMode {
             
             const realData = await response.json();
             
+            // Check if we got an error response from the server
+            if (realData.error || !response.ok) {
+                throw new Error(realData.message || 'Failed to calculate energy economics');
+            }
+            
             const area = realData.area_analyzed_sqkm || this.calculateArea(geometry);
             
             const content = `
@@ -945,7 +957,9 @@ class ScientificMode {
             console.error('Energy economics error:', error);
             window.SystemBus.emit('ui:show_modal', {
                 title: "Economic Analysis Error",
-                content: `<p>Failed to calculate energy economics. Please try again later.</p>`
+                content: `<p>Failed to calculate energy economics. Please check your NASA API key configuration.</p>
+                          <p><strong>Tip:</strong> Get a free NASA API key at <a href="https://earthdata.nasa.gov/" target="_blank">earthdata.nasa.gov</a> and add it to your .env file as NASA_API_KEY.</p>
+                          <p>Error details: ${error.message}</p>`
             });
         }
     }

@@ -41,13 +41,14 @@ app.get('/api/viirs/:year', async (req, res) => {
       return res.json({
         source: 'NASA VIIRS Nighttime Lights (Sample Data)',
         year: year || 2023,
-        month: 'annual',
+        month: month || 'annual',
         date: new Date().toISOString(),
         count: 150,
         avg_brightness: 15.3,
         min_brightness: 0.5,
         max_brightness: 85.2,
         std_dev: 12.4,
+        note: 'Sample data used - NASA API key not configured. Get your free key at https://earthdata.nasa.gov/',
         data: generateSampleVIIRSData(bbox)
       });
     }
@@ -178,6 +179,7 @@ app.get('/api/viirs/:year/:month?', async (req, res) => {
         min_brightness: 0.5,
         max_brightness: 85.2,
         std_dev: 12.4,
+        note: 'Sample data used - NASA API key not configured. Get your free key at https://earthdata.nasa.gov/',
         data: generateSampleVIIRSData(bbox)
       });
     }
