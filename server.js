@@ -65,43 +65,48 @@ app.get('/api/viirs/:year/:month?', async (req, res) => {
         }
         
         // Normalize longitude values to valid range (-180 to 180)
-        const normalizedMinLon = ((minLon + 180) % 360 + 360) % 360 - 180;
-        const normalizedMaxLon = ((maxLon + 180) % 360 + 360) % 360 - 180;
+        // Handle extreme values like -294.96° and 295.31° properly
+        let normalizedMinLon = ((minLon + 180) % 360);
+        if (normalizedMinLon < 0) normalizedMinLon += 360;
+        normalizedMinLon = normalizedMinLon - 180;
+        
+        let normalizedMaxLon = ((maxLon + 180) % 360);
+        if (normalizedMaxLon < 0) normalizedMaxLon += 360;
+        normalizedMaxLon = normalizedMaxLon - 180;
         
         // Ensure latitude values are within valid range (-90 to 90)
         const normalizedMinLat = Math.max(-90, Math.min(90, minLat));
         const normalizedMaxLat = Math.max(-90, Math.min(90, maxLat));
         
-        // Adjust longitude range if crossing antimeridian
-        let finalMinLon = normalizedMinLon;
-        let finalMaxLon = normalizedMaxLon;
-        
-        // If longitude range crosses the antimeridian (like in the example), 
-        // we need to handle this case properly
-        if (normalizedMinLon > normalizedMaxLon) {
-          // This happens when the bounding box crosses the antimeridian
-          // In such cases, we might need to make two separate API calls or adjust the range
-          // For now, let's wrap around to make it valid
-          finalMinLon = normalizedMinLon;
-          finalMaxLon = normalizedMaxLon;
-          
-          // If the range is too large (>180), it likely crosses the antimeridian incorrectly
-          if (Math.abs(normalizedMaxLon - normalizedMinLon) > 180) {
-            // Adjust by shifting the range to be continuous
-            if (normalizedMinLon < 0 && normalizedMaxLon > 0) {
-              finalMaxLon = normalizedMaxLon - 360; // Shift maxLon to negative side
-            } else if (normalizedMinLon > 0 && normalizedMaxLon < 0) {
-              finalMaxLon = normalizedMaxLon + 360; // Shift maxLon to positive side
+        // Check if the original range spans more than 180 degrees, which indicates
+        // a wraparound that covers most of the globe
+        const originalRange = Math.abs(maxLon - minLon);
+        if (originalRange > 180) {
+            // If the original range was > 180 degrees, it likely represents a wraparound
+            // covering most of the globe. Use the global endpoint instead of area endpoint.
+            console.log(`🌍 Large range detected (${originalRange.toFixed(2)}°), using global data`);
+            url = `https://firms.modaps.eosdis.nasa.gov/api/country/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/WLD/7`;
+        } else {
+            // Adjust longitude range if crossing antimeridian
+            let finalMinLon = normalizedMinLon;
+            let finalMaxLon = normalizedMaxLon;
+            
+            // If longitude range crosses the antimeridian (west > east), 
+            // we need to handle it differently since NASA API doesn't support this
+            if (normalizedMinLon > normalizedMaxLon) {
+                // These are just badly ordered coordinates after normalization
+                // Simply swap them to ensure west < east
+                finalMinLon = normalizedMaxLon;
+                finalMaxLon = normalizedMinLon;
             }
-          }
+            
+            // Ensure final values are within bounds
+            finalMinLon = Math.max(-180, Math.min(180, finalMinLon));
+            finalMaxLon = Math.max(-180, Math.min(180, finalMaxLon));
+            
+            // NASA FIRMS API format: south/west/north/east
+            url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/${normalizedMinLat}/${finalMinLon}/${normalizedMaxLat}/${finalMaxLon}/7`;
         }
-        
-        // Ensure final values are within bounds
-        finalMinLon = Math.max(-180, Math.min(180, finalMinLon));
-        finalMaxLon = Math.max(-180, Math.min(180, finalMaxLon));
-        
-        // NASA FIRMS API format
-        url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/${normalizedMinLat}/${finalMinLon}/${normalizedMaxLat}/${finalMaxLon}/7`;
       } catch (coordError) {
         console.error('Bounding box error:', coordError);
         return res.json({
