@@ -1,56 +1,47 @@
-```
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.class
+*.out
+
 # Dependencies
 node_modules/
-
-# Environment variables
+venv/
+.venv/
 .env
+.env.local
+.env.*
 
-# Build outputs (if any TypeScript compilation occurs)
-dist/
-build/
-coverage/
-
-# Logs
+# Logs and temp files
 *.log
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Editor files
-.vscode/
-.idea/
-
-# Runtime data
-*.pid
-*.seed
-
-# Debug files
-debug.log
-
-# Compressed archives
-*.zip
-*.tar
-*.gz
-*.7z
-*.rar
-
-# Temporary files
 *.tmp
-*.temp
-
-# Cache directories
-.nyc_output/
-coverage/
-.npm/
-.yarn/
-
-# System files
 *.swp
 *.swo
 
-# TypeScript/JavaScript specific
-*.tsbuildinfo
-.next/
-.nuxt/
-```
+# Editors
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Build directories
+dist/
+build/
+target/
+.gradle/
+
+# Python specific
+.mypy_cache/
+.pytest_cache/
