@@ -10,10 +10,18 @@ class WebGIS {
         this.researchLayer = L.layerGroup();
         this.layers = {};
         this.drawControl = null;
+        this.isLoading = false; // Track loading state
+        
+        // Performance optimization: Debounce functions
+        this.debounceTimers = {};
         
         // Initialize marker cluster if available
         if (typeof L.markerClusterGroup === 'function') {
-            this.stationsLayer = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
+            this.stationsLayer = L.markerClusterGroup({ 
+                disableClusteringAtZoom: 16,
+                spiderfyOnMaxZoom: false,
+                showCoverageOnHover: false
+            });
         }
 
         this.initMap();
@@ -27,6 +35,31 @@ class WebGIS {
             this.actionBot = new window.ActionBotController(this);
             this.actionBot.initialize();
             console.log("✅ ActionBot Connected");
+        }
+        
+        // Performance optimization: Add map moveend debouncing
+        this.map.on('moveend', this.debounce(() => {
+            this.handleMapMove();
+        }, 500));
+    }
+    
+    /**
+     * Debounce function to optimize performance
+     */
+    debounce(func, wait) {
+        return (...args) => {
+            clearTimeout(this.debounceTimers[func.name]);
+            this.debounceTimers[func.name] = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+    
+    /**
+     * Handle map move events with debouncing
+     */
+    handleMapMove() {
+        if (this.currentMode === 'scientific' && this.scientificMode) {
+            // Update scientific overlays when map moves
+            this.scientificMode.updateOverlaysForBounds(this.map.getBounds());
         }
     }
 

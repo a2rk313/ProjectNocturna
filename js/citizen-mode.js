@@ -150,47 +150,52 @@ class CitizenMode {
     }
 
     showRealMoonPhase() {
-        // Calculate real moon phase
-        const now = new Date();
-        const lunarCycle = 29.53; // days in lunar cycle
-        const knownNewMoon = new Date('2024-01-11'); // Known new moon date
-        const daysSinceNewMoon = (now - knownNewMoon) / (1000 * 60 * 60 * 24);
-        const moonAge = daysSinceNewMoon % lunarCycle;
-        const illumination = 50 * (1 - Math.cos(2 * Math.PI * moonAge / lunarCycle));
-        
-        let phaseName;
-        if (moonAge < 1) phaseName = "New Moon";
-        else if (moonAge < 7.4) phaseName = "Waxing Crescent";
-        else if (moonAge < 7.9) phaseName = "First Quarter";
-        else if (moonAge < 14.8) phaseName = "Waxing Gibbous";
-        else if (moonAge < 15.3) phaseName = "Full Moon";
-        else if (moonAge < 22.2) phaseName = "Waning Gibbous";
-        else if (moonAge < 22.7) phaseName = "Last Quarter";
-        else phaseName = "Waning Crescent";
-        
-        // Calculate next full moon
-        const daysToFullMoon = (14.8 - moonAge + lunarCycle) % lunarCycle;
-        const nextFullMoon = new Date(now.getTime() + daysToFullMoon * 24 * 60 * 60 * 1000);
-        
-        const content = `
-            <div class="text-center">
-                <div class="display-1 mb-3">${this.getMoonEmoji(moonAge)}</div>
-                <h4>${phaseName}</h4>
-                <p>Illumination: <strong>${illumination.toFixed(1)}%</strong></p>
-                <div class="alert alert-${illumination < 20 ? 'success' : illumination < 80 ? 'warning' : 'info'}">
-                    <small>${illumination < 20 ? 'Excellent for stargazing! Low moonlight interference.' : illumination < 80 ? 'Moderate moonlight. Good for bright objects.' : 'Bright moon. Best for moon observation itself.'}</small>
+        try {
+            // Calculate real moon phase
+            const now = new Date();
+            const lunarCycle = 29.53; // days in lunar cycle
+            const knownNewMoon = new Date('2024-01-11'); // Known new moon date
+            const daysSinceNewMoon = (now - knownNewMoon) / (1000 * 60 * 60 * 24);
+            const moonAge = daysSinceNewMoon % lunarCycle;
+            const illumination = 50 * (1 - Math.cos(2 * Math.PI * moonAge / lunarCycle));
+            
+            let phaseName;
+            if (moonAge < 1) phaseName = "New Moon";
+            else if (moonAge < 7.4) phaseName = "Waxing Crescent";
+            else if (moonAge < 7.9) phaseName = "First Quarter";
+            else if (moonAge < 14.8) phaseName = "Waxing Gibbous";
+            else if (moonAge < 15.3) phaseName = "Full Moon";
+            else if (moonAge < 22.2) phaseName = "Waning Gibbous";
+            else if (moonAge < 22.7) phaseName = "Last Quarter";
+            else phaseName = "Waning Crescent";
+            
+            // Calculate next full moon
+            const daysToFullMoon = (14.8 - moonAge + lunarCycle) % lunarCycle;
+            const nextFullMoon = new Date(now.getTime() + daysToFullMoon * 24 * 60 * 60 * 1000);
+            
+            const content = `
+                <div class="text-center">
+                    <div class="display-1 mb-3">${this.getMoonEmoji(moonAge)}</div>
+                    <h4>${phaseName}</h4>
+                    <p>Illumination: <strong>${illumination.toFixed(1)}%</strong></p>
+                    <div class="alert alert-${illumination < 20 ? 'success' : illumination < 80 ? 'warning' : 'info'}">
+                        <small>${illumination < 20 ? 'Excellent for stargazing! Low moonlight interference.' : illumination < 80 ? 'Moderate moonlight. Good for bright objects.' : 'Bright moon. Best for moon observation itself.'}</small>
+                    </div>
+                    <div class="mt-3">
+                        <p class="small text-muted">Next Full Moon: ${nextFullMoon.toLocaleDateString()}</p>
+                        <p class="small text-muted">Calculated using astronomical algorithms</p>
+                    </div>
                 </div>
-                <div class="mt-3">
-                    <p class="small text-muted">Next Full Moon: ${nextFullMoon.toLocaleDateString()}</p>
-                    <p class="small text-muted">Calculated using astronomical algorithms</p>
-                </div>
-            </div>
-        `;
-        
-        window.SystemBus.emit('ui:show_modal', { 
-            title: "Moon Phase", 
-            content: content 
-        });
+            `;
+            
+            window.SystemBus.emit('ui:show_modal', { 
+                title: "Moon Phase", 
+                content: content 
+            });
+        } catch (error) {
+            console.error('Moon phase calculation error:', error);
+            window.SystemBus.emit('system:message', "❌ Failed to calculate moon phase.");
+        }
     }
 
     getMoonEmoji(moonAge) {
@@ -213,6 +218,9 @@ class CitizenMode {
             
             // Fetch real dark sky parks data
             const response = await fetch(`/api/dark-sky-parks?lat=${center.lat}&lng=${center.lng}&radius=500`);
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            }
             const data = await response.json();
             
             const parks = data.parks || [];
@@ -257,15 +265,18 @@ class CitizenMode {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 async (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    
-                    // Set GPS location on map
-                    this.webGIS.setGPSLocation(lat, lng);
-                    
                     try {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        
+                        // Set GPS location on map
+                        this.webGIS.setGPSLocation(lat, lng);
+                        
                         // Get real data for this location
                         const measurementResponse = await fetch(`/api/measurement?lat=${lat}&lng=${lng}`);
+                        if (!measurementResponse.ok) {
+                            throw new Error(`Measurement API error: ${measurementResponse.status} ${measurementResponse.statusText}`);
+                        }
                         const measurementData = await measurementResponse.json();
                         
                         let message = "✅ Location found! ";
@@ -315,14 +326,31 @@ class CitizenMode {
                                 content: content
                             });
                         }
-                        
                     } catch (error) {
-                        console.error('Location data error:', error);
+                        console.error('Location data processing error:', error);
                         window.SystemBus.emit('system:message', "✅ Location found, but couldn't fetch local conditions.");
                     }
                 },
-                () => {
-                    window.SystemBus.emit('system:message', "❌ Could not get your location. Please check permissions.");
+                (error) => {
+                    console.error('Geolocation error:', error);
+                    let errorMessage = "❌ Could not get your location. ";
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += "Permission denied by user.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += "Location information is unavailable.";
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += "The request to get user location timed out.";
+                            break;
+                        default:
+                            errorMessage += "An unknown error occurred.";
+                            break;
+                    }
+                    
+                    window.SystemBus.emit('system:message', errorMessage);
                 }
             );
         } else {
