@@ -115,6 +115,95 @@ class ScientificMode {
             this.removeHotspotHeatmap();
         }
     }
+    
+    /**
+     * Update overlays based on current map bounds
+     */
+    updateOverlaysForBounds(bounds) {
+        // Update all active layers when map bounds change
+        if (this.activeLayers.ecoImpact) {
+            this.updateLayerVisibility(this.activeLayers.ecoImpact, bounds);
+        }
+        
+        if (this.activeLayers.spectral) {
+            this.updateLayerVisibility(this.activeLayers.spectral, bounds);
+        }
+        
+        if (this.activeLayers.heatmap) {
+            // For heatmap, we might want to reload data for new bounds
+            this.updateHeatmapForBounds(bounds);
+        }
+    }
+    
+    /**
+     * Update visibility of layer based on bounds
+     */
+    updateLayerVisibility(layer, bounds) {
+        // Remove markers outside bounds and keep only those inside
+        layer.eachLayer(marker => {
+            if (marker.getLatLng) {
+                const latLng = marker.getLatLng();
+                if (!bounds.contains(latLng)) {
+                    // Optionally hide markers outside bounds for performance
+                    // marker.setStyle({ opacity: 0, fillOpacity: 0 });
+                } else {
+                    // marker.setStyle({ opacity: 0.8 * this.layerConfig.opacity, fillOpacity: 0.6 * this.layerConfig.opacity });
+                }
+            }
+        });
+    }
+    
+    /**
+     * Update heatmap for new bounds
+     */
+    async updateHeatmapForBounds(bounds) {
+        // Only update if bounds have changed significantly
+        if (this.lastHeatmapBounds && 
+            this.calculateBoundsDistance(this.lastHeatmapBounds, bounds) < 0.1) { // 0.1 degree threshold
+            return; // Bounds haven't changed enough to warrant update
+        }
+        
+        this.lastHeatmapBounds = bounds;
+        
+        // Reload heatmap data for new bounds
+        try {
+            const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+            const viirsData = await this.fetchRealVIIRSData();
+            
+            if (!viirsData || viirsData.length === 0) {
+                return;
+            }
+            
+            // Remove existing heatmap and create new one
+            if (this.activeLayers.heatmap) {
+                this.webGIS.map.removeLayer(this.activeLayers.heatmap);
+            }
+            
+            const heatData = viirsData.map(point => [point.lat, point.lng, point.brightness || 1]);
+            
+            this.activeLayers.heatmap = L.heatLayer(heatData, {
+                radius: 20,
+                blur: 15,
+                maxZoom: 12,
+                gradient: this.layerConfig.heatmapColors.reduce((obj, color, i) => {
+                    obj[i / (this.layerConfig.heatmapColors.length - 1)] = color;
+                    return obj;
+                }, {})
+            }).addTo(this.webGIS.map);
+            
+        } catch (error) {
+            console.error('Heatmap update error:', error);
+        }
+    }
+    
+    /**
+     * Calculate distance between two bounds objects
+     */
+    calculateBoundsDistance(bounds1, bounds2) {
+        const center1 = bounds1.getCenter();
+        const center2 = bounds2.getCenter();
+        return Math.sqrt(Math.pow(center1.lat - center2.lat, 2) + Math.pow(center1.lng - center2.lng, 2));
+    }
 
     /**
      * Set global layer opacity
