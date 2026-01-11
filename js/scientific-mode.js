@@ -669,8 +669,11 @@ class ScientificMode {
                 return 0;
             }
             
+            // Using spherical polygon area calculation similar to server-side
             let area = 0;
+            const R = 6371; // Earth's radius in km
             
+            // Spherical polygon area formula
             for (let i = 0; i < coords.length - 1; i++) {
                 // Ensure coords[i] is an array with 2 elements
                 if (!Array.isArray(coords[i]) || coords[i].length < 2 ||
@@ -679,20 +682,38 @@ class ScientificMode {
                     continue;
                 }
                 
-                const [x1, y1] = coords[i];
-                const [x2, y2] = coords[i + 1];
+                const [lng1, lat1] = coords[i];
+                const [lng2, lat2] = coords[i + 1];
                 
                 // Validate numeric values
-                if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
+                if (isNaN(lng1) || isNaN(lat1) || isNaN(lng2) || isNaN(lat2)) {
                     console.warn('Non-numeric coordinates at index', i);
                     continue;
                 }
                 
-                area += x1 * y2 - x2 * y1;
+                // Convert to radians
+                const lat1Rad = lat1 * Math.PI / 180;
+                const lat2Rad = lat2 * Math.PI / 180;
+                const lngDiffRad = (lng2 - lng1) * Math.PI / 180;
+                
+                // Calculate the area contribution of this segment
+                const segmentArea = R * R * lngDiffRad * (Math.sin(lat2Rad) + Math.sin(lat1Rad)) / 2;
+                area += segmentArea;
             }
             
+            // Handle the closing segment from last point to first point
+            const [lng1, lat1] = coords[coords.length - 1];
+            const [lng2, lat2] = coords[0];
+            
+            const lat1Rad = lat1 * Math.PI / 180;
+            const lat2Rad = lat2 * Math.PI / 180;
+            const lngDiffRad = ((lng2 - lng1 + 540) % 360 - 180) * Math.PI / 180; // Handle date line crossing
+            
+            const closingSegmentArea = R * R * lngDiffRad * (Math.sin(lat2Rad) + Math.sin(lat1Rad)) / 2;
+            area += closingSegmentArea;
+            
             // Ensure return value is always a number
-            const calculatedArea = Math.abs(area / 2) * 111.32 * 111.32; // Convert to km²
+            const calculatedArea = Math.abs(area);
             
             // Return 0 if calculation resulted in NaN or Infinity
             if (!isFinite(calculatedArea)) {
@@ -704,7 +725,34 @@ class ScientificMode {
             
         } catch (error) {
             console.error('Error calculating area:', error);
-            return 0;
+            
+            // Fallback to simple bounding box calculation
+            try {
+                const coords = geometry.coordinates[0];
+                const lngs = coords.map(c => Array.isArray(c) && c[0]);
+                const lats = coords.map(c => Array.isArray(c) && c[1]);
+                
+                // Filter out invalid values
+                const validLngs = lngs.filter(lng => typeof lng === 'number' && !isNaN(lng));
+                const validLats = lats.filter(lat => typeof lat === 'number' && !isNaN(lat));
+                
+                if (validLngs.length < 2 || validLats.length < 2) {
+                    return 0;
+                }
+                
+                const width = Math.max(...validLngs) - Math.min(...validLngs);
+                const height = Math.max(...validLats) - Math.min(...validLats);
+                
+                // Convert degrees to km (approximate)
+                const latMid = (Math.min(...validLats) + Math.max(...validLats)) / 2;
+                const kmPerDegreeLat = 111.32;
+                const kmPerDegreeLng = 111.32 * Math.cos(latMid * Math.PI / 180);
+                
+                return Math.abs(width * kmPerDegreeLng * height * kmPerDegreeLat);
+            } catch (fallbackError) {
+                console.error('Fallback area calculation also failed:', fallbackError);
+                return 0;
+            }
         }
     }
 

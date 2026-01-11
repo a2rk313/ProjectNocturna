@@ -114,9 +114,9 @@ class WebGIS {
             
             // If in scientific mode, trigger analysis
             if (this.currentMode === 'scientific' && this.scientificMode) {
-                const geometry = this.getSelection();
-                if (geometry) {
-                    this.scientificMode.analyzeSelectedArea(geometry);
+                const selection = this.getSelection();
+                if (selection && selection.geometry) {
+                    this.scientificMode.analyzeSelectedArea(selection.geometry);
                 }
             }
         });
@@ -725,9 +725,9 @@ class WebGIS {
                 this.addChatMessage(response.message, 'assistant');
                 // The user should already have selected an area
                 if (this.currentMode === 'scientific' && this.scientificMode) {
-                    const geometry = this.getSelection();
-                    if (geometry) {
-                        this.scientificMode.analyzeSelectedArea(geometry);
+                    const selection = this.getSelection();
+                    if (selection && selection.geometry) {
+                        this.scientificMode.analyzeSelectedArea(selection.geometry);
                     }
                 }
                 break;
