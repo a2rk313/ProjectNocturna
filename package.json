@@ -8,7 +8,8 @@
     "start": "NODE_ENV=production node server.js",
     "vercel-dev": "vercel dev",
     "vercel-deploy": "vercel --prod",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "echo \"No tests specified\" && exit 0",
+    "install-hdf5": "echo 'To enable full HDF5 processing, run: npm install hdf5' && echo 'Note: This requires system dependencies like HDF5 library'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
@@ -22,7 +23,23 @@
   "devDependencies": {
     "@vercel/node": "^2.15.10"
   },
+  "optionalDependencies": {
+    "hdf5": "^1.2.1"
+  },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "keywords": [
+    "light-pollution",
+    "environmental-monitoring",
+    "geospatial",
+    "nasa",
+    "viirs",
+    "earth-observation",
+    "remote-sensing",
+    "dark-sky",
+    "astronomy"
+  ],
+  "author": "Project Nocturna Team",
+  "license": "MIT"
 }
