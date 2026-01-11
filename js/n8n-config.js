@@ -1,8 +1,9 @@
 // js/n8n-config.js - Browser-safe configuration
 const N8N_CONFIG = {
     // Use relative paths that will be handled by our server
-    webhookUrl: '/api/n8n/chatbot',
-    actionBotUrl: '/api/n8n/actionbot',
+    // Note: We're now using our own chatbot implementation instead of n8n
+    webhookUrl: '/api/chatbot',  // Updated to use our new chatbot endpoint
+    actionBotUrl: '/api/chatbot',  // Updated to use our new chatbot endpoint
     timeout: 15000,
     fallbackEnabled: true
 };

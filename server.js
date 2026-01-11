@@ -1280,7 +1280,114 @@ app.post('/api/hdf5/process', async (req, res) => {
   }
 });
 
-// 14. Data Validation Against Known Locations Endpoint
+// 14. Chatbot Endpoint - Replace n8n workflow
+app.post('/api/chatbot', async (req, res) => {
+  try {
+    const { message, context = {}, sessionId } = req.body;
+    
+    console.log(`🤖 Chatbot received: "${message}"`);
+    
+    // Import the enhanced chatbot if available
+    let Chatbot;
+    try {
+      Chatbot = require('./js/enhanced-chatbot');
+    } catch (error) {
+      console.log('⚠️ Enhanced chatbot not available, using basic response');
+      // Fallback basic response system
+      const basicResponse = await generateBasicChatbotResponse(message, context);
+      return res.json({
+        action: 'chat',
+        message: basicResponse,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    if (!Chatbot) {
+      // Use basic response if module not available
+      const basicResponse = await generateBasicChatbotResponse(message, context);
+      return res.json({
+        action: 'chat',
+        message: basicResponse,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Create a new instance of the chatbot
+    const chatbot = new Chatbot();
+    
+    // Process the message
+    const response = await chatbot.processMessage(message, {
+      ...context,
+      mapCenter: context.center || context.mapCenter,
+      selectedArea: context.selectedArea || context.hasSelection,
+      hasSelection: context.selectedArea || context.hasSelection
+    });
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Chatbot error:', error);
+    res.status(500).json({
+      action: 'error',
+      message: 'I apologize, but I encountered an error processing your request.',
+      error: error.message
+    });
+  }
+});
+
+// Basic chatbot response fallback
+async function generateBasicChatbotResponse(userInput, context = {}) {
+  const input = userInput.toLowerCase();
+  
+  // Intent detection
+  if (input.includes('zoom') || input.includes('go to') || input.includes('show me') || input.includes('navigate')) {
+    // Extract location using simple regex
+    const locationMatch = userInput.match(/(?:to|at|in|near)\s+(.+)/i);
+    const location = locationMatch ? locationMatch[1].trim() : '';
+    
+    if (location) {
+      return `I can help you navigate to ${location}. Please use the zoom functionality or I can search for this location.`;
+    } else {
+      return "I'd be happy to help you navigate! Please specify a location. For example: 'Zoom to New York' or 'Show me Paris'.";
+    }
+  }
+  
+  if (input.includes('analyze') || input.includes('measure') || input.includes('extract') || input.includes('data')) {
+    if (context.hasSelection || context.selectedArea) {
+      return "Starting analysis of the selected area. This will process satellite data and provide light pollution measurements.";
+    } else {
+      return "To analyze light pollution, please first select an area on the map using the drawing tools. Then I can provide detailed analysis.";
+    }
+  }
+  
+  if (input.includes('dark sky') || input.includes('stargazing') || input.includes('astronomy') || input.includes('observatory')) {
+    return "I can help you find dark sky locations. Dark sky parks and preserves offer the best stargazing opportunities. Would you like me to search for locations near you?";
+  }
+  
+  if (input.includes('help') || input.includes('what can') || input.includes('how to')) {
+    return `I'm Lumina, your light pollution research assistant! Here's what I can help with:
+
+• **Navigation**: "Zoom to [location]" to navigate anywhere
+• **Analysis**: "Analyze this area" to measure light pollution 
+• **Dark Skies**: "Find dark sky parks" to locate stargazing spots
+• **Research**: "Scientific analysis" for advanced insights
+
+Try selecting an area on the map first, then ask me to analyze it!`;
+  }
+  
+  // General light pollution related responses
+  const lightPollutionKeywords = ['light', 'pollution', 'dark', 'sky', 'stars', 'night', 'energy', 'wildlife'];
+  const isRelated = lightPollutionKeywords.some(keyword => input.includes(keyword));
+  
+  if (isRelated) {
+    return "I specialize in light pollution analysis and dark sky preservation. I can help you understand satellite measurements, find dark sky locations, and analyze environmental impacts. What would you like to explore?";
+  }
+  
+  // Default response
+  return "I'm Lumina, your light pollution research assistant. I can help with navigation, analysis of light pollution data, finding dark sky locations, and scientific insights. Try asking me to zoom to a location or analyze an area!";
+}
+
+// 15. Data Validation Against Known Locations Endpoint
 app.get('/api/validation/coordinates/:lat/:lng', async (req, res) => {
   try {
     const { lat, lng } = req.params;
@@ -1377,24 +1484,65 @@ function calculateStdDev(array) {
 
 function calculateAreaFromGeometry(geometry) {
   if (!geometry || !geometry.coordinates) return 1.0;
-  
+
   try {
-    // Simple bounding box area calculation
-    const coords = geometry.coordinates[0];
-    const lngs = coords.map(c => c[0]);
-    const lats = coords.map(c => c[1]);
+    // Using a simplified approach for polygon area calculation on a sphere
+    const coords = geometry.coordinates[0]; // Assuming first ring for polygon
     
-    const width = Math.max(...lngs) - Math.min(...lngs);
-    const height = Math.max(...lats) - Math.min(...lats);
+    if (!coords || coords.length < 3) return 0.0;
     
-    // Convert degrees to km (approximate)
-    const latMid = (Math.min(...lats) + Math.max(...lats)) / 2;
-    const kmPerDegreeLat = 111.32;
-    const kmPerDegreeLng = 111.32 * Math.cos(toRad(latMid));
+    // Convert coordinates to radians and calculate area using the trapezoidal rule
+    // This is a simplified version of the spherical polygon area calculation
+    let area = 0;
+    const R = 6371; // Earth's radius in km
     
-    return Math.abs(width * kmPerDegreeLng * height * kmPerDegreeLat);
+    // Use the spherical polygon area formula: A = R² * |Σ(λ[i+1] - λ[i]) * (sin φ[i+1] + sin φ[i])| / 2
+    for (let i = 0; i < coords.length - 1; i++) {
+      const [lng1, lat1] = coords[i];
+      const [lng2, lat2] = coords[i + 1];
+      
+      // Convert to radians
+      const lat1Rad = lat1 * Math.PI / 180;
+      const lat2Rad = lat2 * Math.PI / 180;
+      const lngDiffRad = (lng2 - lng1) * Math.PI / 180;
+      
+      // Calculate the area contribution of this segment
+      const segmentArea = R * R * lngDiffRad * (Math.sin(lat2Rad) + Math.sin(lat1Rad)) / 2;
+      area += segmentArea;
+    }
+    
+    // Handle the closing segment from last point to first point
+    const [lng1, lat1] = coords[coords.length - 1];
+    const [lng2, lat2] = coords[0];
+    
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    const lngDiffRad = ((lng2 - lng1 + 540) % 360 - 180) * Math.PI / 180; // Handle date line crossing
+    
+    const closingSegmentArea = R * R * lngDiffRad * (Math.sin(lat2Rad) + Math.sin(lat1Rad)) / 2;
+    area += closingSegmentArea;
+    
+    return Math.abs(area);
   } catch (error) {
-    return 1.0;
+    console.error('Area calculation error:', error);
+    // Fallback to simple bounding box calculation
+    try {
+      const coords = geometry.coordinates[0];
+      const lngs = coords.map(c => c[0]);
+      const lats = coords.map(c => c[1]);
+      
+      const width = Math.max(...lngs) - Math.min(...lngs);
+      const height = Math.max(...lats) - Math.min(...lats);
+      
+      // Convert degrees to km (approximate)
+      const latMid = (Math.min(...lats) + Math.max(...lats)) / 2;
+      const kmPerDegreeLat = 111.32;
+      const kmPerDegreeLng = 111.32 * Math.cos(toRad(latMid));
+      
+      return Math.abs(width * kmPerDegreeLng * height * kmPerDegreeLat);
+    } catch (fallbackError) {
+      return 1.0;
+    }
   }
 }
 
