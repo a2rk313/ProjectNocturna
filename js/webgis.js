@@ -673,7 +673,103 @@ class WebGIS {
     }
 
     async generateAIResponse(message) {
-        return "I am ready. Use the tools to analyze light pollution data.";
+        // Check if we have the enhanced chatbot available
+        if (window.LightPollutionChatbot) {
+            try {
+                // Create a new instance of the chatbot
+                const chatbot = new window.LightPollutionChatbot();
+                
+                // Prepare context for the chatbot
+                const context = {
+                    mapCenter: this.map.getCenter(),
+                    hasSelection: this.drawnItems.getLayers().length > 0,
+                    selectedArea: this.getSelection()
+                };
+                
+                // Process the message with the enhanced chatbot
+                const response = await chatbot.processMessage(message, context);
+                
+                // If the response has an action that should be executed, handle it
+                if (response.action && response.action !== 'chat') {
+                    this.handleChatbotAction(response);
+                }
+                
+                // Return the message part of the response
+                return response.message || "I processed your request successfully.";
+            } catch (error) {
+                console.error('Enhanced chatbot error:', error);
+                // Fallback to basic response
+                return "I'm having trouble processing your request. Could you try rephrasing?";
+            }
+        } else {
+            // Fallback basic response
+            return "I am ready. Use the tools to analyze light pollution data.";
+        }
+    }
+    
+    // Handle actions from the chatbot
+    handleChatbotAction(response) {
+        switch (response.action) {
+            case 'zoom_to':
+                if (response.location && response.location.lat && response.location.lng) {
+                    this.map.flyTo([response.location.lat, response.location.lng], response.location.zoom || 10);
+                    L.marker([response.location.lat, response.location.lng])
+                        .addTo(this.map)
+                        .bindPopup(`📍 ${response.location.name || 'Target Location'}`)
+                        .openPopup();
+                    this.addChatMessage(`✅ Zoomed to ${response.location.name || 'location'}`, 'assistant');
+                }
+                break;
+                
+            case 'extract_data':
+                this.addChatMessage(response.message, 'assistant');
+                // The user should already have selected an area
+                if (this.currentMode === 'scientific' && this.scientificMode) {
+                    const geometry = this.getSelection();
+                    if (geometry) {
+                        this.scientificMode.analyzeSelectedArea(geometry);
+                    }
+                }
+                break;
+                
+            case 'dark_sky_found':
+                if (response.spots && response.spots.length > 0) {
+                    // Clear any existing dark sky markers
+                    this.uiMarkers.clearLayers();
+                    
+                    // Add markers for dark sky locations
+                    response.spots.forEach(spot => {
+                        const marker = L.circleMarker([spot.lat, spot.lng], {
+                            radius: 8,
+                            fillColor: '#00ff00',
+                            color: '#000',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.7
+                        }).bindPopup(`<strong>${spot.name}</strong><br>Designation: ${spot.designation}<br>SQM: ${spot.sqm}`);
+                        this.uiMarkers.addLayer(marker);
+                    });
+                    
+                    this.map.addLayer(this.uiMarkers);
+                    this.addChatMessage(`✅ Found ${response.spots.length} dark sky locations. Markers added to map.`, 'assistant');
+                }
+                break;
+                
+            case 'scientific_analysis':
+                if (this.currentMode !== 'scientific') {
+                    this.addChatMessage("Switching to scientific mode for detailed analysis...", 'assistant');
+                    this.setMode('scientific');
+                }
+                this.addChatMessage(response.message, 'assistant');
+                break;
+                
+            case 'error':
+                this.addChatMessage(`⚠️ ${response.message}`, 'assistant');
+                break;
+                
+            default:
+                this.addChatMessage(response.message || "Action processed.", 'assistant');
+        }
     }
 
     addChatMessage(text, type) {

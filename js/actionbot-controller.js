@@ -52,12 +52,30 @@
             // Override the chatbot response method in the main app
             this.webGIS.generateAIResponse = async (message) => {
                 try {
-                    // Check if ActionBot URL is configured
-                    if (!N8N_CONFIG.actionBotUrl) {
-                        console.warn('ActionBot URL not configured, falling back to standard chat.');
-                        return originalGenerateAIResponse.call(this.webGIS, message);
+                    // First try to use the enhanced chatbot directly
+                    if (window.LightPollutionChatbot) {
+                        const chatbot = new window.LightPollutionChatbot();
+                        
+                        // Prepare context for the chatbot
+                        const context = {
+                            mapCenter: this.webGIS.map.getCenter(),
+                            hasSelection: this.webGIS.drawnItems.getLayers().length > 0,
+                            selectedArea: this.webGIS.getSelection()
+                        };
+                        
+                        // Process the message with the enhanced chatbot
+                        const response = await chatbot.processMessage(message, context);
+                        
+                        // If the response has an action that should be executed, handle it
+                        if (response.action && response.action !== 'chat') {
+                            this.webGIS.handleChatbotAction(response);
+                        }
+                        
+                        // Return the message part of the response
+                        return response.message || "I processed your request successfully.";
                     }
-
+                    
+                    // If enhanced chatbot is not available, fall back to the original ActionBot flow
                     const response = await this.processUserMessage(message);
                     
                     // If the bot returns an action, execute it
@@ -108,18 +126,28 @@
         }
 
         async callActionBotAPI(requestData) {
-            if (!N8N_CONFIG.actionBotUrl) {
-                throw new Error('ActionBot Webhook URL is missing in n8n-config.js');
-            }
+            // Use the new chatbot endpoint instead of n8n
+            const chatEndpoint = '/api/chatbot';
 
             try {
-                const response = await fetch(N8N_CONFIG.actionBotUrl, {
+                const response = await fetch(chatEndpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Session-ID': this.sessionId
                     },
-                    body: JSON.stringify(requestData),
+                    body: JSON.stringify({
+                        message: requestData.chatInput,  // Map to new API format
+                        context: {
+                            mode: requestData.mode,
+                            center: requestData.locationContext?.center,
+                            zoom: requestData.locationContext?.zoom,
+                            hasSelection: this.webGIS.drawnItems.getLayers().length > 0,
+                            selectedArea: this.webGIS.getSelection()
+                        },
+                        sessionId: requestData.sessionId,
+                        timestamp: requestData.timestamp
+                    }),
                     signal: AbortSignal.timeout(N8N_CONFIG.timeout || 15000)
                 });
 
@@ -131,10 +159,10 @@
                 const responseText = await response.text();
                 
                 if (!responseText || responseText.trim() === '') {
-                    console.warn('⚠️ ActionBot returned empty response');
+                    console.warn('⚠️ Chatbot returned empty response');
                     return {
                         action: 'chat',
-                        message: 'ActionBot is not responding. Please check if N8N server is running.'
+                        message: 'Chatbot is not responding. Please check if the server is running.'
                     };
                 }
 
@@ -149,11 +177,11 @@
                 }
 
             } catch (error) {
-                console.error('ActionBot API call failed:', error);
+                console.error('Chatbot API call failed:', error);
                 // Return a fallback response instead of throwing
                 return {
                     action: 'chat',
-                    message: 'Unable to connect to ActionBot. Please try again later.'
+                    message: 'Unable to connect to chatbot. Please try again later.'
                 };
             }
         }
