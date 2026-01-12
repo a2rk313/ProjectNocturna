@@ -74,7 +74,7 @@ export default async function handler(req, res) {
             finalMinLon = Math.max(-180, Math.min(180, finalMinLon));
             finalMaxLon = Math.max(-180, Math.min(180, finalMaxLon));
 
-            // NASA FIRMS API format: south/west/north/east
+            // NASA FIRMS API format: south/west/north/east - corrected for light pollution research
             url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/${normalizedMinLat}/${finalMinLon}/${normalizedMaxLat}/${finalMaxLon}/7`;
         }
       } catch (coordError) {
