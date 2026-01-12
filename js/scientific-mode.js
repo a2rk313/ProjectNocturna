@@ -168,6 +168,12 @@ class ScientificMode {
      * Update heatmap for new bounds
      */
     async updateHeatmapForBounds(bounds) {
+        // Rate limiting: prevent too frequent updates
+        const now = Date.now();
+        if (this.lastHeatmapUpdate && (now - this.lastHeatmapUpdate) < 2000) { // 2 second minimum interval
+            return; // Too soon to update again
+        }
+        
         // Only update if bounds have changed significantly
         if (this.lastHeatmapBounds && 
             this.calculateBoundsDistance(this.lastHeatmapBounds, bounds) < 0.1) { // 0.1 degree threshold
@@ -175,6 +181,7 @@ class ScientificMode {
         }
         
         this.lastHeatmapBounds = bounds;
+        this.lastHeatmapUpdate = now;
         
         // Reload heatmap data for new bounds
         try {
@@ -182,6 +189,7 @@ class ScientificMode {
             const viirsData = await this.fetchRealVIIRSData();
             
             if (!viirsData || viirsData.length === 0) {
+                console.warn('No VIIRS data available for heatmap update');
                 return;
             }
             
@@ -204,6 +212,7 @@ class ScientificMode {
             
         } catch (error) {
             console.error('Heatmap update error:', error);
+            // Don't spam error messages - just log once per period
         }
     }
     
