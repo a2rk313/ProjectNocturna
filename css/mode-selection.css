@@ -3,23 +3,58 @@
 
 :root {
     /* Use the same cosmic variables from main style */
-    --citizen-primary: #10b981;
-    --citizen-secondary: #34d399;
-    --citizen-glow: rgba(16, 185, 129, 0.3);
-    --scientific-primary: #f59e0b;
-    --scientific-secondary: #fbbf24;
-    --scientific-glow: rgba(245, 158, 11, 0.3);
-    --dark-bg: #0a0f1c;
-    --darker-bg: #060912;
-    --dark-medium-bg: #0f172a;
-    --card-bg: rgba(30, 35, 55, 0.45);
-    --card-bg-light: rgba(50, 55, 75, 0.6);
-    --card-border: rgba(255, 255, 255, 0.15);
-    --card-border-light: rgba(255, 255, 255, 0.25);
+    --cosmic-dark: #0a0f1c;
+    --cosmic-darker: #060912;
+    --cosmic-dark-medium: #0f172a;
+    --cosmic-primary: #3b82f6;
+    --cosmic-primary-light: #60a5fa;
+    --cosmic-primary-dark: #1d4ed8;
+    --cosmic-secondary: #8b5cf6;
+    --cosmic-secondary-light: #a78bfa;
+    --cosmic-accent: #f59e0b;
+    --cosmic-success: #10b981;
+    --cosmic-success-light: #34d399;
+    --cosmic-danger: #ef4444;
+    --cosmic-warning: #f59e0b;
+    --cosmic-info: #06b6d4;
+    --cosmic-info-light: #0ea5e9;
+    
+    /* Research Grade Colors */
+    --cosmic-purple: #7e22ce;
+    --cosmic-purple-light: #a855f7;
+    --cosmic-teal: #0d9488;
+    --cosmic-teal-light: #14b8a6;
+    --cosmic-amber: #d97706;
+    --cosmic-amber-light: #f59e0b;
+    --cosmic-indigo: #4f46e5;
+    --cosmic-indigo-light: #6366f1;
+    --cosmic-rose: #e11d48;
+    --cosmic-rose-light: #f43f5e;
+    
+    /* Light Pollution Specific Colors */
+    --lp-natural: #065f46; /* Dark green for natural areas */
+    --lp-low: #10b981;     /* Green for low pollution */
+    --lp-moderate: #f59e0b; /* Amber for moderate */
+    --lp-high: #ef4444;    /* Red for high pollution */
+    --lp-extreme: #8b5cf6; /* Purple for extreme */
+    
+    /* Glass Morphism Variables */
+    --glass-bg: rgba(30, 35, 55, 0.45);
+    --glass-bg-light: rgba(50, 55, 75, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-border-light: rgba(255, 255, 255, 0.25);
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.5);
     --glass-blur: blur(12px);
     --glass-blur-heavy: blur(20px);
+    
+    /* Mode-specific colors */
+    --citizen-primary: var(--cosmic-success);
+    --citizen-secondary: var(--cosmic-success-light);
+    --citizen-glow: rgba(16, 185, 129, 0.3);
+    --scientific-primary: var(--cosmic-warning);
+    --scientific-secondary: var(--cosmic-amber-light);
+    --scientific-glow: rgba(245, 158, 11, 0.3);
     
     /* Typography */
     --font-main: 'Inter', system-ui, -apple-system, sans-serif;
@@ -39,7 +74,7 @@
 
 body {
     font-family: var(--font-main);
-    background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 40%, var(--dark-medium-bg) 100%);
+    background: linear-gradient(135deg, var(--cosmic-darker) 0%, var(--cosmic-dark) 40%, var(--cosmic-dark-medium) 100%);
     min-height: 100vh;
     overflow-x: hidden;
     color: white;
@@ -148,7 +183,7 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--glass-border-light);
     animation: float 6s ease-in-out infinite;
 }
 
@@ -162,9 +197,13 @@ body {
     min-height: 100vh;
     display: flex;
     align-items: center;
-    padding: 40px 0;
+    justify-content: center;
+    padding: 40px 20px;
     position: relative;
     z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 @keyframes float {
@@ -173,7 +212,7 @@ body {
 }
 
 .gradient-text {
-    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    background: linear-gradient(135deg, var(--cosmic-primary-light), var(--cosmic-secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -204,13 +243,13 @@ body {
 
 /* Mode Cards */
 .mode-card {
-    background: var(--card-bg);
+    background: var(--glass-bg);
     border-radius: 24px;
     cursor: pointer;
     transition: all var(--transition-slow);
     height: 100%;
     backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--card-border);
+    border: 1px solid var(--glass-border);
     position: relative;
     overflow: hidden;
     box-shadow: var(--glass-shadow);
@@ -252,7 +291,7 @@ body {
 
 .mode-card:hover {
     transform: translateY(-15px) scale(1.02);
-    border-color: var(--card-border-light);
+    border-color: var(--glass-border-light);
     box-shadow: var(--glass-shadow-hover);
 }
 
@@ -261,8 +300,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
-    padding: 30px 25px 20px;
+    gap: 18px;
+    padding: 35px 25px 25px;
 }
 
 .mode-icon-container {
@@ -274,7 +313,8 @@ body {
     justify-content: center;
     font-size: 2.2rem;
     transition: all var(--transition-normal);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    border: 2px solid var(--glass-border);
+    backdrop-filter: blur(6px);
 }
 
 .citizen-icon {
@@ -335,6 +375,7 @@ body {
     text-align: left;
     margin: 25px 0;
     padding: 0 25px;
+    flex-grow: 1;
 }
 
 .feature-item {
@@ -342,7 +383,7 @@ body {
     align-items: flex-start;
     gap: 15px;
     padding: 15px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--glass-border);
     transition: all var(--transition-fast);
 }
 
@@ -352,7 +393,11 @@ body {
 
 .feature-item:hover {
     transform: translateX(8px);
-    border-bottom-color: rgba(255, 255, 255, 0.15);
+    border-bottom-color: var(--glass-border-light);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .feature-icon {
@@ -382,8 +427,9 @@ body {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 18px;
     padding: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
     margin: 0 25px 20px;
+    backdrop-filter: blur(5px);
 }
 
 .section-title {
@@ -408,14 +454,16 @@ body {
     padding: 8px 16px;
     border-radius: 14px;
     font-size: 0.85rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
     transition: all var(--transition-fast);
+    backdrop-filter: blur(4px);
 }
 
 .user-type:hover {
     background: rgba(255, 255, 255, 0.15);
     transform: translateY(-3px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-color: var(--glass-border-light);
 }
 
 /* Buttons */
@@ -487,14 +535,16 @@ body {
     padding: 12px 24px;
     border-radius: 14px;
     font-size: 0.95rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
     transition: all var(--transition-fast);
+    backdrop-filter: blur(4px);
 }
 
 .source-logo:hover {
     background: rgba(255, 255, 255, 0.15);
     transform: translateY(-3px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    border-color: var(--glass-border-light);
 }
 
 .quick-info {
@@ -503,6 +553,13 @@ body {
     color: rgba(255, 255, 255, 0.7);
     font-size: 0.9rem;
     line-height: 1.6;
+    padding: 20px;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--glass-blur);
+    max-width: 600px;
+    margin: 40px auto 20px;
 }
 
 /* Floating Particles */
