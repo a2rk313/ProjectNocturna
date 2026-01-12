@@ -373,6 +373,7 @@ class ScientificMode {
      * Enhanced Ecological Impact Overlay with real data
      */
     async showEcologicalImpactLayer() {
+        // If the layer is already active, toggle it off
         if (this.activeLayers.ecoImpact) {
             this.hideEcologicalImpactLayer();
             return;
@@ -382,7 +383,7 @@ class ScientificMode {
         
         try {
             // Create gradient layer for ecological impact
-            this.activeLayers.ecoImpact = L.layerGroup();
+            const ecoImpactLayer = L.layerGroup();
             
             // Get real measurement data
             const stations = await this.fetchRealStationsData();
@@ -409,9 +410,12 @@ class ScientificMode {
                         <small>Based on Gaston et al. (2013) ecological framework</small>
                     `);
                     
-                    this.activeLayers.ecoImpact.addLayer(marker);
+                    ecoImpactLayer.addLayer(marker);
                 }
             });
+            
+            // Only assign to this.activeLayers.ecoImpact after processing is complete
+            this.activeLayers.ecoImpact = ecoImpactLayer;
             
             // Add to map
             this.activeLayers.ecoImpact.addTo(this.webGIS.map);
@@ -455,7 +459,7 @@ class ScientificMode {
             }
             
             // Create layer group for world atlas
-            this.activeLayers.worldAtlas = L.layerGroup();
+            const worldAtlasLayer = L.layerGroup();
             
             // Process atlas data and create visualization
             // Handle the new grid_data format from the API
@@ -479,7 +483,7 @@ class ScientificMode {
                             <small>Based on Falchi et al. (2016) World Atlas</small>
                         `);
                         
-                        this.activeLayers.worldAtlas.addLayer(circle);
+                        worldAtlasLayer.addLayer(circle);
                     }
                 });
             } else if (atlasData.polygons && Array.isArray(atlasData.polygons)) {
@@ -500,7 +504,7 @@ class ScientificMode {
                             <small>Falchi et al. (2016) World Atlas of Artificial Night Sky Brightness</small>
                         `);
                         
-                        this.activeLayers.worldAtlas.addLayer(geoJsonLayer);
+                        worldAtlasLayer.addLayer(geoJsonLayer);
                     }
                 });
             } else if (atlasData.grid && Array.isArray(atlasData.grid)) {
@@ -521,7 +525,7 @@ class ScientificMode {
                             <small>Based on Falchi et al. (2016) World Atlas</small>
                         `);
                         
-                        this.activeLayers.worldAtlas.addLayer(circle);
+                        worldAtlasLayer.addLayer(circle);
                     }
                 });
             } else if (atlasData.isoLines && Array.isArray(atlasData.isoLines)) {
@@ -538,13 +542,13 @@ class ScientificMode {
                             <small>Contour line from Falchi et al. (2016)</small>
                         `);
                         
-                        this.activeLayers.worldAtlas.addLayer(polyline);
+                        worldAtlasLayer.addLayer(polyline);
                     }
                 });
             }
             
             // If no specific data was processed, create a sample visualization
-            if (this.activeLayers.worldAtlas.getLayers().length === 0) {
+            if (worldAtlasLayer.getLayers().length === 0) {
                 // Create sample data based on map bounds
                 const bounds = this.webGIS.map.getBounds();
                 const center = bounds.getCenter();
@@ -569,9 +573,12 @@ class ScientificMode {
                         <small>Falchi et al. (2016) World Atlas of Artificial Night Sky Brightness</small>
                     `);
                     
-                    this.activeLayers.worldAtlas.addLayer(circle);
+                    worldAtlasLayer.addLayer(circle);
                 }
             }
+            
+            // Only assign to this.activeLayers.worldAtlas after processing is complete
+            this.activeLayers.worldAtlas = worldAtlasLayer;
             
             // Add to map
             this.activeLayers.worldAtlas.addTo(this.webGIS.map);
@@ -609,7 +616,7 @@ class ScientificMode {
         
         try {
             // Create spectral visualization layer
-            this.activeLayers.spectral = L.layerGroup();
+            const spectralLayer = L.layerGroup();
             
             // Get real VIIRS data
             const viirsData = await this.fetchRealVIIRSData();
@@ -638,9 +645,12 @@ class ScientificMode {
                         <small>Based on VIIRS Day/Night Band data</small>
                     `);
                     
-                    this.activeLayers.spectral.addLayer(marker);
+                    spectralLayer.addLayer(marker);
                 }
             });
+            
+            // Only assign to this.activeLayers.spectral after processing is complete
+            this.activeLayers.spectral = spectralLayer;
             
             console.log(`✅ Added ${validPoints} spectral markers to map`);
             
@@ -697,7 +707,7 @@ class ScientificMode {
             // Create heatmap layer using Leaflet.heat plugin
             const heatData = viirsData.map(point => [point.lat, point.lng, point.brightness || 1]);
             
-            this.activeLayers.heatmap = L.heatLayer(heatData, {
+            const heatmapLayer = L.heatLayer(heatData, {
                 radius: 20,
                 blur: 15,
                 maxZoom: 12,
@@ -706,6 +716,9 @@ class ScientificMode {
                     return obj;
                 }, {})
             }).addTo(this.webGIS.map);
+            
+            // Only assign to this.activeLayers.heatmap after creation is complete
+            this.activeLayers.heatmap = heatmapLayer;
             
             // Update UI
             document.getElementById('toggleHeatmap').checked = true;
