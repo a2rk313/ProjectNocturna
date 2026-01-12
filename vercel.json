@@ -4,22 +4,33 @@
     {
       "src": "server.js",
       "use": "@vercel/node",
-      "config": { "maxLambdaSize": "50mb" }
+      "config": { 
+        "includeFiles": ["**/**"],
+        "excludeFiles": ["node_modules/**", ".git/**", "*.md", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup"]
+      }
     },
     {
-      "src": "*.html",
+      "src": "index.html",
       "use": "@vercel/static"
     },
     {
-      "src": "css/*",
+      "src": "app.html",
       "use": "@vercel/static"
     },
     {
-      "src": "js/*",
+      "src": "css/**",
       "use": "@vercel/static"
     },
     {
-      "src": "images/*",
+      "src": "js/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "images/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "pages/**",
       "use": "@vercel/static"
     }
   ],

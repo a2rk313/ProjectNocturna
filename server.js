@@ -2955,9 +2955,11 @@ app.use('*', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`
+// Only start the server if not in Vercel environment
+if (!process.env.VERCEL) {
+  if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+      console.log(`
 ╔═══════════════════════════════════════════╗
 ║   Project Nocturna - Running             ║
 ╠═══════════════════════════════════════════╣
@@ -2967,8 +2969,30 @@ if (process.env.NODE_ENV !== 'production') {
 🔑 NASA API:  ${process.env.NASA_API_KEY ? 'Configured' : 'Not Configured - Using Sample Data'}
 ─────────────────────────────────────────────
 ✅ Ready for research-grade analysis!
-    `);
-  });
+      `);
+    });
+  } else {
+    // In production outside of Vercel, start the server
+    const server = app.listen(PORT, () => {
+      console.log(`Production server running on port ${PORT}`);
+    });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        console.log('Process terminated');
+      });
+    });
+
+    process.on('SIGINT', () => {
+      console.log('SIGINT received, shutting down gracefully');
+      server.close(() => {
+        console.log('Process terminated');
+      });
+    });
+  }
 }
 
+// Export for Vercel
 module.exports = app;
