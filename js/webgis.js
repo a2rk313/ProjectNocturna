@@ -3,6 +3,7 @@ class WebGIS {
     constructor() {
         this.map = null;
         this.dataManager = window.DataManager ? new window.DataManager() : null;
+        this.gibsManager = null; // Initialize GIBS manager
         this.currentMode = null;
         this.drawnItems = new L.FeatureGroup();
         this.uiMarkers = L.layerGroup();
@@ -30,6 +31,9 @@ class WebGIS {
         this.setupLayerControls();
         this.setupBaseLayerControls();
         
+        // Initialize GIBS Manager
+        this.initializeGIBSManager();
+        
         // Initialize ActionBot if available
         if (window.ActionBotController) {
             this.actionBot = new window.ActionBotController(this);
@@ -41,6 +45,52 @@ class WebGIS {
         this.map.on('moveend', this.debounce(() => {
             this.handleMapMove();
         }, 500));
+    }
+
+    async initializeGIBSManager() {
+        try {
+            // Wait for GIBSManager to be loaded
+            if (typeof GIBSManager !== 'function') {
+                console.warn('⚠️ GIBSManager not available, loading dynamically...');
+                // Try to load the GIBS manager script
+                await this.loadScript('/js/gibs-manager.js');
+            }
+
+            if (typeof GIBSManager === 'function') {
+                this.gibsManager = new GIBSManager(this.map);
+                const initialized = await this.gibsManager.initialize();
+                
+                if (initialized) {
+                    console.log('🌍 GIBS Manager initialized successfully');
+                    
+                    // Add event listeners for GIBS-related functionality
+                    this.setupGIBSEventListeners();
+                } else {
+                    console.warn('⚠️ GIBS Manager failed to initialize');
+                }
+            } else {
+                console.warn('⚠️ GIBSManager class not available');
+            }
+        } catch (error) {
+            console.error('❌ Error initializing GIBS Manager:', error);
+        }
+    }
+
+    // Helper method to load script dynamically
+    loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    setupGIBSEventListeners() {
+        // Add event listeners for GIBS-related functionality
+        // This can be expanded based on specific requirements
+        console.log('🌍 GIBS Event listeners set up');
     }
     
     /**
