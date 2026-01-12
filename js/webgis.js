@@ -597,8 +597,15 @@ class WebGIS {
     setupPanelCollapse() {
         const panels = document.querySelectorAll('.cosmic-panel .panel-header');
         panels.forEach(panel => {
+            // Handle clicks on the panel header (excluding buttons but allowing collapse icon)
             panel.addEventListener('click', (e) => {
-                if (e.target.closest('.btn') || e.target.closest('.collapse-icon')) return;
+                if (e.target.closest('.btn')) return;
+                
+                // If click is on collapse icon, toggle the collapse state
+                if (e.target.closest('.collapse-icon')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
                 
                 const panelBody = panel.nextElementSibling;
                 const panelContainer = panel.closest('.cosmic-panel');

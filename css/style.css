@@ -770,6 +770,13 @@ body {
     transition: transform var(--transition-normal); 
     color: rgba(255, 255, 255, 0.7); 
     font-size: 0.9rem; 
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+.collapse-icon:hover { 
+    color: white; 
+    background: rgba(255, 255, 255, 0.1);
 }
 .panel-collapsed .collapse-icon { 
     transform: rotate(180deg); 
