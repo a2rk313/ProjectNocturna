@@ -564,6 +564,23 @@ body {
     align-items: center;
     gap: 10px;
 }
+
+#scientificTools .btn,
+#citizenTools .btn {
+    border-radius: 10px !important; 
+    padding: 12px 14px !important; 
+    text-align: left; 
+    width: 100%; 
+    border: none; 
+    color: white; 
+    margin-bottom: 10px; 
+    font-size: 0.85rem;
+    transition: all var(--transition-normal);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .control-panel .btn:hover { 
     transform: translateY(-2px); 
     filter: brightness(1.1); 
@@ -1000,12 +1017,7 @@ body {
     border-radius: 2px;
 }
 
-/* Fix for scientific mode tools */
-#scientificTools .btn {
-    font-size: 0.75rem;
-    padding: 8px 5px !important;
-    margin-bottom: 5px;
-}
+
 
 /* Responsive improvements */
 @media (max-width: 768px) {

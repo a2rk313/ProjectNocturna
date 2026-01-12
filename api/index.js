@@ -33,23 +33,40 @@ app.get('/api/viirs/:year/:month?', async (req, res) => {
         if (bbox) {
             // Get data for specific bounding box
             const [minLon, minLat, maxLon, maxLat] = bbox.split(',').map(Number);
-            url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/${minLat}/${minLon}/${maxLat}/${maxLon}/1`;
+            url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NRT/${minLat}/${minLon}/${maxLat}/${maxLon}/1`;
         } else {
             // Get global data (simplified for demo)
-            url = `https://firms.modaps.eosdis.nasa.gov/api/world/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NTL/1`;
+            url = `https://firms.modaps.eosdis.nasa.gov/api/world/csv/${process.env.NASA_API_KEY}/VIIRS_NOAA20_NRT/1`;
         }
         
         const response = await axios.get(url);
-        const data = response.data.split('\n').slice(1).map(line => {
-            const [lat, lon, brightness, frp, confidence, ...rest] = line.split(',');
+        const lines = response.data.split('\n');
+        if (lines.length <= 1) {
+            // No data returned, return empty array
+            res.json({
+                source: 'NASA VIIRS Nighttime Lights',
+                year,
+                month: month || 'annual',
+                count: 0,
+                data: []
+            });
+            return;
+        }
+        
+        const data = lines.slice(1).map(line => {
+            const fields = line.split(',');
+            if (fields.length < 6) return null; // Skip malformed lines
+            const [lat, lon, brightness, frp, conf, date, time, ...rest] = fields;
             return {
                 lat: parseFloat(lat),
                 lng: parseFloat(lon),
                 brightness: parseFloat(brightness),
-                confidence: parseFloat(confidence),
-                date: rest[0] || new Date().toISOString()
+                frp: parseFloat(frp),
+                confidence: parseFloat(conf),
+                date: date || new Date().toISOString(),
+                time: time || ''
             };
-        }).filter(d => d.brightness > 0);
+        }).filter(d => d && d.lat && d.lng && !isNaN(d.lat) && !isNaN(d.lng));
         
         res.json({
             source: 'NASA VIIRS Nighttime Lights',
