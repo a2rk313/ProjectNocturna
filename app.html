@@ -152,7 +152,7 @@
                         <i class="fas fa-moon me-2"></i>Dark Matter
                     </button>
                     <button class="btn btn-sm btn-outline-light basemap-option" data-basemap="viirs">
-                        <i class="fas fa-satellite me-2"></i>NASA VIIRS
+                        <i class="fas fa-satellite me-2"></i>NASA Black Marble
                     </button>
                     <button class="btn btn-sm btn-outline-light basemap-option" data-basemap="satellite">
                         <i class="fas fa-globe-americas me-2"></i>Satellite
@@ -188,7 +188,7 @@
                 <div class="cosmic-check mb-2">
                     <input class="form-check-input" type="checkbox" id="toggleWorldAtlas">
                     <label class="form-check-label text-light" for="toggleWorldAtlas">
-                        <i class="fas fa-globe me-2"></i>World Atlas
+                        <i class="fas fa-globe me-2"></i>Black Marble 2016
                         <span class="badge bg-purple ms-1">Research</span>
                     </label>
                 </div>
@@ -247,6 +247,39 @@
             <div class="real-data-badge mt-3">
                 <i class="fas fa-database"></i>
                 <span>Research-Grade Data</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: Time Controls Panel (Bottom Left) -->
+    <div class="time-controls-panel cosmic-panel" id="timeControlsPanel">
+        <div class="panel-header">
+            <h6><i class="fas fa-calendar-alt me-2"></i>Time Controls</h6>
+            <i class="collapse-icon fas fa-chevron-up"></i>
+        </div>
+        
+        <div class="panel-body p-3">
+            <h6 class="text-light opacity-75 mb-2">Select Year</h6>
+            <div class="d-grid gap-2 mb-3">
+                <select class="form-select form-select-sm" id="yearSelector">
+                    <option value="2023" selected>2023 (Latest)</option>
+                    <option value="2022">2022</option>
+                    <option value="2021">2021</option>
+                    <option value="2020">2020</option>
+                    <option value="2016">2016 (Black Marble)</option>
+                </select>
+            </div>
+            
+            <div class="panel-divider my-3"></div>
+            
+            <h6 class="text-light opacity-75 mb-2">Temporal Analysis</h6>
+            <div class="d-grid gap-2">
+                <button class="btn btn-sm btn-cosmic-info" id="compareYears">
+                    <i class="fas fa-exchange-alt me-2"></i>Compare Years
+                </button>
+                <button class="btn btn-sm btn-cosmic-purple" id="trendAnalysis">
+                    <i class="fas fa-chart-line me-2"></i>Trend Analysis
+                </button>
             </div>
         </div>
     </div>

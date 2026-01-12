@@ -972,8 +972,37 @@ body {
     }
 }
 
-/* Map & Leaflet */
-.cosmic-map { height: calc(100vh - 55px) !important; width: 100% !important; position: fixed; top: 55px; left: 0; z-index: 1; }
+/* NEW: Time Controls Panel Styles */
+.time-controls-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+    width: 260px;
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cosmic-primary) transparent;
+}
+
+.time-controls-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.time-controls-panel::-webkit-scrollbar-thumb {
+    background: var(--cosmic-primary);
+    border-radius: 3px;
+}
+
+/* Adjust positioning to account for time controls panel */
+.cosmic-map { 
+    height: calc(100vh - 55px) !important; 
+    width: 100% !important; 
+    position: fixed; 
+    top: 55px; 
+    left: 0; 
+    z-index: 1; 
+}
 .leaflet-container { background: linear-gradient(135deg, #1e3a8a, #0f172a); font-family: 'Inter', sans-serif; }
 .leaflet-bottom.leaflet-right { bottom: 0 !important; right: 0 !important; margin: 0 !important; z-index: 1000 !important; }
 .leaflet-control-attribution { background: rgba(15, 23, 42, 0.8) !important; color: rgba(255, 255, 255, 0.6) !important; font-size: 0.65rem; }
