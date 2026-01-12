@@ -1683,6 +1683,14 @@ app.get('/api/validation/coordinates/:lat/:lng', async (req, res) => {
       console.log('⚠️ Earthdata API library not found');
     }
     
+    // Import GIBS Service if available
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+    }
+    
     if (EarthdataAPI) {
       const earthdata = new EarthdataAPI(
         process.env.EARTHDATA_USERNAME,
@@ -1714,6 +1722,306 @@ app.get('/api/validation/coordinates/:lat/:lng', async (req, res) => {
     res.status(500).json({
       error: 'Validation failed',
       message: error.message
+    });
+  }
+});
+
+// 16. GIBS (Global Imagery Browse Services) Endpoints
+app.get('/api/gibs/layers', async (req, res) => {
+  try {
+    console.log('🌍 GIBS: Getting available layers...');
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        error: 'GIBS Service not available',
+        message: 'GIBS module not installed'
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const availableLayers = gibsService.getAvailableLayers();
+    
+    res.json({
+      layers: availableLayers,
+      count: Object.values(availableLayers).flat().length,
+      source: 'NASA Global Imagery Browse Services (GIBS)',
+      documentation: 'https://earthdata.nasa.gov/eosdis/science-system-description/eosdis-components/gibs',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GIBS layers error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get GIBS layers',
+      message: error.message 
+    });
+  }
+});
+
+// Get GIBS layer metadata
+app.get('/api/gibs/layer/:layerId', async (req, res) => {
+  try {
+    const { layerId } = req.params;
+    console.log(`🌍 GIBS: Getting metadata for layer ${layerId}`);
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        error: 'GIBS Service not available',
+        message: 'GIBS module not installed'
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const metadata = await gibsService.getLayerMetadata(layerId);
+    
+    res.json({
+      layer_id: layerId,
+      metadata: metadata,
+      source: 'NASA GIBS',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GIBS layer metadata error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get GIBS layer metadata',
+      message: error.message 
+    });
+  }
+});
+
+// Get GIBS tile URL template
+app.get('/api/gibs/tile-template/:layerId', async (req, res) => {
+  try {
+    const { layerId } = req.params;
+    const { date } = req.query;
+    console.log(`🌍 GIBS: Getting tile template for layer ${layerId}, date: ${date || 'default'}`);
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        error: 'GIBS Service not available',
+        message: 'GIBS module not installed'
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const tileTemplate = gibsService.getTileTemplate(layerId, date);
+    
+    res.json({
+      layer_id: layerId,
+      date: date || 'default',
+      tile_template: tileTemplate,
+      source: 'NASA GIBS Tile Service',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GIBS tile template error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get GIBS tile template',
+      message: error.message 
+    });
+  }
+});
+
+// Get area statistics using GIBS data
+app.post('/api/gibs/statistics', async (req, res) => {
+  try {
+    const { layerId, bounds, date } = req.body;
+    
+    if (!layerId || !bounds) {
+      return res.status(400).json({ error: 'layerId and bounds are required' });
+    }
+    
+    console.log(`🌍 GIBS: Getting statistics for layer ${layerId} over bounds`, bounds);
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        error: 'GIBS Service not available',
+        message: 'GIBS module not installed'
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const statistics = await gibsService.getAreaStatistics(layerId, bounds, date);
+    
+    res.json(statistics);
+  } catch (error) {
+    console.error('GIBS statistics error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get GIBS statistics',
+      message: error.message 
+    });
+  }
+});
+
+// Get temporal comparison using GIBS data
+app.post('/api/gibs/comparison', async (req, res) => {
+  try {
+    const { layerId, bounds, date1, date2 } = req.body;
+    
+    if (!layerId || !bounds || !date1 || !date2) {
+      return res.status(400).json({ 
+        error: 'layerId, bounds, date1, and date2 are required' 
+      });
+    }
+    
+    console.log(`🌍 GIBS: Comparing ${layerId} between ${date1} and ${date2} over bounds`, bounds);
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        error: 'GIBS Service not available',
+        message: 'GIBS module not installed'
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const comparison = await gibsService.getTemporalComparison(layerId, bounds, date1, date2);
+    
+    res.json(comparison);
+  } catch (error) {
+    console.error('GIBS comparison error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get GIBS comparison',
+      message: error.message 
+    });
+  }
+});
+
+// Search for GIBS imagery products
+app.post('/api/gibs/search', async (req, res) => {
+  try {
+    const { startDate, endDate, productTypes } = req.body;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+    
+    console.log(`🌍 GIBS: Searching for products from ${startDate} to ${endDate}`);
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        error: 'GIBS Service not available',
+        message: 'GIBS module not installed'
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const results = await gibsService.searchImageryProducts(
+      startDate, 
+      endDate, 
+      productTypes || ['nighttime_lights']
+    );
+    
+    res.json({
+      search_params: { startDate, endDate, productTypes },
+      results: results,
+      found_products: Object.values(results).flat().length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GIBS search error:', error);
+    res.status(500).json({ 
+      error: 'Failed to search GIBS products',
+      message: error.message 
+    });
+  }
+});
+
+// Get time series data using GIBS
+app.post('/api/gibs/timeseries', async (req, res) => {
+  try {
+    const { layerId, bounds, startDate, endDate } = req.body;
+    
+    if (!layerId || !bounds || !startDate || !endDate) {
+      return res.status(400).json({ 
+        error: 'layerId, bounds, startDate, and endDate are required' 
+      });
+    }
+    
+    console.log(`🌍 GIBS: Getting time series for ${layerId} from ${startDate} to ${endDate}`);
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        error: 'GIBS Service not available',
+        message: 'GIBS module not installed'
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const timeSeries = await gibsService.getTimeSeriesData(layerId, bounds, startDate, endDate);
+    
+    res.json({
+      layer_id: layerId,
+      bounds: bounds,
+      date_range: { start: startDate, end: endDate },
+      time_series: timeSeries,
+      count: timeSeries.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GIBS time series error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get GIBS time series',
+      message: error.message 
+    });
+  }
+});
+
+// GIBS service health check
+app.get('/api/gibs/health', async (req, res) => {
+  try {
+    console.log('🌍 GIBS: Health check');
+    
+    let GIBSService;
+    try {
+      GIBSService = require('./lib/gibs-service');
+    } catch (error) {
+      console.log('⚠️ GIBS Service library not found');
+      return res.status(500).json({ 
+        status: 'unavailable',
+        service: 'GIBS',
+        error: 'GIBS module not installed',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const gibsService = new GIBSService();
+    const health = await gibsService.healthCheck();
+    
+    res.json(health);
+  } catch (error) {
+    console.error('GIBS health check error:', error);
+    res.status(500).json({ 
+      status: 'error',
+      service: 'GIBS',
+      error: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
