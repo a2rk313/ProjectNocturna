@@ -34,6 +34,9 @@ class WebGIS {
         // Initialize GIBS Manager
         this.initializeGIBSManager();
         
+        // Initialize GeoServer Manager
+        this.initializeGeoServerManager();
+        
         // Initialize ActionBot if available
         if (window.ActionBotController) {
             this.actionBot = new window.ActionBotController(this);
@@ -74,6 +77,34 @@ class WebGIS {
         } catch (error) {
             console.error('❌ Error initializing GIBS Manager:', error);
         }
+    }
+    
+    async initializeGeoServerManager() {
+        try {
+            // Wait for GeoServerManager to be loaded
+            if (typeof GeoServerManager !== 'function') {
+                console.warn('⚠️ GeoServerManager not available, loading dynamically...');
+                // Try to load the GeoServer manager script
+                await this.loadScript('/js/geoserver-manager.js');
+            }
+
+            if (typeof GeoServerManager === 'function') {
+                this.geoServerManager = new GeoServerManager(this.map);
+                console.log('🌍 GeoServer Manager initialized successfully');
+                
+                // Add event listeners for GeoServer-related functionality
+                this.setupGeoServerEventListeners();
+            } else {
+                console.warn('⚠️ GeoServerManager class not available');
+            }
+        } catch (error) {
+            console.error('❌ Error initializing GeoServer Manager:', error);
+        }
+    }
+    
+    setupGeoServerEventListeners() {
+        // Add event listeners for GeoServer-related functionality
+        console.log('🌍 GeoServer Event listeners set up');
     }
 
     // Helper method to load script dynamically

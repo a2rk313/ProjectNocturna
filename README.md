@@ -26,6 +26,7 @@ Project Nocturna is a comprehensive WebGIS platform that enables everyday users 
 - **Ecological Impact**: Assess environmental effects of light pollution
 - **Energy Waste Analysis**: Calculate economic and environmental costs
 - **Predictive Analytics**: Advanced forecasting models for trend analysis
+- **GeoServer Integration**: Enterprise-grade geospatial data management
 - **API Access**: Programmatic access to all data and analysis tools
 
 ## 🚀 Quick Start
@@ -34,6 +35,7 @@ Project Nocturna is a comprehensive WebGIS platform that enables everyday users 
 - Node.js (v18 or higher)
 - npm or yarn package manager
 - Git
+- Docker & Docker Compose (for GeoServer)
 
 ### Installation
 
@@ -62,6 +64,20 @@ Project Nocturna is a comprehensive WebGIS platform that enables everyday users 
    # Map Configuration
    MAPBOX_TOKEN=your_mapbox_token
    
+   # GeoServer Configuration
+   GEOSERVER_URL=http://localhost:8080/geoserver
+   GEOSERVER_ADMIN_USER=admin
+   GEOSERVER_ADMIN_PASSWORD=geoserver
+   GEOSERVER_WORKSPACE=nocturna
+   GEOSERVER_DATASTORE=nocturna_datastore
+   
+   # PostGIS Database Configuration (for GeoServer)
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DB=nocturna
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   
    # Server Configuration
    PORT=3000
    NODE_ENV=development
@@ -69,10 +85,12 @@ Project Nocturna is a comprehensive WebGIS platform that enables everyday users 
 
 4. Run the development server:
    ```bash
+   docker-compose up -d  # For GeoServer
    npm run dev
    ```
 
 5. Visit `http://localhost:3000` in your browser.
+   - GeoServer admin: `http://localhost:8080/geoserver` (admin/geoserver)
 
 ## 🌍 Data Sources
 
@@ -83,6 +101,18 @@ Project Nocturna integrates multiple authoritative data sources:
 - **FIRMS (Fire Information for Resource Management System)**: Real-time satellite data
 - **Global SQM Network**: Ground-based sky quality measurements
 - **International Dark-Sky Association**: Certified dark sky places database
+
+## 🗺️ GeoServer Integration
+
+Project Nocturna includes enterprise-grade geospatial data management through GeoServer integration:
+
+- **WMS/WFS Support**: Standard OGC protocol support for geospatial data
+- **PostGIS Integration**: Direct connection to spatial databases
+- **Dynamic Layer Management**: Programmatic creation and management of map layers
+- **Advanced Styling**: Custom SLD-based styling for light pollution visualization
+- **RESTful API**: Full programmatic access to geospatial services
+
+For detailed setup instructions, see [GEOSERVER_INTEGRATION.md](./GEOSERVER_INTEGRATION.md).
 
 ## 🔬 Research Capabilities
 
@@ -117,6 +147,14 @@ Advanced forecasting models:
 - `GET /api/sqm-network` - Real-time SQM network data
 - `GET /api/dark-sky-parks` - Certified dark sky places
 
+### GeoServer Endpoints
+- `GET /api/geoserver/health` - GeoServer status check
+- `POST /api/geoserver/init` - Initialize GeoServer workspace
+- `GET /api/geoserver/layers` - Available geospatial layers
+- `POST /api/geoserver/query` - Query geospatial features
+- `GET /api/geoserver/wms-template/:layerName` - WMS URL template
+- `GET /api/geoserver/wfs-url/:layerName` - WFS URL
+
 ### Analysis Endpoints
 - `POST /api/statistics/region` - Regional statistical analysis
 - `POST /api/ecology/impact` - Ecological impact assessment
@@ -136,6 +174,7 @@ For detailed information about data sources, API configuration, and research met
 - [API Configuration Guide](API_SETUP.md) - Complete setup instructions for NASA APIs
 - [Dataset Information](DATASET_INFO.md) - Scientific background on data sources
 - [Real Data API Guide](REAL_DATA_API_GUIDE.md) - Comprehensive guide to real data handling and GIBS integration
+- [GeoServer Integration Guide](GEOSERVER_INTEGRATION.md) - GeoServer setup and usage
 - [Light Pollution Research Guide](LIGHT_POLLUTION_RESEARCH.md) - Scientific methodology and citations for researchers
 
 ## 🧪 Scientific Validity
