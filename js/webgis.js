@@ -128,26 +128,56 @@ class WebGIS {
         try {
             // Load VIIRS data for current view
             const bounds = this.map.getBounds();
-            const response = await fetch(`/api/viirs/2023?bbox=${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`);
-            const data = await response.json();
+            const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
             
-            if (data.data && data.data.length > 0) {
+            const response = await fetch(`/api/viirs/2023?bbox=${bbox}`);
+            
+            if (!response.ok) {
+                throw new Error(`VIIRS API request failed with status ${response.status}`);
+            }
+            
+            let data;
+            try {
+                const responseText = await response.text();
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('VIIRS data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                return;
+            }
+            
+            const viirsData = data.data || [];
+            console.log(`📡 VIIRS API Response: ${viirsData.length} data points, source: ${data.source}`);
+            
+            if (viirsData.length > 0) {
                 // Create heatmap layer if leaflet.heat plugin is available
                 if (typeof L.heatLayer !== 'function') {
                     console.warn('VIIRS data load failed: L.heatLayer function not available');
                     return;
                 }
                 
-                const heatData = data.data.map(point => [point.lat, point.lng, point.brightness]);
+                // Filter out any points that don't have valid coordinates or brightness
+                const validData = viirsData.filter(point => 
+                    point.lat && point.lng && point.brightness !== undefined && 
+                    !isNaN(point.lat) && !isNaN(point.lng) && !isNaN(point.brightness)
+                );
                 
-                this.viirsLayer = L.heatLayer(heatData, {
-                    radius: 15,
-                    blur: 15,
-                    maxZoom: 12,
-                    gradient: {0.1: 'blue', 0.3: 'cyan', 0.5: 'lime', 0.7: 'yellow', 1: 'red'}
-                }).addTo(this.map);
-                
-                console.log(`✅ Loaded ${data.data.length} VIIRS data points`);
+                if (validData.length > 0) {
+                    const heatData = validData.map(point => [point.lat, point.lng, point.brightness]);
+                    
+                    this.viirsLayer = L.heatLayer(heatData, {
+                        radius: 15,
+                        blur: 15,
+                        maxZoom: 12,
+                        gradient: {0.1: 'blue', 0.3: 'cyan', 0.5: 'lime', 0.7: 'yellow', 1: 'red'}
+                    }).addTo(this.map);
+                    
+                    console.log(`✅ Loaded ${validData.length} valid VIIRS data points`);
+                } else {
+                    console.log('⚠️ No valid VIIRS data points available for current map view.');
+                }
+            } else {
+                console.log('⚠️ No VIIRS data available for current map view.');
             }
         } catch (error) {
             console.warn('VIIRS data load failed:', error);
