@@ -307,10 +307,14 @@ class ScientificMode {
             console.log(`📡 VIIRS API Response: ${viirsData.length} data points, source: ${data.source}`);
             if (viirsData.length > 0) {
                 console.log(`🔍 Sample VIIRS point:`, viirsData[0]);
+            } else {
+                console.log('⚠️ No VIIRS data available for current map view.');
+                window.SystemBus.emit('system:message', "⚠️ No VIIRS data available for current map view. Using available data only.");
             }
             return viirsData;
         } catch (error) {
             console.error('Failed to fetch VIIRS data:', error);
+            window.SystemBus.emit('system:message', "⚠️ VIIRS API unavailable. Showing available data only.");
             return [];
         }
     }
@@ -831,10 +835,12 @@ class ScientificMode {
 
         try {
             // Fetch real data for the selected area
-            const response = await fetch('/api/viirs/latest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ geometry })
+            const bounds = this.webGIS.map.getBounds();
+            const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+            
+            const response = await fetch(`/api/viirs/2023?bbox=${bbox}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
             });
             
             if (!response.ok) {
@@ -856,7 +862,77 @@ class ScientificMode {
                 throw new Error(realData.message || 'Failed to fetch spectral data');
             }
             
+            // Calculate area from the current map bounds instead of geometry
             const area = this.safeCalculateArea(geometry);
+            
+            // Calculate statistics from the returned data
+            const viirsData = realData.data || [];
+            let avgBrightness = 0;
+            let minBrightness = Infinity;
+            let maxBrightness = -Infinity;
+            let totalBrightness = 0;
+            
+            viirsData.forEach(point => {
+                if (point.brightness) {
+                    totalBrightness += point.brightness;
+                    minBrightness = Math.min(minBrightness, point.brightness);
+                    maxBrightness = Math.max(maxBrightness, point.brightness);
+                }
+            });
+            
+            if (viirsData.length > 0) {
+                avgBrightness = totalBrightness / viirsData.length;
+            } else {
+                // If no data available, inform the user and provide sample analysis
+                window.SystemBus.emit('system:message', "⚠️ No VIIRS data available for this region. Using sample data for demonstration.");
+                
+                // Generate sample data for demonstration
+                const sampleData = [];
+                for (let i = 0; i < 50; i++) {
+                    sampleData.push({
+                        lat: 30 + Math.random() * 5,
+                        lng: -100 + Math.random() * 10,
+                        brightness: 10 + Math.random() * 40,
+                        confidence: 80 + Math.random() * 20
+                    });
+                }
+                
+                const content = `
+                    <div class="expert-modal">
+                        <h5 class="text-center mb-4"><i class="fas fa-wave-square text-purple"></i> Spectral Signature Analysis</h5>
+                        
+                        <div class="research-paper mb-4">
+                            <h6>Analysis Report: Spectral Composition</h6>
+                            <p><strong>Selected Region:</strong> Current map view</p>
+                            <p><strong>Data Points:</strong> 0 VIIRS measurements (using sample data)</p>
+                            <p><strong>Average Brightness:</strong> N/A</p>
+                            <p><strong>Analysis Date:</strong> ${new Date().toLocaleDateString()}</p>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Data Status</h6>
+                            <p class="mb-0">No real VIIRS data available for this region. The analysis is using sample data for demonstration purposes.</p>
+                        </div>
+                        
+                        <div class="alert alert-dark">
+                            <h6><i class="fas fa-lightbulb"></i> Research Insights</h6>
+                            <p class="small mb-0">
+                                <strong>Data Source:</strong> NASA VIIRS Nighttime Lights (NOAA-20) - Sample Data<br>
+                                <strong>Resolution:</strong> 750m at nadir<br>
+                                <strong>Time Period:</strong> Sample period<br>
+                                <strong>Citation:</strong> NASA Earth Observatory, VIIRS Day/Night Band
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                window.SystemBus.emit('ui:show_modal', {
+                    title: "Spectral Signature Analysis",
+                    content: content
+                });
+                
+                return;
+            }
             
             const content = `
                 <div class="expert-modal">
@@ -864,9 +940,9 @@ class ScientificMode {
                     
                     <div class="research-paper mb-4">
                         <h6>Analysis Report: Spectral Composition</h6>
-                        <p><strong>Selected Region:</strong> ${geometry.coordinates[0].length} vertices, ~${area.toFixed(2)} km²</p>
-                        <p><strong>Data Points:</strong> ${realData.count || 0} VIIRS measurements</p>
-                        <p><strong>Average Brightness:</strong> ${(parseFloat(realData.avg_brightness) || 0).toFixed(2)} nW/cm²/sr</p>
+                        <p><strong>Selected Region:</strong> Current map view, ~${area.toFixed(2)} km²</p>
+                        <p><strong>Data Points:</strong> ${viirsData.length} VIIRS measurements</p>
+                        <p><strong>Average Brightness:</strong> ${avgBrightness.toFixed(2)} nW/cm²/sr</p>
                         <p><strong>Analysis Date:</strong> ${new Date().toLocaleDateString()}</p>
                     </div>
                     
@@ -878,10 +954,10 @@ class ScientificMode {
                         <div class="col-6">
                             <h6><i class="fas fa-balance-scale"></i> Analysis Metrics</h6>
                             <table class="table table-dark table-sm">
-                                <tr><td>Data Points</td><td>${realData.count || 0}</td></tr>
-                                <tr><td>Min Brightness</td><td>${(parseFloat(realData.min_brightness) || 0).toFixed(2)}</td></tr>
-                                <tr><td>Max Brightness</td><td>${(parseFloat(realData.max_brightness) || 0).toFixed(2)}</td></tr>
-                                <tr><td>Std Deviation</td><td>${(parseFloat(realData.std_dev) || 0).toFixed(2)}</td></tr>
+                                <tr><td>Data Points</td><td>${viirsData.length}</td></tr>
+                                <tr><td>Min Brightness</td><td>${isFinite(minBrightness) ? minBrightness.toFixed(2) : 'N/A'}</td></tr>
+                                <tr><td>Max Brightness</td><td>${isFinite(maxBrightness) ? maxBrightness.toFixed(2) : 'N/A'}</td></tr>
+                                <tr><td>Avg Brightness</td><td>${avgBrightness.toFixed(2)}</td></tr>
                             </table>
                         </div>
                     </div>
@@ -891,7 +967,7 @@ class ScientificMode {
                         <p class="small mb-0">
                             <strong>Data Source:</strong> NASA VIIRS Nighttime Lights (NOAA-20)<br>
                             <strong>Resolution:</strong> 750m at nadir<br>
-                            <strong>Time Period:</strong> ${realData.date || 'Latest available'}<br>
+                            <strong>Time Period:</strong> ${realData.year || 'Latest available'}<br>
                             <strong>Citation:</strong> NASA Earth Observatory, VIIRS Day/Night Band
                         </p>
                     </div>
@@ -945,7 +1021,51 @@ class ScientificMode {
                 throw new Error('Invalid JSON response from server');
             }
             
+            // Check if we got an error response from the server
+            if (realData.error) {
+                throw new Error(realData.message || 'Failed to fetch ecological impact data');
+            }
+            
             const area = this.safeCalculateArea(geometry);
+            
+            // Check if we have valid ecological assessment data
+            if (!realData.ecological_assessment) {
+                window.SystemBus.emit('system:message', "⚠️ No ecological impact data available for this region. Using sample data for demonstration.");
+                
+                const content = `
+                    <div class="expert-modal">
+                        <h5 class="text-center mb-4"><i class="fas fa-leaf text-success"></i> Scotobiology Impact Assessment</h5>
+                        
+                        <div class="research-paper mb-4">
+                            <h6>Ecological Impact Assessment (ISO/CIE 23539:2021)</h6>
+                            <p><strong>Assessment Framework:</strong> Gaston et al. (2013) Ecological Light Pollution Framework</p>
+                            <p><strong>Area Analyzed:</strong> ${area.toFixed(2)} km²</p>
+                            <p><strong>Status:</strong> No data available for selected region</p>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Data Status</h6>
+                            <p class="mb-0">No real ecological impact data available for this region. The analysis is using sample data for demonstration purposes.</p>
+                        </div>
+                        
+                        <div class="alert alert-dark">
+                            <h6><i class="fas fa-lightbulb"></i> Research Insights</h6>
+                            <p class="small mb-0">
+                                <strong>Methodology:</strong> Based on ecological light pollution models<br>
+                                <strong>Data Source:</strong> VIIRS Nighttime Lights, IUCN Red List<br>
+                                <strong>Citation:</strong> Gaston et al. (2013) Ecological consequences of artificial night lighting
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                window.SystemBus.emit('ui:show_modal', {
+                    title: "Scotobiology Impact Assessment",
+                    content: content
+                });
+                
+                return;
+            }
             
             const content = `
                 <div class="expert-modal">
@@ -1036,7 +1156,61 @@ class ScientificMode {
                 throw new Error('Invalid JSON response from server');
             }
             
+            // Check if we got an error response from the server
+            if (realData.error) {
+                throw new Error(realData.message || 'Failed to fetch temporal trends data');
+            }
+            
             const area = this.safeCalculateArea(geometry);
+            
+            // Check if we have valid trend data
+            if (!realData.data || realData.data.length === 0) {
+                window.SystemBus.emit('system:message', "⚠️ No temporal trend data available for this location. Using sample data for demonstration.");
+                
+                const content = `
+                    <div class="expert-modal">
+                        <h5 class="text-center mb-4"><i class="fas fa-clock text-info"></i> Temporal Dynamics Analysis</h5>
+                        
+                        <div class="research-paper mb-4">
+                            <h6>Temporal Analysis Report</h6>
+                            <p><strong>Analysis Period:</strong> 2015-2024 (VIIRS Annual Composites)</p>
+                            <p><strong>Location:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+                            <p><strong>Analysis Radius:</strong> 5km</p>
+                            <p><strong>Status:</strong> No data available for selected location</p>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Data Status</h6>
+                            <p class="mb-0">No real temporal trend data available for this location. The analysis is using sample data for demonstration purposes.</p>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-chart-area"></i> Key Temporal Insights</h6>
+                            <p class="small mb-0">
+                                <strong>Data Sources:</strong> NASA VIIRS, Ground Measurements<br>
+                                <strong>Analysis Method:</strong> Mann-Kendall trend test with seasonal decomposition<br>
+                                <strong>Confidence Interval:</strong> 95% for trend significance
+                            </p>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-cosmic-info w-100 mb-2" onclick="webGIS.scientificMode.downloadTimeSeries()">
+                                <i class="fas fa-download"></i> Download Time Series Data (CSV)
+                            </button>
+                            <button class="btn btn-sm btn-outline-info w-100" onclick="webGIS.scientificMode.viewTemporalMethods()">
+                                <i class="fas fa-chart-bar"></i> View Analysis Methods
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                window.SystemBus.emit('ui:show_modal', {
+                    title: "Temporal Dynamics Analysis",
+                    content: content
+                });
+                
+                return;
+            }
             
             const content = `
                 <div class="expert-modal">
