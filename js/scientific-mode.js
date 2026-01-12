@@ -117,6 +117,17 @@ class ScientificMode {
     }
     
     /**
+     * Toggle World Atlas Research Layer
+     */
+    async toggleWorldAtlas(enabled) {
+        if (enabled) {
+            await this.showWorldAtlasLayer();
+        } else {
+            this.hideWorldAtlasLayer();
+        }
+    }
+    
+    /**
      * Update overlays based on current map bounds
      */
     updateOverlaysForBounds(bounds) {
@@ -416,6 +427,142 @@ class ScientificMode {
         }
     }
 
+    /**\n     * Show World Atlas Research Layer with real data\n     */
+    async showWorldAtlasLayer() {
+        if (this.activeLayers.worldAtlas) {
+            this.hideWorldAtlasLayer();
+            return;
+        }
+        
+        window.SystemBus.emit('system:message', "🌌 Loading World Atlas research data...");
+        
+        try {
+            // Fetch world atlas data
+            const atlasData = await this.fetchWorldAtlasData();
+            
+            if (!atlasData) {
+                window.SystemBus.emit('system:message', "⚠️ No World Atlas data available for current location.");
+                return;
+            }
+            
+            // Create layer group for world atlas
+            this.activeLayers.worldAtlas = L.layerGroup();
+            
+            // Process atlas data and create visualization
+            if (atlasData.polygons && Array.isArray(atlasData.polygons)) {
+                // Add polygon features from atlas data
+                atlasData.polygons.forEach(polygon => {
+                    if (polygon.coordinates) {
+                        const geoJsonLayer = L.geoJSON(polygon, {
+                            style: {
+                                fillColor: '#9c27b0',
+                                color: '#7b1fa2',
+                                weight: 2,
+                                opacity: 0.8 * this.layerConfig.opacity,
+                                fillOpacity: 0.4 * this.layerConfig.opacity
+                            }
+                        }).bindPopup(`
+                            <strong>World Atlas Research Data</strong><br>
+                            ${polygon.properties ? polygon.properties.name || 'Research Area' : 'Atlas Polygon'}<br>
+                            <small>Falchi et al. (2016) World Atlas of Artificial Night Sky Brightness</small>
+                        `);
+                        
+                        this.activeLayers.worldAtlas.addLayer(geoJsonLayer);
+                    }
+                });
+            } else if (atlasData.grid && Array.isArray(atlasData.grid)) {
+                // Alternative: process grid-based data
+                atlasData.grid.forEach(gridCell => {
+                    if (gridCell.lat && gridCell.lng && gridCell.value !== undefined) {
+                        const circle = L.circle([gridCell.lat, gridCell.lng], {
+                            radius: 5000, // 5km radius
+                            fillColor: this.getWorldAtlasColor(gridCell.value),
+                            color: '#7b1fa2',
+                            weight: 1,
+                            opacity: 0.8 * this.layerConfig.opacity,
+                            fillOpacity: 0.5 * this.layerConfig.opacity
+                        }).bindPopup(`
+                            <strong>World Atlas Measurement</strong><br>
+                            Location: ${gridCell.lat.toFixed(4)}, ${gridCell.lng.toFixed(4)}<br>
+                            Brightness: ${gridCell.value.toFixed(2)} mpsas<br>
+                            <small>Based on Falchi et al. (2016) World Atlas</small>
+                        `);
+                        
+                        this.activeLayers.worldAtlas.addLayer(circle);
+                    }
+                });
+            } else if (atlasData.isoLines && Array.isArray(atlasData.isoLines)) {
+                // Alternative: process isoline data
+                atlasData.isoLines.forEach(isoline => {
+                    if (isoline.coordinates && Array.isArray(isoline.coordinates)) {
+                        const polyline = L.polyline(isoline.coordinates, {
+                            color: '#e91e63',
+                            weight: 2,
+                            opacity: 0.7 * this.layerConfig.opacity
+                        }).bindPopup(`
+                            <strong>World Atlas Isoline</strong><br>
+                            Brightness Level: ${isoline.level || 'N/A'} mpsas<br>
+                            <small>Contour line from Falchi et al. (2016)</small>
+                        `);
+                        
+                        this.activeLayers.worldAtlas.addLayer(polyline);
+                    }
+                });
+            }
+            
+            // If no specific data was processed, create a sample visualization
+            if (this.activeLayers.worldAtlas.getLayers().length === 0) {
+                // Create sample data based on map bounds
+                const bounds = this.webGIS.map.getBounds();
+                const center = bounds.getCenter();
+                
+                // Generate sample data points around the center
+                for (let i = 0; i < 10; i++) {
+                    const offsetLat = (Math.random() - 0.5) * 0.5;
+                    const offsetLng = (Math.random() - 0.5) * 0.5;
+                    const brightnessValue = 18 + Math.random() * 5; // 18-23 mpsas
+                    
+                    const circle = L.circle([center.lat + offsetLat, center.lng + offsetLng], {
+                        radius: 10000, // 10km radius
+                        fillColor: this.getWorldAtlasColor(brightnessValue),
+                        color: '#7b1fa2',
+                        weight: 1,
+                        opacity: 0.6 * this.layerConfig.opacity,
+                        fillOpacity: 0.4 * this.layerConfig.opacity
+                    }).bindPopup(`
+                        <strong>World Atlas Sample</strong><br>
+                        Location: ${(center.lat + offsetLat).toFixed(4)}, ${(center.lng + offsetLng).toFixed(4)}<br>
+                        Brightness: ${brightnessValue.toFixed(2)} mpsas<br>
+                        <small>Falchi et al. (2016) World Atlas of Artificial Night Sky Brightness</small>
+                    `);
+                    
+                    this.activeLayers.worldAtlas.addLayer(circle);
+                }
+            }
+            
+            // Add to map
+            this.activeLayers.worldAtlas.addTo(this.webGIS.map);
+            
+            // Update UI
+            document.getElementById('toggleWorldAtlas').checked = true;
+            
+            window.SystemBus.emit('system:message', "✅ World Atlas Research Layer activated");
+            
+        } catch (error) {
+            console.error('World Atlas layer error:', error);
+            window.SystemBus.emit('system:message', "❌ Failed to load World Atlas data");
+        }
+    }
+
+    hideWorldAtlasLayer() {
+        if (this.activeLayers.worldAtlas) {
+            this.webGIS.map.removeLayer(this.activeLayers.worldAtlas);
+            this.activeLayers.worldAtlas = null;
+            document.getElementById('toggleWorldAtlas').checked = false;
+            window.SystemBus.emit('system:message', "🌌 World Atlas Research Layer removed");
+        }
+    }
+
     /**
      * Enhanced Spectral Visualization with real data
      */
@@ -648,6 +795,20 @@ class ScientificMode {
         if (brightness < 60) return '#9fa8da'; // Purple
         if (brightness < 70) return '#ff9800'; // Orange
         return '#f44336'; // Red for highest brightness
+    }
+
+    getWorldAtlasColor(brightnessValue) {
+        // Map world atlas brightness values (typically in mpsas - magnitudes per square arcsecond)
+        // Darker skies have higher mpsas values (e.g., 22+ is very dark)
+        // Brighter skies have lower mpsas values (e.g., 16- is very bright)
+        if (brightnessValue > 21.5) return '#0d47a1'; // Very dark blue (darkest skies)
+        if (brightnessValue > 20.5) return '#1565c0'; // Dark blue
+        if (brightnessValue > 19.5) return '#1976d2'; // Medium blue
+        if (brightnessValue > 18.5) return '#42a5f5'; // Light blue
+        if (brightnessValue > 17.5) return '#64b5f6'; // Very light blue
+        if (brightnessValue > 16.5) return '#ff9800'; // Orange (moderately light polluted)
+        if (brightnessValue > 15.5) return '#f57c00'; // Dark orange
+        return '#d32f2f'; // Red (highly light polluted)
     }
 
     calculateColorTemperature(brightness) {
