@@ -218,6 +218,12 @@ class WebGIS {
     }
 
     async loadVIIRSDataLayer() {
+        // Rate limiting: prevent too frequent API calls
+        const now = Date.now();
+        if (this.lastVIIRSLoad && (now - this.lastVIIRSLoad) < 3000) { // 3 second minimum interval
+            return; // Too soon to load again
+        }
+        this.lastVIIRSLoad = now;
         try {
             // Load VIIRS data for current view
             const bounds = this.map.getBounds();
@@ -396,7 +402,16 @@ class WebGIS {
             
             this.blackMarbleLayer = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlackMarble_2016/default//GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg', {
                 attribution: 'NASA Black Marble imagery',
-                maxZoom: 8
+                maxZoom: 8,
+                // Add error handling for tile loading failures
+                errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', // Transparent 1x1 pixel
+                // Retry mechanism
+                subdomains: ['gibs.earthdata.nasa.gov', 'map1.vis.earthdata.nasa.gov', 'map2.vis.earthdata.nasa.gov']
+            });
+            
+            // Add event listeners for tile loading errors
+            this.blackMarbleLayer.on('tileerror', function(error) {
+                console.warn('Failed to load Black Marble tile:', error);
             });
             
             this.blackMarbleLayer.addTo(this.map);
@@ -501,7 +516,16 @@ class WebGIS {
         this.worldAtlasLayer = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlackMarble_2016/default//GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg', {
             attribution: 'NASA Black Marble imagery',
             opacity: 0.7,
-            zIndex: 100
+            zIndex: 100,
+            // Add error handling for tile loading failures
+            errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', // Transparent 1x1 pixel
+            // Retry mechanism
+            subdomains: ['gibs.earthdata.nasa.gov', 'map1.vis.earthdata.nasa.gov', 'map2.vis.earthdata.nasa.gov']
+        });
+        
+        // Add event listeners for tile loading errors
+        this.worldAtlasLayer.on('tileerror', function(error) {
+            console.warn('Failed to load World Atlas tile:', error);
         });
         
         this.worldAtlasLayer.addTo(this.map);
