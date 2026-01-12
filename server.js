@@ -49,9 +49,26 @@ app.use((req, res, next) => {
 // Remove the duplicate route - keep only the more comprehensive one below
 
 // 1. NASA VIIRS Nighttime Lights (Primary Source) - Enhanced with Earthdata API
-app.get('/api/viirs/:year/:month?', async (req, res) => {
+// Route for year only (like /api/viirs/2023)
+app.get('/api/viirs/:year', async (req, res) => {
   try {
-    const { year, month } = req.params;
+    const { year } = req.params;
+    const month = null; // No month provided
+    const { bbox } = req.query;
+    
+    console.log(`🌍 NASA VIIRS Request: year=${year}, bbox=${bbox}`);
+    
+    // Rest of the implementation is in the combined function below
+    await handleVIIRSRequest(req, res, year, month);
+  } catch (error) {
+    console.error('❌ NASA VIIRS Error (year only):', error.message);
+    res.status(500).json({ error: 'Failed to process VIIRS request', message: error.message });
+  }
+});
+
+// Helper function for VIIRS data processing
+async function handleVIIRSRequest(req, res, year, month) {
+  try {
     const { bbox } = req.query;
     
     console.log(`🌍 NASA VIIRS Request: year=${year}, bbox=${bbox}`);
@@ -259,8 +276,8 @@ app.get('/api/viirs/:year/:month?', async (req, res) => {
     // Return comprehensive sample data
     res.json({
       source: 'NASA VIIRS Nighttime Lights (Sample - API Unavailable)',
-      year: req.params.year || 2023,
-      month: req.params.month || 'annual',
+      year: year || 2023,
+      month: month || 'annual',
       count: 150,
       avg_brightness: '15.3',
       min_brightness: '0.5',
@@ -270,6 +287,18 @@ app.get('/api/viirs/:year/:month?', async (req, res) => {
       data: generateSampleVIIRSData(req.query.bbox),
       citation: 'Simulated data based on VIIRS DNB characteristics'
     });
+  }
+}
+
+// Route for year with optional month (like /api/viirs/2023/01)
+app.get('/api/viirs/:year/:month?', async (req, res) => {
+  try {
+    const { year } = req.params;
+    const month = req.params.month || null;
+    await handleVIIRSRequest(req, res, year, month);
+  } catch (error) {
+    console.error('❌ NASA VIIRS Error (year/month):', error.message);
+    res.status(500).json({ error: 'Failed to process VIIRS request', message: error.message });
   }
 });
 
