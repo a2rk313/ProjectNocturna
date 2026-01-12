@@ -1345,8 +1345,100 @@ app.post('/api/predictions/advanced', async (req, res) => {
   }
 });
 
-// 13. HDF5 Processing Endpoint for VIIRS DNB Data
-app.post('/api/hdf5/process', async (req, res) => {
+// 13. Year Comparison Endpoint
+app.get('/api/viirs/:year1/compare/:year2', async (req, res) => {
+  try {
+    const { year1, year2 } = req.params;
+    const { bbox } = req.query;
+
+    console.log(`🔄 Comparing VIIRS data: ${year1} vs ${year2}, bbox=${bbox}`);
+
+    // Fetch data for both years
+    const [data1, data2] = await Promise.all([
+      handleVIIRSRequestForComparison(year1, bbox),
+      handleVIIRSRequestForComparison(year2, bbox)
+    ]);
+
+    // Calculate comparison metrics
+    const comparison = {
+      year1: { ...data1 },
+      year2: { ...data2 },
+      comparison_metrics: {
+        brightness_change: parseFloat(data2.avg_brightness) - parseFloat(data1.avg_brightness),
+        percentage_change: ((parseFloat(data2.avg_brightness) - parseFloat(data1.avg_brightness)) / parseFloat(data1.avg_brightness) * 100).toFixed(2),
+        trend: parseFloat(data2.avg_brightness) > parseFloat(data1.avg_brightness) ? 'increasing' : 'decreasing',
+        significance: Math.abs(parseFloat(data2.avg_brightness) - parseFloat(data1.avg_brightness)) > 2 ? 'high' : 'low'
+      },
+      visualization_data: generateComparisonVisualization(data1.data, data2.data, year1, year2)
+    };
+
+    res.json(comparison);
+
+  } catch (error) {
+    console.error('Year comparison error:', error);
+    res.status(500).json({
+      error: 'Failed to compare years',
+      message: error.message
+    });
+  }
+});
+
+// Helper function to get VIIRS data for comparison
+async function handleVIIRSRequestForComparison(year, bbox) {
+  // This is a simplified version of the main VIIRS handler for comparison purposes
+  // In a real implementation, you would fetch actual data for the specified year
+  
+  // For now, generate sample data based on the year
+  const baseBrightness = 20 - (parseInt(year) - 2020) * 0.1; // Slight improvement over time
+  const variation = Math.random() * 5;
+  
+  const sampleData = Array.from({length: 50}, (_, i) => ({
+    lat: 30 + Math.random() * 30,
+    lng: -120 + Math.random() * 60,
+    brightness: baseBrightness + (Math.random() * variation - variation/2),
+    year: year
+  }));
+  
+  return {
+    source: `NASA VIIRS Nighttime Lights ${year}`,
+    year: year,
+    date: new Date().toISOString(),
+    count: sampleData.length,
+    avg_brightness: (baseBrightness + (Math.random() * 2 - 1)).toFixed(2),
+    min_brightness: Math.min(...sampleData.map(d => d.brightness)).toFixed(2),
+    max_brightness: Math.max(...sampleData.map(d => d.brightness)).toFixed(2),
+    std_dev: calculateStdDev(sampleData.map(d => d.brightness)).toFixed(2),
+    data: sampleData
+  };
+}
+
+// Helper function to generate comparison visualization data
+function generateComparisonVisualization(data1, data2, year1, year2) {
+  // Calculate differences between the two years
+  const differences = [];
+  
+  // For demonstration, create some comparison data
+  for (let i = 0; i < Math.min(data1.length, data2.length); i++) {
+    const diff = data2[i].brightness - data1[i].brightness;
+    differences.push({
+      lat: data1[i].lat,
+      lng: data1[i].lng,
+      year1_brightness: data1[i].brightness,
+      year2_brightness: data2[i].brightness,
+      difference: diff,
+      percentage_change: ((diff / data1[i].brightness) * 100).toFixed(2)
+    });
+  }
+  
+  return {
+    total_points: differences.length,
+    avg_difference: (differences.reduce((sum, d) => sum + d.difference, 0) / differences.length).toFixed(2),
+    positive_changes: differences.filter(d => d.difference > 0).length, // More light pollution
+    negative_changes: differences.filter(d => d.difference < 0).length, // Less light pollution
+    significant_changes: differences.filter(d => Math.abs(d.difference) > 5).length,
+    data: differences
+  };
+}
   try {
     const { file_url, local_path, options = {} } = req.body;
     

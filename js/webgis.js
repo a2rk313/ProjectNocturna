@@ -104,6 +104,9 @@ class WebGIS {
         // Add VIIRS data layer (real data)
         this.loadVIIRSDataLayer();
         
+        // Add legend for light pollution data
+        this.addLightPollutionLegend();
+        
         // Draw event
         this.map.on(L.Draw.Event.CREATED, (e) => {
             this.drawnItems.clearLayers();
@@ -122,6 +125,46 @@ class WebGIS {
         });
 
         console.log("🗺️ Map initialized with real data layers");
+    }
+    
+    addLightPollutionLegend() {
+        // Create a custom legend control
+        const legend = L.control({position: 'bottomright'});
+        
+        legend.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'lp-legend');
+            
+            div.innerHTML = `
+                <div class="lp-legend-title">Light Pollution Intensity</div>
+                <div class="lp-legend-scale">
+                    <div class="lp-legend-item">
+                        <div class="lp-legend-color lp-natural-color"></div>
+                        <span>Natural Darkness</span>
+                    </div>
+                    <div class="lp-legend-item">
+                        <div class="lp-legend-color lp-low-color"></div>
+                        <span>Low Pollution</span>
+                    </div>
+                    <div class="lp-legend-item">
+                        <div class="lp-legend-color lp-moderate-color"></div>
+                        <span>Moderate Pollution</span>
+                    </div>
+                    <div class="lp-legend-item">
+                        <div class="lp-legend-color lp-high-color"></div>
+                        <span>High Pollution</span>
+                    </div>
+                    <div class="lp-legend-item">
+                        <div class="lp-legend-color lp-extreme-color"></div>
+                        <span>Extreme Pollution</span>
+                    </div>
+                </div>
+                <div class="dataset-source">NASA VIIRS DNB Composite</div>
+            `;
+            
+            return div;
+        };
+        
+        legend.addTo(this.map);
     }
 
     async loadVIIRSDataLayer() {
@@ -163,13 +206,29 @@ class WebGIS {
                 );
                 
                 if (validData.length > 0) {
+                    // Create heat data with weighted values based on brightness
                     const heatData = validData.map(point => [point.lat, point.lng, point.brightness]);
                     
+                    // Remove existing VIIRS layer if present
+                    if (this.viirsLayer) {
+                        this.map.removeLayer(this.viirsLayer);
+                    }
+                    
                     this.viirsLayer = L.heatLayer(heatData, {
-                        radius: 15,
+                        radius: 20,
                         blur: 15,
                         maxZoom: 12,
-                        gradient: {0.1: 'blue', 0.3: 'cyan', 0.5: 'lime', 0.7: 'yellow', 1: 'red'}
+                        minOpacity: 0.3,
+                        gradient: {
+                            0.1: '#000080',   // Deep blue for low values
+                            0.3: '#0000FF',   // Blue
+                            0.5: '#0080FF',   // Light blue
+                            0.6: '#00FFFF',   // Cyan
+                            0.7: '#00FF00',   // Green
+                            0.8: '#FFFF00',   // Yellow
+                            0.9: '#FF8000',   // Orange
+                            1.0: '#FF0000'    // Red for high values
+                        }
                     }).addTo(this.map);
                     
                     console.log(`✅ Loaded ${validData.length} valid VIIRS data points`);
@@ -182,6 +241,26 @@ class WebGIS {
         } catch (error) {
             console.warn('VIIRS data load failed:', error);
         }
+    }
+    
+    // Load a more detailed VIIRS tile layer for better visualization
+    loadVIIRSTileLayer() {
+        // Remove existing VIIRS layer if present
+        if (this.viirsTileLayer) {
+            this.map.removeLayer(this.viirsTileLayer);
+        }
+        
+        // Create a tile layer that shows NASA's VIIRS nighttime lights
+        this.viirsTileLayer = L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
+            attribution: 'Imagery provided by services from the Global Imagery Browse Services (GIBS), operated by the NASA/GSFC/Earth Science Data and Information System (<a href=\"https://earthdata.nasa.gov\">ESDIS</a>) with funding provided by NASA/HQ.',
+            tilematrixset: 'GoogleMapsCompatible_Level8/',
+            maxZoom: 8,
+            format: 'jpg',
+            time: '',
+            opacity: 0.8
+        });
+        
+        this.viirsTileLayer.addTo(this.map);
     }
 
     initializeDrawControl() {
@@ -259,6 +338,19 @@ class WebGIS {
         if (this.baseLayers[baseMapType]) {
             this.baseLayers[baseMapType].addTo(this.map);
             window.SystemBus.emit('system:message', `✅ Switched to ${baseMapType} base map`);
+        } else if (baseMapType === 'viirs') {
+            // Special handling for NASA Black Marble layer
+            if (this.blackMarbleLayer) {
+                this.map.removeLayer(this.blackMarbleLayer);
+            }
+            
+            this.blackMarbleLayer = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlackMarble_2016/default//GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg', {
+                attribution: 'NASA Black Marble imagery',
+                maxZoom: 8
+            });
+            
+            this.blackMarbleLayer.addTo(this.map);
+            window.SystemBus.emit('system:message', `✅ Switched to NASA Black Marble base map`);
         }
     }
 
@@ -294,6 +386,25 @@ class WebGIS {
             });
         }
 
+        // Toggle World Atlas layer
+        const toggleWorldAtlas = document.getElementById('toggleWorldAtlas');
+        if (toggleWorldAtlas) {
+            toggleWorldAtlas.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    // Add world atlas layer if available
+                    if (this.worldAtlasLayer) {
+                        this.map.addLayer(this.worldAtlasLayer);
+                    } else {
+                        this.loadWorldAtlasLayer();
+                    }
+                } else {
+                    if (this.worldAtlasLayer) {
+                        this.map.removeLayer(this.worldAtlasLayer);
+                    }
+                }
+            });
+        }
+
         // Layer opacity slider
         const opacitySlider = document.getElementById('layerOpacitySlider');
         if (opacitySlider) {
@@ -304,6 +415,10 @@ class WebGIS {
                 // Update all active layers
                 if (this.viirsLayer && this.viirsLayer.setOptions) {
                     this.viirsLayer.setOptions({ opacity: value / 100 });
+                }
+                
+                if (this.viirsTileLayer) {
+                    this.viirsTileLayer.setOpacity(value / 100);
                 }
                 
                 if (this.scientificMode) {
@@ -323,6 +438,23 @@ class WebGIS {
                 }
             });
         }
+    }
+    
+    // Load World Atlas layer for research-grade visualization
+    loadWorldAtlasLayer() {
+        // Remove existing world atlas layer if present
+        if (this.worldAtlasLayer) {
+            this.map.removeLayer(this.worldAtlasLayer);
+        }
+        
+        // Create a tile layer showing light pollution data using NASA's Black Marble dataset
+        this.worldAtlasLayer = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlackMarble_2016/default//GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg', {
+            attribution: 'NASA Black Marble imagery',
+            opacity: 0.7,
+            zIndex: 100
+        });
+        
+        this.worldAtlasLayer.addTo(this.map);
     }
 
     async loadStationsData() {
@@ -590,6 +722,7 @@ class WebGIS {
                             <h6>Primary Data Sources</h6>
                             <ul>
                                 <li><strong>NASA VIIRS Nighttime Lights:</strong> Suomi NPP & NOAA-20 satellites</li>
+                                <li><strong>NASA Black Marble:</strong> Corrected nighttime lights annual data</li>
                                 <li><strong>World Atlas of Artificial Night Sky Brightness:</strong> Falchi et al. (2016)</li>
                                 <li><strong>SQM-LE Network:</strong> Global ground measurements</li>
                                 <li><strong>International Dark-Sky Association:</strong> Certified parks database</li>
@@ -604,6 +737,9 @@ class WebGIS {
                 window.SystemBus.emit('ui:show_modal', { title: "Data Sources", content: content });
             };
         }
+        
+        // Time controls
+        this.initTimeControls();
         
         // Drawing tools
         const drawBtn = document.getElementById('drawPolygon');
@@ -630,6 +766,183 @@ class WebGIS {
         
         // Chat listeners
         this.initChatListeners();
+    }
+    
+    initTimeControls() {
+        // Year selector
+        const yearSelector = document.getElementById('yearSelector');
+        if (yearSelector) {
+            yearSelector.addEventListener('change', (e) => {
+                const selectedYear = e.target.value;
+                window.SystemBus.emit('system:message', `📅 Year changed to ${selectedYear}`);
+                
+                // Reload data for the selected year
+                if (document.getElementById('toggleVIIRS').checked) {
+                    this.loadVIIRSDataLayer(selectedYear);
+                }
+                
+                if (document.getElementById('toggleWorldAtlas').checked) {
+                    // For Black Marble 2016 specifically
+                    if (selectedYear === '2016') {
+                        this.loadWorldAtlasLayer();
+                    }
+                }
+            });
+        }
+        
+        // Compare years button
+        const compareBtn = document.getElementById('compareYears');
+        if (compareBtn) {
+            compareBtn.addEventListener('click', () => {
+                this.compareYears();
+            });
+        }
+        
+        // Trend analysis button
+        const trendBtn = document.getElementById('trendAnalysis');
+        if (trendBtn) {
+            trendBtn.addEventListener('click', () => {
+                this.performTrendAnalysis();
+            });
+        }
+    }
+    
+    async loadVIIRSDataLayer(year = '2023') {
+        try {
+            // Load VIIRS data for current view
+            const bounds = this.map.getBounds();
+            const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+            
+            // Construct API endpoint with year parameter
+            const response = await fetch(`/api/viirs/${year}?bbox=${bbox}`);
+            
+            if (!response.ok) {
+                throw new Error(`VIIRS API request failed with status ${response.status}`);
+            }
+            
+            let data;
+            try {
+                const responseText = await response.text();
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('VIIRS data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                return;
+            }
+            
+            const viirsData = data.data || [];
+            console.log(`📡 VIIRS API Response: ${viirsData.length} data points, source: ${data.source}, year: ${year}`);
+            
+            if (viirsData.length > 0) {
+                // Create heatmap layer if leaflet.heat plugin is available
+                if (typeof L.heatLayer !== 'function') {
+                    console.warn('VIIRS data load failed: L.heatLayer function not available');
+                    return;
+                }
+                
+                // Filter out any points that don't have valid coordinates or brightness
+                const validData = viirsData.filter(point => 
+                    point.lat && point.lng && point.brightness !== undefined && 
+                    !isNaN(point.lat) && !isNaN(point.lng) && !isNaN(point.brightness)
+                );
+                
+                if (validData.length > 0) {
+                    // Create heat data with weighted values based on brightness
+                    const heatData = validData.map(point => [point.lat, point.lng, point.brightness]);
+                    
+                    // Remove existing VIIRS layer if present
+                    if (this.viirsLayer) {
+                        this.map.removeLayer(this.viirsLayer);
+                    }
+                    
+                    this.viirsLayer = L.heatLayer(heatData, {
+                        radius: 20,
+                        blur: 15,
+                        maxZoom: 12,
+                        minOpacity: 0.3,
+                        gradient: {
+                            0.1: '#000080',   // Deep blue for low values
+                            0.3: '#0000FF',   // Blue
+                            0.5: '#0080FF',   // Light blue
+                            0.6: '#00FFFF',   // Cyan
+                            0.7: '#00FF00',   // Green
+                            0.8: '#FFFF00',   // Yellow
+                            0.9: '#FF8000',   // Orange
+                            1.0: '#FF0000'    // Red for high values
+                        }
+                    }).addTo(this.map);
+                    
+                    console.log(`✅ Loaded ${validData.length} valid VIIRS data points for year ${year}`);
+                } else {
+                    console.log('⚠️ No valid VIIRS data points available for current map view.');
+                }
+            } else {
+                console.log('⚠️ No VIIRS data available for current map view.');
+            }
+        } catch (error) {
+            console.warn('VIIRS data load failed:', error);
+        }
+    }
+    
+    compareYears() {
+        // Show a comparison modal
+        const content = `
+            <div class="expert-modal">
+                <h5>📊 Year Comparison</h5>
+                <p>Select two years to compare light pollution changes over time.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="year1">First Year</label>
+                        <select class="form-select" id="year1">
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                            <option value="2016">2016</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="year2">Second Year</label>
+                        <select class="form-select" id="year2">
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                            <option value="2016">2016</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-cosmic-primary w-100" id="performComparison">Compare</button>
+                </div>
+            </div>
+        `;
+        
+        window.SystemBus.emit('ui:show_modal', { title: "Year Comparison", content: content });
+        
+        // Set up event listener for the comparison button
+        setTimeout(() => {
+            const compareButton = document.getElementById('performComparison');
+            if (compareButton) {
+                compareButton.addEventListener('click', () => {
+                    const year1 = document.getElementById('year1').value;
+                    const year2 = document.getElementById('year2').value;
+                    this.performYearComparison(year1, year2);
+                });
+            }
+        }, 100);
+    }
+    
+    performYearComparison(year1, year2) {
+        // Placeholder for actual comparison logic
+        window.SystemBus.emit('system:message', `Comparing light pollution data between ${year1} and ${year2}...`);
+        console.log(`Comparing ${year1} vs ${year2}`);
+    }
+    
+    performTrendAnalysis() {
+        // Placeholder for trend analysis
+        window.SystemBus.emit('system:message', "Performing trend analysis...");
+        console.log("Performing trend analysis");
     }
 
     setupPanelCollapse() {
