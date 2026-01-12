@@ -260,7 +260,21 @@ class ScientificMode {
     async fetchRealStationsData() {
         try {
             const response = await fetch('/api/sqm-network');
-            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+            
+            let data;
+            try {
+                const responseText = await response.text();
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('Station data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                return [];
+            }
+            
             return data.stations || data.rows || [];
         } catch (error) {
             console.error('Failed to fetch station data:', error);
@@ -274,7 +288,21 @@ class ScientificMode {
             const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
             
             const response = await fetch(`/api/viirs/2023?bbox=${bbox}`);
-            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`VIIRS API request failed with status ${response.status}`);
+            }
+            
+            let data;
+            try {
+                const responseText = await response.text();
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('VIIRS data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                return [];
+            }
+            
             const viirsData = data.data || [];
             console.log(`📡 VIIRS API Response: ${viirsData.length} data points, source: ${data.source}`);
             if (viirsData.length > 0) {
@@ -293,7 +321,21 @@ class ScientificMode {
             const center = bounds.getCenter();
             
             const response = await fetch(`/api/world-atlas?lat=${center.lat}&lng=${center.lng}`);
-            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`World Atlas API request failed with status ${response.status}`);
+            }
+            
+            let data;
+            try {
+                const responseText = await response.text();
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('World Atlas data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                return null;
+            }
+            
             return data;
         } catch (error) {
             console.error('Failed to fetch World Atlas data:', error);
@@ -795,10 +837,22 @@ class ScientificMode {
                 body: JSON.stringify({ geometry })
             });
             
-            const realData = await response.json();
+            if (!response.ok) {
+                throw new Error(`Spectral signature API request failed with status ${response.status}`);
+            }
+            
+            let realData;
+            try {
+                const responseText = await response.text();
+                realData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('Spectral signature data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                throw new Error('Invalid JSON response from server');
+            }
             
             // Check if we got an error response from the server
-            if (realData.error || !response.ok) {
+            if (realData.error) {
                 throw new Error(realData.message || 'Failed to fetch spectral data');
             }
             
@@ -877,7 +931,19 @@ class ScientificMode {
                 body: JSON.stringify({ geometry })
             });
             
-            const realData = await response.json();
+            if (!response.ok) {
+                throw new Error(`Ecology impact API request failed with status ${response.status}`);
+            }
+            
+            let realData;
+            try {
+                const responseText = await response.text();
+                realData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('Ecology impact data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                throw new Error('Invalid JSON response from server');
+            }
             
             const area = this.safeCalculateArea(geometry);
             
@@ -955,7 +1021,20 @@ class ScientificMode {
             
             // Fetch real trend data
             const response = await fetch(`/api/trends/${lat}/${lng}?years=5`);
-            const realData = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`Temporal trends API request failed with status ${response.status}`);
+            }
+            
+            let realData;
+            try {
+                const responseText = await response.text();
+                realData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('Temporal trends data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                throw new Error('Invalid JSON response from server');
+            }
             
             const area = this.safeCalculateArea(geometry);
             
@@ -1057,10 +1136,22 @@ class ScientificMode {
                 })
             });
             
-            const realData = await response.json();
+            if (!response.ok) {
+                throw new Error(`Energy economics API request failed with status ${response.status}`);
+            }
+            
+            let realData;
+            try {
+                const responseText = await response.text();
+                realData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('Energy economics data JSON parsing error:', parseError);
+                console.log('Raw response:', await response.text());
+                throw new Error('Invalid JSON response from server');
+            }
             
             // Check if we got an error response from the server
-            if (realData.error || !response.ok) {
+            if (realData.error) {
                 throw new Error(realData.message || 'Failed to calculate energy economics');
             }
             
@@ -1188,7 +1279,20 @@ class ScientificMode {
                 body: JSON.stringify({ geometry, year: 2023 })
             });
             
-            const statsData = await statsResponse.json();
+            if (!statsResponse.ok) {
+                throw new Error(`Policy simulation API request failed with status ${statsResponse.status}`);
+            }
+            
+            let statsData;
+            try {
+                const responseText = await statsResponse.text();
+                statsData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('Policy simulation data JSON parsing error:', parseError);
+                console.log('Raw response:', await statsResponse.text());
+                throw new Error('Invalid JSON response from server');
+            }
+            
             const area = this.safeCalculateArea(geometry);
             const darkSkyPercentage = statsData.statistics?.dark_sky_percentage || 0;
             
@@ -1303,7 +1407,15 @@ class ScientificMode {
             throw new Error(`API returned ${response.status}: ${response.statusText}`);
         }
         
-        const predictionData = await response.json();
+        let predictionData;
+        try {
+            const responseText = await response.text();
+            predictionData = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Predictive models data JSON parsing error:', parseError);
+            console.log('Raw response:', await response.text());
+            throw new Error('Invalid JSON response from server');
+        }
         
         // Display comprehensive results
         this.displayEnhancedPredictions(predictionData);
@@ -1891,7 +2003,22 @@ exportPredictionChart() {
                 body: JSON.stringify({ geometry: cleanGeometry, year: 2023 })
             });
             
-            const statsData = await statsResponse.json();
+            // Check if the response is OK before parsing JSON
+            if (!statsResponse.ok) {
+                throw new Error(`API request failed with status ${statsResponse.status}`);
+            }
+            
+            // Safely parse JSON response
+            let statsData;
+            try {
+                const responseText = await statsResponse.text();
+                statsData = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('JSON parsing error:', parseError);
+                console.log('Raw response:', await statsResponse.text());
+                throw new Error('Invalid JSON response from server');
+            }
+            
             const area = this.safeCalculateArea(geometry);
             
             const content = `
