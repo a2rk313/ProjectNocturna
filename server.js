@@ -1726,7 +1726,250 @@ app.get('/api/validation/coordinates/:lat/:lng', async (req, res) => {
   }
 });
 
-// 16. GIBS (Global Imagery Browse Services) Endpoints
+// 16. GEOSERVER ENDPOINTS
+app.get('/api/geoserver/health', async (req, res) => {
+  try {
+    console.log('🌍 GeoServer: Health check');
+    
+    let GeoServerService;
+    try {
+      GeoServerService = require('./lib/geoserver-service');
+    } catch (error) {
+      console.log('⚠️ GeoServer Service library not found');
+      return res.status(500).json({
+        status: 'unavailable',
+        service: 'GeoServer',
+        error: 'GeoServer module not installed',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const geoServerService = new GeoServerService();
+    const health = await geoServerService.healthCheck();
+    
+    res.json(health);
+  } catch (error) {
+    console.error('GeoServer health check error:', error);
+    res.status(500).json({
+      status: 'error',
+      service: 'GeoServer',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Initialize GeoServer workspace and datastore
+app.post('/api/geoserver/init', async (req, res) => {
+  try {
+    console.log('🌍 GeoServer: Initializing workspace and datastore');
+    
+    let GeoServerService;
+    try {
+      GeoServerService = require('./lib/geoserver-service');
+    } catch (error) {
+      console.log('⚠️ GeoServer Service library not found');
+      return res.status(500).json({
+        error: 'GeoServer Service not available',
+        message: 'GeoServer module not installed'
+      });
+    }
+    
+    const geoServerService = new GeoServerService();
+    const success = await geoServerService.initialize();
+    
+    res.json({
+      success: success,
+      message: 'GeoServer initialized successfully',
+      workspace: geoServerService.workspace,
+      datastore: geoServerService.datastore,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GeoServer init error:', error);
+    res.status(500).json({
+      error: 'Failed to initialize GeoServer',
+      message: error.message
+    });
+  }
+});
+
+// Get available GeoServer layers
+app.get('/api/geoserver/layers', async (req, res) => {
+  try {
+    console.log('🌍 GeoServer: Getting available layers...');
+    
+    let GeoServerService;
+    try {
+      GeoServerService = require('./lib/geoserver-service');
+    } catch (error) {
+      console.log('⚠️ GeoServer Service library not found');
+      return res.status(500).json({
+        error: 'GeoServer Service not available',
+        message: 'GeoServer module not installed'
+      });
+    }
+    
+    const geoServerService = new GeoServerService();
+    const layers = await geoServerService.getLayers();
+    
+    res.json({
+      layers: layers,
+      count: layers.layers?.layer ? layers.layers.layer.length : 0,
+      source: 'GeoServer WMS/WFS Service',
+      documentation: 'http://localhost:8080/geoserver/web/',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GeoServer layers error:', error);
+    res.status(500).json({
+      error: 'Failed to get GeoServer layers',
+      message: error.message
+    });
+  }
+});
+
+// Get GeoServer layer details
+app.get('/api/geoserver/layer/:layerName', async (req, res) => {
+  try {
+    const { layerName } = req.params;
+    console.log(`🌍 GeoServer: Getting details for layer ${layerName}`);
+    
+    let GeoServerService;
+    try {
+      GeoServerService = require('./lib/geoserver-service');
+    } catch (error) {
+      console.log('⚠️ GeoServer Service library not found');
+      return res.status(500).json({
+        error: 'GeoServer Service not available',
+        message: 'GeoServer module not installed'
+      });
+    }
+    
+    const geoServerService = new GeoServerService();
+    const layerDetails = await geoServerService.getLayer(layerName);
+    
+    res.json({
+      layer_name: layerName,
+      details: layerDetails,
+      source: 'GeoServer',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GeoServer layer details error:', error);
+    res.status(500).json({
+      error: 'Failed to get GeoServer layer details',
+      message: error.message
+    });
+  }
+});
+
+// Query features from GeoServer
+app.post('/api/geoserver/query', async (req, res) => {
+  try {
+    const { layerName, bounds, cqlFilter } = req.body;
+    
+    if (!layerName) {
+      return res.status(400).json({ error: 'layerName is required' });
+    }
+    
+    console.log(`🌍 GeoServer: Querying features from ${layerName}`, bounds ? `within bounds ${bounds}` : '');
+    
+    let GeoServerService;
+    try {
+      GeoServerService = require('./lib/geoserver-service');
+    } catch (error) {
+      console.log('⚠️ GeoServer Service library not found');
+      return res.status(500).json({
+        error: 'GeoServer Service not available',
+        message: 'GeoServer module not installed'
+      });
+    }
+    
+    const geoServerService = new GeoServerService();
+    const features = await geoServerService.queryFeatures(layerName, bounds, cqlFilter);
+    
+    res.json(features);
+  } catch (error) {
+    console.error('GeoServer query error:', error);
+    res.status(500).json({
+      error: 'Failed to query GeoServer features',
+      message: error.message
+    });
+  }
+});
+
+// Get WMS tile template for a GeoServer layer
+app.get('/api/geoserver/wms-template/:layerName', async (req, res) => {
+  try {
+    const { layerName } = req.params;
+    console.log(`🌍 GeoServer: Getting WMS template for layer ${layerName}`);
+    
+    let GeoServerService;
+    try {
+      GeoServerService = require('./lib/geoserver-service');
+    } catch (error) {
+      console.log('⚠️ GeoServer Service library not found');
+      return res.status(500).json({
+        error: 'GeoServer Service not available',
+        message: 'GeoServer module not installed'
+      });
+    }
+    
+    const geoServerService = new GeoServerService();
+    const wmsUrl = geoServerService.getWmsUrl(layerName);
+    
+    res.json({
+      layer_name: layerName,
+      wms_url: wmsUrl,
+      source: 'GeoServer WMS Service',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GeoServer WMS template error:', error);
+    res.status(500).json({
+      error: 'Failed to get GeoServer WMS template',
+      message: error.message
+    });
+  }
+});
+
+// Get WFS URL for a GeoServer layer
+app.get('/api/geoserver/wfs-url/:layerName', async (req, res) => {
+  try {
+    const { layerName } = req.params;
+    console.log(`🌍 GeoServer: Getting WFS URL for layer ${layerName}`);
+    
+    let GeoServerService;
+    try {
+      GeoServerService = require('./lib/geoserver-service');
+    } catch (error) {
+      console.log('⚠️ GeoServer Service library not found');
+      return res.status(500).json({
+        error: 'GeoServer Service not available',
+        message: 'GeoServer module not installed'
+      });
+    }
+    
+    const geoServerService = new GeoServerService();
+    const wfsUrl = geoServerService.getWfsUrl(layerName);
+    
+    res.json({
+      layer_name: layerName,
+      wfs_url: wfsUrl,
+      source: 'GeoServer WFS Service',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('GeoServer WFS URL error:', error);
+    res.status(500).json({
+      error: 'Failed to get GeoServer WFS URL',
+      message: error.message
+    });
+  }
+});
+
+// 17. GIBS (Global Imagery Browse Services) Endpoints
 app.get('/api/gibs/layers', async (req, res) => {
   try {
     console.log('🌍 GIBS: Getting available layers...');
