@@ -255,7 +255,10 @@
         <div class="cosmic-card">
             <div class="panel-header d-flex justify-content-between">
                 <h6 id="analysisTitle">Analysis Results</h6>
-                <button class="btn-close-cosmic" id="closeAnalysis"><i class="fas fa-times"></i></button>
+                <div class="d-flex gap-2">
+                    <i class="collapse-icon fas fa-chevron-up"></i>
+                    <button class="btn-close-cosmic" id="closeAnalysis"><i class="fas fa-times"></i></button>
+                </div>
             </div>
             <div class="panel-body p-3" id="analysisContent">
             </div>
@@ -264,7 +267,10 @@
 
     <div class="chatbot-container cosmic-panel" id="chatbotPanel">
         <div class="cosmic-card">
-            <div class="panel-header"><h6 id="assistantName">Lumina</h6></div>
+            <div class="panel-header">
+                <h6 id="assistantName">Lumina</h6>
+                <i class="collapse-icon fas fa-chevron-up"></i>
+            </div>
             <div class="panel-body card-body">
                 <div class="chat-messages cosmic-scrollbar" id="chat-messages">
                     <div class="chat-message assistant cosmic-message">
