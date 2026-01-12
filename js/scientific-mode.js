@@ -333,9 +333,9 @@ class ScientificMode {
     async fetchWorldAtlasData() {
         try {
             const bounds = this.webGIS.map.getBounds();
-            const center = bounds.getCenter();
+            const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
             
-            const response = await fetch(`/api/world-atlas?lat=${center.lat}&lng=${center.lng}`);
+            const response = await fetch(`/api/world-atlas?bbox=${bbox}`);
             
             if (!response.ok) {
                 throw new Error(`World Atlas API request failed with status ${response.status}`);
@@ -449,7 +449,31 @@ class ScientificMode {
             this.activeLayers.worldAtlas = L.layerGroup();
             
             // Process atlas data and create visualization
-            if (atlasData.polygons && Array.isArray(atlasData.polygons)) {
+            // Handle the new grid_data format from the API
+            if (atlasData.grid_data && Array.isArray(atlasData.grid_data)) {
+                // Process grid-based data from the API
+                atlasData.grid_data.forEach(gridCell => {
+                    if (gridCell.lat && gridCell.lng && gridCell.sqm_reading !== undefined) {
+                        const circle = L.circle([gridCell.lat, gridCell.lng], {
+                            radius: 2000, // 2km radius
+                            fillColor: this.getWorldAtlasColor(gridCell.sqm_reading),
+                            color: '#7b1fa2',
+                            weight: 1,
+                            opacity: 0.7 * this.layerConfig.opacity,
+                            fillOpacity: 0.5 * this.layerConfig.opacity
+                        }).bindPopup(`
+                            <strong>World Atlas Measurement</strong><br>
+                            Location: ${gridCell.lat.toFixed(4)}, ${gridCell.lng.toFixed(4)}<br>
+                            SQM Value: ${gridCell.sqm_reading} mpsas<br>
+                            Bortle Class: ${gridCell.bortle_class}<br>
+                            Classification: ${gridCell.classification}<br>
+                            <small>Based on Falchi et al. (2016) World Atlas</small>
+                        `);
+                        
+                        this.activeLayers.worldAtlas.addLayer(circle);
+                    }
+                });
+            } else if (atlasData.polygons && Array.isArray(atlasData.polygons)) {
                 // Add polygon features from atlas data
                 atlasData.polygons.forEach(polygon => {
                     if (polygon.coordinates) {
