@@ -581,6 +581,25 @@ body {
     gap: 10px;
 }
 
+/* Consistent button styles across all panels */
+.cosmic-panel .btn,
+.data-layers-panel .btn,
+.chatbot-container .btn,
+.analysis-panel .btn {
+    border-radius: 10px !important; 
+    padding: 12px 14px !important; 
+    margin-bottom: 10px; 
+    font-size: 0.85rem;
+    transition: all var(--transition-normal);
+    border: none !important;
+}
+
+.cosmic-check .btn {
+    padding: 10px 12px !important;
+    margin-bottom: 8px;
+    border-radius: 8px !important;
+}
+
 .control-panel .btn:hover { 
     transform: translateY(-2px); 
     filter: brightness(1.1); 

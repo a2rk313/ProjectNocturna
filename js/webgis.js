@@ -495,6 +495,14 @@ class WebGIS {
                 this.scientificMode.toggleHeatmap(e.target.checked);
             });
         }
+
+        // World Atlas
+        const worldAtlasToggle = document.getElementById('toggleWorldAtlas');
+        if (worldAtlasToggle && this.scientificMode) {
+            worldAtlasToggle.addEventListener('change', (e) => {
+                this.scientificMode.toggleWorldAtlas(e.target.checked);
+            });
+        }
     }
 
     // =================== COMMON METHODS ===================
