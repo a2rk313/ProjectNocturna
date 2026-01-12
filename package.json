@@ -18,8 +18,7 @@
     "prettier": "prettier --write .",
     "vercel-dev": "vercel dev",
     "vercel-deploy": "vercel --prod",
-    "install-hdf5": "echo 'To enable full HDF5 processing, run: npm install hdf5' && echo 'Note: This requires system dependencies like HDF5 library'",
-    "postinstall": "npm run migrate"
+    "install-hdf5": "echo 'To enable full HDF5 processing, run: npm install hdf5' && echo 'Note: This requires system dependencies like HDF5 library'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
