@@ -1439,6 +1439,9 @@ function generateComparisonVisualization(data1, data2, year1, year2) {
     data: differences
   };
 }
+
+// 13. HDF5 File Processing Endpoint
+app.post('/api/process-hdf5', async (req, res) => {
   try {
     const { file_url, local_path, options = {} } = req.body;
     
