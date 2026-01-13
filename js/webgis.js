@@ -488,7 +488,6 @@ class WebGIS {
     }
 
     setupLayerControls() {
-    setupLayerControls() {
         // Toggle VIIRS data (raster layer - uses DataSourceManager for fallback)
         const toggleVIIRS = document.getElementById('toggleVIIRS');
         if (toggleVIIRS) {
@@ -627,7 +626,6 @@ class WebGIS {
                 }
             });
         }
-    }
     }
     
     // Load World Atlas layer for research-grade visualization
