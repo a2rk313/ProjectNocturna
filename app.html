@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="./css/ui-improvements.css">
     <link rel="stylesheet" href="./css/glass-morphism-enhancements.css">
     <link rel="stylesheet" href="./css/final-improvements.css">
+    <link rel="stylesheet" href="./css/light-pollution-features.css">
     
     <style>
         /* Mode-specific tool visibility */
@@ -196,6 +197,39 @@
                     </label>
                 </div>
                 
+                <!-- Light Pollution Map Inspired Layers -->
+                <div class="cosmic-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleBortleScale">
+                    <label class="form-check-label text-light" for="toggleBortleScale">
+                        <i class="fas fa-eye me-2"></i>Bortle Scale Classification
+                        <span class="badge bg-warning ms-1">Astronomy</span>
+                    </label>
+                </div>
+                
+                <div class="cosmic-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleDarkSkyPlaces">
+                    <label class="form-check-label text-light" for="toggleDarkSkyPlaces">
+                        <i class="fas fa-moon me-2"></i>Dark Sky Reserves
+                        <span class="badge bg-success ms-1">Protected</span>
+                    </label>
+                </div>
+                
+                <div class="cosmic-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleAuroraForecast">
+                    <label class="form-check-label text-light" for="toggleAuroraForecast">
+                        <i class="fas fa-circle-nodes me-2"></i>Aurora Visibility
+                        <span class="badge bg-primary ms-1">Forecast</span>
+                    </label>
+                </div>
+                
+                <div class="cosmic-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleMilkyWay">
+                    <label class="form-check-label text-light" for="toggleMilkyWay">
+                        <i class="fas fa-street-view me-2"></i>Milky Way Visibility
+                        <span class="badge bg-info ms-1">Seasonal</span>
+                    </label>
+                </div>
+                
                 <!-- Scientific Mode Only Layers -->
                 <div id="scientificLayers" style="display: none;">
                     <div class="cosmic-check mb-2">
@@ -340,6 +374,7 @@
     <script src="./js/scientific-mode.js"></script>
     <script src="./js/n8n-config.js"></script>
     <script src="./js/ui-improvements.js"></script>
+    <script src="./js/light-pollution-features.js"></script>
 <script src="./js/webgis.js"></script>
 
     <script>

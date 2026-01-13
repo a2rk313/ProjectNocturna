@@ -1,0 +1,167 @@
+/* light-pollution-features.css - Styles for additional light pollution features */
+
+/* Bortle Scale Legend */
+.bortle-legend {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.bortle-legend-title {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #00ffff;
+}
+
+.bortle-legend-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bortle-legend-item {
+    display: flex;
+    align-items: center;
+}
+
+.bortle-legend-color {
+    width: 20px;
+    height: 15px;
+    margin-right: 5px;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+}
+
+/* Specific Bortle scale colors */
+.bortle-1-color { background-color: #000080; } /* Excellent Dark Sky */
+.bortle-2-color { background-color: #0000FF; } /* Typical True Dark Sky */
+.bortle-3-color { background-color: #0080FF; } /* Rural Sky */
+.bortle-4-color { background-color: #00FFFF; } /* Rural/Suburban Transition */
+.bortle-5-color { background-color: #00FF00; } /* Suburban Sky */
+.bortle-6-color { background-color: #FFFF00; } /* Bright Suburban Sky */
+.bortle-7-color { background-color: #FF8000; } /* Suburban/Urban Transition */
+.bortle-8-color { background-color: #FF4000; } /* City Sky */
+.bortle-9-color { background-color: #FF0000; } /* Inner City Sky */
+
+/* Popup styles for Bortle scale */
+.bortle-popup table, .dark-sky-popup table, .aurora-popup table, .milkyway-popup table {
+    margin: 0;
+    font-size: 12px;
+}
+
+.bortle-popup h6, .dark-sky-popup h6, .aurora-popup h6, .milkyway-popup h6 {
+    margin: 0 0 8px 0;
+    color: #00ffff;
+}
+
+/* Aurora forecast layer styles */
+.aurora-layer {
+    stroke: #3388ff;
+    stroke-width: 1;
+    fill-opacity: 0.4;
+}
+
+/* Milky Way marker styles */
+.milkyway-marker {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Custom icons for special layers */
+.fa-galaxy::before {
+    content: "★";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+}
+
+/* Dark Sky Reserve markers */
+.dark-sky-reserve-marker {
+    border-radius: 50%;
+    border: 2px solid #008000;
+    background-color: #00ff00;
+    width: 12px;
+    height: 12px;
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+}
+
+/* Aurora visibility circles */
+.aurora-visibility-circle {
+    fill: rgba(0, 255, 0, 0.3);
+    stroke: #00ff00;
+    stroke-width: 1;
+}
+
+/* Additional layer control styles */
+.cosmic-check.additional-feature {
+    border-left: 3px solid #00ffff;
+    padding-left: 10px;
+    margin-left: 5px;
+}
+
+/* Mobile responsive adjustments for new features */
+@media (max-width: 768px) {
+    .bortle-legend, .dark-sky-legend, .aurora-legend {
+        font-size: 10px;
+        padding: 8px;
+    }
+    
+    .bortle-legend-title, .dark-sky-legend-title, .aurora-legend-title {
+        font-size: 12px;
+    }
+}
+
+/* Enhanced popup styling */
+.leaflet-popup-content {
+    margin: 10px;
+}
+
+.leaflet-popup-content h6 {
+    color: #00ffff;
+    border-bottom: 1px solid #00ffff;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+/* Loading animation for new features */
+.loading-animation {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Feature-specific badges */
+.badge.badge-astronomy {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge.badge-forecast {
+    background-color: #0dcaf0;
+    color: #fff;
+}
+
+.badge.badge-seasonal {
+    background-color: #198754;
+    color: #fff;
+}
+
+.badge.badge-protected {
+    background-color: #198754;
+    color: #fff;
+}
