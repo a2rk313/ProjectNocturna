@@ -31,9 +31,30 @@ class GeoServerManager {
                 await this.loadAvailableLayers();
             } else {
                 console.warn('⚠️ GeoServer not available:', health.error);
+                // Still initialize with fallback data
+                this.setupFallbackLayers();
             }
         } catch (error) {
             console.warn('⚠️ GeoServer initialization failed:', error.message);
+            // Still initialize with fallback data
+            this.setupFallbackLayers();
+        }
+    }
+    
+    /**
+     * Setup fallback layers when GeoServer is not available
+     */
+    setupFallbackLayers() {
+        console.log('🔧 Setting up fallback layers for GeoServer manager');
+        // Update UI with message about fallback
+        const layerSelect = document.getElementById('geoserver-layer-select');
+        if (layerSelect) {
+            layerSelect.innerHTML = '';
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'GeoServer unavailable - using fallback data';
+            option.disabled = true;
+            layerSelect.appendChild(option);
         }
     }
 

@@ -33,6 +33,15 @@ class AppConfig {
     getStaticUrl(path) {
         return path; // Static files are served from root
     }
+    
+    getGeoserverUrl() {
+        // Return localhost geoserver URL for local development
+        if (this.isLocalhost) {
+            return 'http://localhost:8080/geoserver';
+        }
+        // Return production geoserver URL (to be configured)
+        return 'https://your-production-domain.com/geoserver';
+    }
 }
 
 // Create global instance
