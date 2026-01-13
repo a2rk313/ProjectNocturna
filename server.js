@@ -1564,16 +1564,22 @@ app.post('/api/chatbot', async (req, res) => {
     // Import the enhanced chatbot if available
     let Chatbot;
     try {
-      Chatbot = require('./js/enhanced-chatbot');
+      // First try the improved version
+      Chatbot = require('./js/enhanced-chatbot-improved');
     } catch (error) {
-      console.log('⚠️ Enhanced chatbot not available, using basic response');
-      // Fallback basic response system
-      const basicResponse = await generateBasicChatbotResponse(message, context);
-      return res.json({
-        action: 'chat',
-        message: basicResponse,
-        timestamp: new Date().toISOString()
-      });
+      try {
+        // Fall back to original enhanced chatbot
+        Chatbot = require('./js/enhanced-chatbot');
+      } catch (error) {
+        console.log('⚠️ Enhanced chatbot not available, using basic response');
+        // Fallback basic response system
+        const basicResponse = await generateBasicChatbotResponse(message, context);
+        return res.json({
+          action: 'chat',
+          message: basicResponse,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
     
     if (!Chatbot) {
