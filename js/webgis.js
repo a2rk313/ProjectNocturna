@@ -3,6 +3,7 @@ class WebGIS {
     constructor() {
         this.map = null;
         this.dataManager = window.DataManager ? new window.DataManager() : null;
+        this.dataSourceManager = window.DataSourceManager ? new window.DataSourceManager() : null;
         this.gibsManager = null; // Initialize GIBS manager
         this.currentMode = null;
         this.drawnItems = new L.FeatureGroup();
@@ -36,6 +37,9 @@ class WebGIS {
         
         // Initialize GeoServer Manager
         this.initializeGeoServerManager();
+        
+        // Initialize Data Source Manager
+        this.initializeDataSourceManager();
         
         // Initialize ActionBot if available
         if (window.ActionBotController) {
@@ -102,9 +106,42 @@ class WebGIS {
         }
     }
     
+    async initializeDataSourceManager() {
+        try {
+            // Wait for DataSourceManager to be loaded
+            if (typeof DataSourceManager !== 'function') {
+                console.warn('⚠️ DataSourceManager not available, loading dynamically...');
+                // Try to load the DataSourceManager script
+                await this.loadScript('/js/data-source-manager.js');
+            }
+
+            if (typeof DataSourceManager === 'function') {
+                this.dataSourceManager = new DataSourceManager();
+                
+                // Initialize the data source manager
+                const initResult = await this.dataSourceManager.initialize();
+                console.log('🌍 Data Source Manager initialized successfully');
+                console.log('📊 Vector source status:', initResult.vector.status);
+                console.log('🌐 Raster source status:', initResult.raster.status);
+                
+                // Add event listeners for data source-related functionality
+                this.setupDataSourceEventListeners();
+            } else {
+                console.warn('⚠️ DataSourceManager class not available');
+            }
+        } catch (error) {
+            console.error('❌ Error initializing Data Source Manager:', error);
+        }
+    }
+    
     setupGeoServerEventListeners() {
         // Add event listeners for GeoServer-related functionality
         console.log('🌍 GeoServer Event listeners set up');
+    }
+    
+    setupDataSourceEventListeners() {
+        // Add event listeners for data source-related functionality
+        console.log('🌍 Data Source Event listeners set up');
     }
 
     // Helper method to load script dynamically
@@ -451,7 +488,8 @@ class WebGIS {
     }
 
     setupLayerControls() {
-        // Toggle VIIRS data
+    setupLayerControls() {
+        // Toggle VIIRS data (raster layer - uses DataSourceManager for fallback)
         const toggleVIIRS = document.getElementById('toggleVIIRS');
         if (toggleVIIRS) {
             toggleVIIRS.addEventListener('change', (e) => {
@@ -459,7 +497,25 @@ class WebGIS {
                     if (this.viirsLayer) {
                         this.map.addLayer(this.viirsLayer);
                     } else {
-                        this.loadVIIRSDataLayer();
+                        // Try to load via DataSourceManager first, fallback to original method
+                        if (this.dataSourceManager) {
+                            this.dataSourceManager.addRasterLayerToMap(this.map, 'viirs_nightlights', {
+                                options: { opacity: 0.7 }
+                            }).then(result => {
+                                if (result.success) {
+                                    this.viirsLayer = result.layer;
+                                    console.log(`✅ VIIRS layer loaded from ${result.source} source`);
+                                } else {
+                                    // Fallback to original method
+                                    this.loadVIIRSDataLayer();
+                                }
+                            }).catch(error => {
+                                console.warn('VIIRS layer from DataSourceManager failed, using fallback:', error);
+                                this.loadVIIRSDataLayer();
+                            });
+                        } else {
+                            this.loadVIIRSDataLayer();
+                        }
                     }
                 } else {
                     if (this.viirsLayer) {
@@ -469,20 +525,39 @@ class WebGIS {
             });
         }
 
-        // Toggle ground stations
+        // Toggle ground stations (vector layer - uses DataSourceManager for fallback)
         const toggleGroundStations = document.getElementById('toggleGroundStations');
         if (toggleGroundStations) {
             toggleGroundStations.addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    this.map.addLayer(this.stationsLayer);
-                    this.loadStationsData();
+                    // Try to load via DataSourceManager first, fallback to original method
+                    if (this.dataSourceManager) {
+                        this.dataSourceManager.addVectorLayerToMap(this.map, 'light_pollution_measurements').then(result => {
+                            if (result.success) {
+                                this.stationsLayer = result.layer;
+                                this.map.addLayer(this.stationsLayer);
+                                console.log(`✅ Ground stations loaded from ${result.source} source`);
+                            } else {
+                                // Fallback to original method
+                                this.map.addLayer(this.stationsLayer);
+                                this.loadStationsData();
+                            }
+                        }).catch(error => {
+                            console.warn('Ground stations from DataSourceManager failed, using fallback:', error);
+                            this.map.addLayer(this.stationsLayer);
+                            this.loadStationsData();
+                        });
+                    } else {
+                        this.map.addLayer(this.stationsLayer);
+                        this.loadStationsData();
+                    }
                 } else {
                     this.map.removeLayer(this.stationsLayer);
                 }
             });
         }
 
-        // Toggle World Atlas layer
+        // Toggle World Atlas layer (raster layer - uses DataSourceManager for fallback)
         const toggleWorldAtlas = document.getElementById('toggleWorldAtlas');
         if (toggleWorldAtlas) {
             toggleWorldAtlas.addEventListener('change', (e) => {
@@ -491,7 +566,25 @@ class WebGIS {
                     if (this.worldAtlasLayer) {
                         this.map.addLayer(this.worldAtlasLayer);
                     } else {
-                        this.loadWorldAtlasLayer();
+                        // Try to load via DataSourceManager first, fallback to original method
+                        if (this.dataSourceManager) {
+                            this.dataSourceManager.addRasterLayerToMap(this.map, 'world_atlas_brightness', {
+                                options: { opacity: 0.7 }
+                            }).then(result => {
+                                if (result.success) {
+                                    this.worldAtlasLayer = result.layer;
+                                    console.log(`✅ World Atlas layer loaded from ${result.source} source`);
+                                } else {
+                                    // Fallback to original method
+                                    this.loadWorldAtlasLayer();
+                                }
+                            }).catch(error => {
+                                console.warn('World Atlas from DataSourceManager failed, using fallback:', error);
+                                this.loadWorldAtlasLayer();
+                            });
+                        } else {
+                            this.loadWorldAtlasLayer();
+                        }
                     }
                 } else {
                     if (this.worldAtlasLayer) {
@@ -507,16 +600,16 @@ class WebGIS {
             opacitySlider.addEventListener('input', (e) => {
                 const value = e.target.value;
                 document.getElementById('opacityValue').textContent = value;
-                
+
                 // Update all active layers
                 if (this.viirsLayer && this.viirsLayer.setOptions) {
                     this.viirsLayer.setOptions({ opacity: value / 100 });
                 }
-                
+
                 if (this.viirsTileLayer) {
                     this.viirsTileLayer.setOpacity(value / 100);
                 }
-                
+
                 if (this.scientificMode) {
                     this.scientificMode.setLayerOpacity(value / 100);
                 }
@@ -534,6 +627,7 @@ class WebGIS {
                 }
             });
         }
+    }
     }
     
     // Load World Atlas layer for research-grade visualization

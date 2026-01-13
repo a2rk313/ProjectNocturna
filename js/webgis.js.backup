@@ -3,6 +3,7 @@ class WebGIS {
     constructor() {
         this.map = null;
         this.dataManager = window.DataManager ? new window.DataManager() : null;
+        this.dataSourceManager = window.DataSourceManager ? new window.DataSourceManager() : null;
         this.gibsManager = null; // Initialize GIBS manager
         this.currentMode = null;
         this.drawnItems = new L.FeatureGroup();
@@ -33,6 +34,12 @@ class WebGIS {
         
         // Initialize GIBS Manager
         this.initializeGIBSManager();
+        
+        // Initialize GeoServer Manager
+        this.initializeGeoServerManager();
+        
+        // Initialize Data Source Manager
+        this.initializeDataSourceManager();
         
         // Initialize ActionBot if available
         if (window.ActionBotController) {
@@ -74,6 +81,67 @@ class WebGIS {
         } catch (error) {
             console.error('❌ Error initializing GIBS Manager:', error);
         }
+    }
+    
+    async initializeGeoServerManager() {
+        try {
+            // Wait for GeoServerManager to be loaded
+            if (typeof GeoServerManager !== 'function') {
+                console.warn('⚠️ GeoServerManager not available, loading dynamically...');
+                // Try to load the GeoServer manager script
+                await this.loadScript('/js/geoserver-manager.js');
+            }
+
+            if (typeof GeoServerManager === 'function') {
+                this.geoServerManager = new GeoServerManager(this.map);
+                console.log('🌍 GeoServer Manager initialized successfully');
+                
+                // Add event listeners for GeoServer-related functionality
+                this.setupGeoServerEventListeners();
+            } else {
+                console.warn('⚠️ GeoServerManager class not available');
+            }
+        } catch (error) {
+            console.error('❌ Error initializing GeoServer Manager:', error);
+        }
+    }
+    
+    async initializeDataSourceManager() {
+        try {
+            // Wait for DataSourceManager to be loaded
+            if (typeof DataSourceManager !== 'function') {
+                console.warn('⚠️ DataSourceManager not available, loading dynamically...');
+                // Try to load the DataSourceManager script
+                await this.loadScript('/js/data-source-manager.js');
+            }
+
+            if (typeof DataSourceManager === 'function') {
+                this.dataSourceManager = new DataSourceManager();
+                
+                // Initialize the data source manager
+                const initResult = await this.dataSourceManager.initialize();
+                console.log('🌍 Data Source Manager initialized successfully');
+                console.log('📊 Vector source status:', initResult.vector.status);
+                console.log('🌐 Raster source status:', initResult.raster.status);
+                
+                // Add event listeners for data source-related functionality
+                this.setupDataSourceEventListeners();
+            } else {
+                console.warn('⚠️ DataSourceManager class not available');
+            }
+        } catch (error) {
+            console.error('❌ Error initializing Data Source Manager:', error);
+        }
+    }
+    
+    setupGeoServerEventListeners() {
+        // Add event listeners for GeoServer-related functionality
+        console.log('🌍 GeoServer Event listeners set up');
+    }
+    
+    setupDataSourceEventListeners() {
+        // Add event listeners for data source-related functionality
+        console.log('🌍 Data Source Event listeners set up');
     }
 
     // Helper method to load script dynamically
@@ -218,6 +286,12 @@ class WebGIS {
     }
 
     async loadVIIRSDataLayer() {
+        // Rate limiting: prevent too frequent API calls
+        const now = Date.now();
+        if (this.lastVIIRSLoad && (now - this.lastVIIRSLoad) < 3000) { // 3 second minimum interval
+            return; // Too soon to load again
+        }
+        this.lastVIIRSLoad = now;
         try {
             // Load VIIRS data for current view
             const bounds = this.map.getBounds();
