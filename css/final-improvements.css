@@ -1,0 +1,910 @@
+/* Final UI Improvements CSS - Addressing remaining visual design and usability issues */
+
+/* 1. Consistent Color Scheme Across Components */
+:root {
+    --cosmic-primary: #3b82f6;
+    --cosmic-primary-light: #60a5fa;
+    --cosmic-primary-dark: #2563eb;
+    --cosmic-secondary: #8b5cf6;
+    --cosmic-success: #10b981;
+    --cosmic-warning: #f59e0b;
+    --cosmic-danger: #ef4444;
+    --cosmic-info: #06b6d4;
+    
+    --glass-bg: rgba(30, 35, 55, 0.45);
+    --glass-bg-light: rgba(50, 55, 75, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-border-light: rgba(255, 255, 255, 0.25);
+    --glass-blur: blur(16px);
+    --glass-blur-heavy: blur(20px);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.4);
+    
+    --font-display: 'Inter', sans-serif;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* 2. Improved Button Consistency */
+.btn-cosmic-primary {
+    background: linear-gradient(135deg, var(--cosmic-primary), var(--cosmic-primary-dark)) !important;
+    border: none !important;
+    color: white !important;
+    padding: 12px 20px !important;
+    border-radius: 12px !important;
+    font-weight: 500 !important;
+    transition: all var(--transition-normal) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    z-index: 1 !important;
+}
+
+.btn-cosmic-primary::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    ) !important;
+    transition: left 0.6s !important;
+    z-index: -1 !important;
+}
+
+.btn-cosmic-primary:hover::before {
+    left: 100% !important;
+}
+
+.btn-cosmic-primary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4) !important;
+    filter: brightness(1.1) !important;
+}
+
+.btn-cosmic-secondary {
+    background: linear-gradient(135deg, var(--cosmic-secondary), #7c3aed) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.btn-cosmic-success {
+    background: linear-gradient(135deg, var(--cosmic-success), #059669) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.btn-cosmic-warning {
+    background: linear-gradient(135deg, var(--cosmic-warning), #d97706) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.btn-cosmic-danger {
+    background: linear-gradient(135deg, var(--cosmic-danger), #dc2626) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.btn-cosmic-info {
+    background: linear-gradient(135deg, var(--cosmic-info), #0891b2) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.btn-cosmic-purple {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+    border: none !important;
+    color: white !important;
+}
+
+/* 3. Enhanced Panel Headers with Better Visual Hierarchy */
+.panel-header {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+    padding: 16px 20px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    transition: background var(--transition-normal) !important;
+}
+
+.panel-header:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.panel-header h6 {
+    margin: 0 !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    font-family: var(--font-display) !important;
+}
+
+/* 4. Improved Panel Body Styling */
+.panel-body {
+    padding: 20px !important;
+    background: rgba(0, 0, 0, 0.1) !important;
+    transition: all var(--transition-slow) !important;
+}
+
+/* 5. Better Form Controls */
+.form-control,
+.form-select {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: white !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    font-size: 0.9rem !important;
+    transition: all var(--transition-normal) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: var(--cosmic-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+    color: white !important;
+}
+
+/* 6. Enhanced Checkboxes and Switches */
+.form-check-input {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid var(--glass-border) !important;
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 6px !important;
+    margin-right: 12px !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--cosmic-primary) !important;
+    border-color: var(--cosmic-primary) !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e") !important;
+}
+
+/* 7. Improved Chat Messages */
+.chat-message {
+    margin-bottom: 16px !important;
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+}
+
+.message-avatar {
+    background: rgba(255, 255, 255, 0.1) !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.message-content {
+    background: rgba(255, 255, 255, 0.08) !important;
+    padding: 16px 20px !important;
+    border-radius: 20px 20px 20px 6px !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    max-width: 85% !important;
+    word-wrap: break-word !important;
+}
+
+.chat-message.user .message-content {
+    background: linear-gradient(135deg, var(--cosmic-primary), var(--cosmic-primary-dark)) !important;
+    border-radius: 20px 6px 20px 20px !important;
+    color: white !important;
+}
+
+/* 8. Enhanced Tool Buttons */
+.cosmic-check {
+    display: flex !important;
+    align-items: center !important;
+    padding: 14px 16px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    cursor: pointer !important;
+    transition: all var(--transition-normal) !important;
+    border: 1px solid transparent !important;
+}
+
+.cosmic-check:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: translateX(4px) !important;
+    border-color: var(--glass-border) !important;
+}
+
+.cosmic-check.active {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: var(--cosmic-primary) !important;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 9. Improved Loading Screen */
+.loading-screen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(10, 15, 28, 0.98) !important;
+    z-index: 9999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    backdrop-filter: var(--glass-blur-heavy) !important;
+    transition: opacity var(--transition-slow) !important;
+    opacity: 1 !important;
+}
+
+.loading-content {
+    background: var(--glass-bg-light) !important;
+    padding: 50px !important;
+    border-radius: 28px !important;
+    backdrop-filter: var(--glass-blur-heavy) !important;
+    border: 1px solid var(--glass-border-light) !important;
+    box-shadow: var(--glass-shadow) !important;
+    max-width: 500px !important;
+    width: 90% !important;
+    text-align: center !important;
+    animation: fadeInScale 0.5s ease-out !important;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0 !important;
+        transform: scale(0.8) !important;
+    }
+    to {
+        opacity: 1 !important;
+        transform: scale(1) !important;
+    }
+}
+
+/* 10. Enhanced Modal Styles */
+.analysis-panel {
+    background: var(--glass-bg-light) !important;
+    backdrop-filter: var(--glass-blur-heavy) !important;
+    border: 1px solid var(--glass-border-light) !important;
+    box-shadow: var(--glass-shadow-hover) !important;
+    border-radius: 24px !important;
+}
+
+.analysis-panel .modal-header {
+    border-bottom: 1px solid var(--glass-border) !important;
+    padding: 20px 24px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 23px 23px 0 0 !important;
+}
+
+.analysis-panel .modal-body {
+    padding: 24px !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.analysis-panel .modal-footer {
+    border-top: 1px solid var(--glass-border) !important;
+    padding: 20px 24px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 0 0 23px 23px !important;
+}
+
+/* 11. Better Responsive Design */
+@media (max-width: 768px) {
+    .control-panel,
+    .data-layers-panel,
+    .time-controls-panel {
+        width: calc(100% - 20px) !important;
+        margin: 10px !important;
+    }
+    
+    .panel-header {
+        padding: 14px 16px !important;
+    }
+    
+    .panel-body {
+        padding: 16px !important;
+    }
+    
+    .chat-message .message-content {
+        max-width: 80% !important;
+        padding: 14px 16px !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .message-avatar {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    .cosmic-check {
+        padding: 12px 14px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .btn-cosmic-primary {
+        padding: 10px 16px !important;
+        font-size: 0.85rem !important;
+    }
+}
+
+/* 12. Accessibility Improvements */
+.focus-visible {
+    outline: 2px solid var(--cosmic-primary) !important;
+    outline-offset: 2px !important;
+}
+
+/* 13. Enhanced Legend Styles */
+.lp-legend {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+.lp-legend-title {
+    font-weight: 600 !important;
+    margin-bottom: 16px !important;
+    color: white !important;
+    font-size: 1rem !important;
+    text-align: center !important;
+}
+
+.lp-legend-item {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 8px !important;
+}
+
+.lp-legend-color {
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 4px !important;
+    margin-right: 10px !important;
+}
+
+.dataset-source {
+    font-size: 0.75rem !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    margin-top: 12px !important;
+    text-align: center !important;
+    padding-top: 12px !important;
+    border-top: 1px solid var(--glass-border) !important;
+}
+
+/* 14. Enhanced Tooltip Styles */
+.tooltip-inner {
+    background: var(--glass-bg-light) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border-light) !important;
+    border-radius: 10px !important;
+    color: white !important;
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+.bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before,
+.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: var(--glass-bg-light) !important;
+}
+
+.bs-tooltip-auto[data-popper-placement^=right] .tooltip-arrow::before,
+.bs-tooltip-end .tooltip-arrow::before {
+    border-right-color: var(--glass-bg-light) !important;
+}
+
+.bs-tooltip-auto[data-popper-placement^=bottom] .tooltip-arrow::before,
+.bs-tooltip-bottom .tooltip-arrow::before {
+    border-bottom-color: var(--glass-bg-light) !important;
+}
+
+.bs-tooltip-auto[data-popper-placement^=left] .tooltip-arrow::before,
+.bs-tooltip-start .tooltip-arrow::before {
+    border-left-color: var(--glass-bg-light) !important;
+}
+
+/* 15. Enhanced Popup Styles */
+.leaflet-popup-content-wrapper {
+    background: var(--glass-bg-light) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border-radius: 16px !important;
+    border: 1px solid var(--glass-border-light) !important;
+    box-shadow: var(--glass-shadow-hover) !important;
+    overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+    margin: 16px !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.leaflet-popup-content h6 {
+    color: var(--cosmic-primary-light) !important;
+    font-size: 1rem !important;
+    margin-bottom: 8px !important;
+}
+
+.leaflet-popup-content p {
+    color: rgba(255, 255, 255, 0.85) !important;
+    margin: 4px 0 !important;
+    font-size: 0.9rem !important;
+}
+
+.leaflet-popup-close-button {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 1.5rem !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 50% !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all var(--transition-normal) !important;
+}
+
+.leaflet-popup-close-button:hover {
+    color: white !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 16. Enhanced Navigation Bar */
+.cosmic-navbar {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+    padding: 16px 20px !important;
+    z-index: 1001 !important;
+}
+
+.navbar-brand {
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 1.2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.navbar-brand i {
+    color: var(--cosmic-primary) !important;
+}
+
+.navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: color var(--transition-normal) !important;
+}
+
+.navbar-nav .nav-link:hover {
+    color: white !important;
+}
+
+/* 17. Enhanced Mode Indicator */
+.mode-indicator {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 20px !important;
+    padding: 8px 16px !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.mode-indicator i {
+    font-size: 0.9rem !important;
+}
+
+/* 18. Enhanced Chat Container */
+.chatbot-container {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--glass-shadow) !important;
+    overflow: hidden !important;
+}
+
+.chat-header {
+    background: rgba(255, 255, 255, 0.05) !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+}
+
+.chat-header h6 {
+    margin: 0 !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 600 !important;
+}
+
+.chat-messages {
+    height: 280px !important;
+    overflow-y: auto !important;
+    padding: 20px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    font-size: 0.9rem !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+}
+
+.chat-input {
+    padding: 16px 20px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    display: flex !important;
+    gap: 10px !important;
+    align-items: center !important;
+}
+
+.chat-input input {
+    flex: 1 !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: white !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+}
+
+.chat-input input:focus {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: var(--cosmic-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+    color: white !important;
+}
+
+.chat-input button {
+    background: var(--cosmic-primary) !important;
+    border: none !important;
+    color: white !important;
+    border-radius: 12px !important;
+    padding: 12px 20px !important;
+    transition: all var(--transition-normal) !important;
+}
+
+.chat-input button:hover {
+    background: var(--cosmic-primary-dark) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 19. Enhanced Base Map Options */
+.basemap-option {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    transition: all var(--transition-normal) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    cursor: pointer !important;
+}
+
+.basemap-option:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: var(--cosmic-primary) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.basemap-option.active,
+.basemap-option.btn-cosmic-primary {
+    background: var(--cosmic-primary) !important;
+    border-color: var(--cosmic-primary) !important;
+    color: white !important;
+}
+
+/* 20. Enhanced Slider Controls */
+.slider-container {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+    padding: 16px !important;
+    margin: 10px 0 !important;
+}
+
+.slider-container label {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500 !important;
+    margin-bottom: 8px !important;
+    display: block !important;
+}
+
+.slider-container input[type="range"] {
+    width: 100% !important;
+    height: 6px !important;
+    border-radius: 3px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none !important;
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    background: var(--cosmic-primary) !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.slider-container input[type="range"]::-moz-range-thumb {
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    background: var(--cosmic-primary) !important;
+    cursor: pointer !important;
+    border: none !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 21. Enhanced Notification Styles */
+.alert {
+    border-radius: 12px !important;
+    border: 1px solid transparent !important;
+    padding: 16px !important;
+}
+
+.alert-primary {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border-color: rgba(245, 158, 11, 0.25) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.25) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.alert-dark {
+    background: rgba(30, 35, 55, 0.45) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 22. Enhanced Table Styles */
+.table {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.table th {
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 600 !important;
+    border-top: none !important;
+    border-bottom: 2px solid var(--glass-border) !important;
+    padding: 12px !important;
+}
+
+.table td {
+    border-top: 1px solid var(--glass-border) !important;
+    padding: 12px !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.table-hover > tbody > tr:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 23. Enhanced List Group */
+.list-group-item {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    border-radius: 10px !important;
+    margin-bottom: 8px !important;
+}
+
+.list-group-item-action:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.list-group-item.active {
+    background: var(--cosmic-primary) !important;
+    border-color: var(--cosmic-primary) !important;
+    color: white !important;
+}
+
+/* 24. Enhanced Badges */
+.badge {
+    border-radius: 20px !important;
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+}
+
+.badge.bg-success {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #6ee7b7 !important;
+}
+
+.badge.bg-info {
+    background: rgba(6, 182, 212, 0.2) !important;
+    color: #a5f3fc !important;
+}
+
+.badge.bg-warning {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #fde68a !important;
+}
+
+.badge.bg-danger {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #fca5a5 !important;
+}
+
+/* 25. Enhanced Collapse/Expand Icons */
+.collapse-icon {
+    transition: transform var(--transition-normal) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 1.1rem !important;
+    cursor: pointer !important;
+    padding: 6px !important;
+    border-radius: 6px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.collapse-icon:hover {
+    color: white !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(1.1) !important;
+}
+
+/* 26. Enhanced Progress Bars */
+.progress {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 10px !important;
+    height: 10px !important;
+    overflow: hidden !important;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--cosmic-primary), var(--cosmic-secondary)) !important;
+    border-radius: 10px !important;
+}
+
+/* 27. Enhanced Cards */
+.card {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--glass-shadow) !important;
+    overflow: hidden !important;
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+    padding: 16px 20px !important;
+}
+
+.card-body {
+    padding: 20px !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.card-footer {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-top: 1px solid var(--glass-border) !important;
+    padding: 16px 20px !important;
+}
+
+/* 28. Enhanced Dividers */
+.panel-divider {
+    height: 1px !important;
+    background: linear-gradient(90deg, transparent, var(--glass-border), transparent) !important;
+    margin: 16px 20px !important;
+}
+
+/* 29. Enhanced Input Groups */
+.input-group {
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+.input-group-text {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 30. Enhanced Responsive Typography */
+h1, .h1 { font-size: 2.5rem !important; }
+h2, .h2 { font-size: 2rem !important; }
+h3, .h3 { font-size: 1.75rem !important; }
+h4, .h4 { font-size: 1.5rem !important; }
+h5, .h5 { font-size: 1.25rem !important; }
+h6, .h6 { font-size: 1rem !important; }
+
+@media (max-width: 768px) {
+    h1, .h1 { font-size: 2rem !important; }
+    h2, .h2 { font-size: 1.75rem !important; }
+    h3, .h3 { font-size: 1.5rem !important; }
+    h4, .h4 { font-size: 1.25rem !important; }
+    h5, .h5 { font-size: 1.1rem !important; }
+    h6, .h6 { font-size: 1rem !important; }
+}
+
+/* 31. Enhanced Focus Styles for Accessibility */
+*:focus {
+    outline: 2px solid var(--cosmic-primary) !important;
+    outline-offset: 2px !important;
+}
+
+/* 32. Enhanced Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1) !important;
+    border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--cosmic-primary) !important;
+    border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--cosmic-primary-dark) !important;
+}
+
+/* 33. Enhanced Animation Performance */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* 34. Enhanced Print Styles */
+@media print {
+    .control-panel,
+    .data-layers-panel,
+    .time-controls-panel,
+    .chatbot-container,
+    .navbar,
+    .leaflet-control-zoom,
+    .lp-legend {
+        display: none !important;
+    }
+    
+    .cosmic-map {
+        height: 100vh !important;
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+    }
+}
