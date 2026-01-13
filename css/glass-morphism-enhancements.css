@@ -1,0 +1,433 @@
+/* Glass-morphism Enhancements CSS - Improving the glass-morphism implementation */
+
+/* 1. Enhanced Glass-morphism Effects */
+.glass-enhanced {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+    border-radius: 16px !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+/* Enhanced glass effect with inner glow */
+.glass-enhanced::before {
+    content: '';
+    position: absolute !important;
+    top: -2px !important;
+    left: -2px !important;
+    right: -2px !important;
+    bottom: -2px !important;
+    background: linear-gradient(45deg, 
+        rgba(255, 255, 255, 0.1),
+        rgba(255, 255, 255, 0.05),
+        rgba(255, 255, 255, 0.1));
+    z-index: -1 !important;
+    border-radius: 18px !important;
+}
+
+/* Improved glass panel with better depth */
+.cosmic-panel.glass-enhanced {
+    background: rgba(30, 35, 55, 0.45) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Enhanced button glass effect */
+.btn.glass-enhanced {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn.glass-enhanced::before {
+    content: '';
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    ) !important;
+    transition: left 0.6s !important;
+}
+
+.btn.glass-enhanced:hover::before {
+    left: 100% !important;
+}
+
+.btn.glass-enhanced:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 
+        0 8px 30px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Enhanced form elements with glass effect */
+.form-control.glass-enhanced,
+.form-select.glass-enhanced {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 
+        inset 0 2px 8px rgba(0, 0, 0, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    color: white !important;
+}
+
+.form-control.glass-enhanced:focus,
+.form-select.glass-enhanced:focus {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: var(--cosmic-primary) !important;
+    box-shadow: 
+        inset 0 2px 8px rgba(0, 0, 0, 0.2),
+        0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Enhanced card glass effect */
+.card.glass-enhanced {
+    background: rgba(30, 35, 55, 0.45) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Enhanced modal glass effect */
+.modal-content.glass-enhanced {
+    background: rgba(50, 55, 75, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Enhanced tooltip glass effect */
+.tooltip-inner.glass-enhanced {
+    background: rgba(50, 55, 75, 0.9) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 
+        0 10px 25px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+/* Enhanced popup glass effect */
+.leaflet-popup-content-wrapper.glass-enhanced {
+    background: rgba(50, 55, 75, 0.9) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 16px !important;
+    box-shadow: 
+        0 10px 25px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 2. Better Visual Hierarchy and Contrast */
+
+/* Enhanced text contrast for glass panels */
+.glass-enhanced .text-light,
+.glass-enhanced .text-white {
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Better heading contrast */
+.glass-enhanced h1,
+.glass-enhanced h2,
+.glass-enhanced h3,
+.glass-enhanced h4,
+.glass-enhanced h5,
+.glass-enhanced h6 {
+    color: rgba(255, 255, 255, 0.98) !important;
+}
+
+/* Enhanced body text contrast */
+.glass-enhanced p,
+.glass-enhanced span,
+.glass-enhanced div {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Better link contrast */
+.glass-enhanced a {
+    color: var(--cosmic-primary-light) !important;
+}
+
+.glass-enhanced a:hover {
+    color: var(--cosmic-primary) !important;
+}
+
+/* Enhanced label contrast */
+.glass-enhanced .form-label,
+.glass-enhanced label {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 3. Improved Visual Hierarchy */
+
+/* Enhanced section headers */
+.section-header {
+    position: relative !important;
+    padding-bottom: 15px !important;
+    margin-bottom: 20px !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+}
+
+.section-header::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -1px !important;
+    left: 0 !important;
+    width: 50px !important;
+    height: 2px !important;
+    background: linear-gradient(90deg, var(--cosmic-primary), transparent) !important;
+}
+
+/* Enhanced card headers */
+.card-header.glass-enhanced {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+    border-radius: 15px 15px 0 0 !important;
+}
+
+/* Enhanced divider with glass effect */
+.divider-glass {
+    height: 1px !important;
+    background: linear-gradient(90deg, 
+        transparent, 
+        var(--glass-border), 
+        transparent) !important;
+    margin: 20px 0 !important;
+    position: relative !important;
+}
+
+/* Enhanced progress bars with glass effect */
+.progress.glass-enhanced {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(5px) !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+.progress-bar.glass-enhanced {
+    background: linear-gradient(90deg, var(--cosmic-primary), var(--cosmic-secondary)) !important;
+    border-radius: 10px !important;
+}
+
+/* Enhanced badge glass effect */
+.badge.glass-enhanced {
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Enhanced list group items */
+.list-group-item.glass-enhanced {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid var(--glass-border) !important;
+    margin-bottom: 8px !important;
+    border-radius: 12px !important;
+}
+
+.list-group-item.glass-enhanced:first-child {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.list-group-item.glass-enhanced:last-child {
+    border-bottom-left-radius: 12px !important;
+    border-bottom-right-radius: 12px !important;
+}
+
+/* Enhanced table with glass effect */
+.table.glass-enhanced {
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(8px) !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+}
+
+.table.glass-enhanced th {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 600 !important;
+}
+
+.table.glass-enhanced td {
+    border-top: 1px solid var(--glass-border) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* 4. Enhanced Animation Effects */
+
+/* Enhanced hover animations */
+.glass-enhanced {
+    transition: 
+        transform 0.3s ease,
+        box-shadow 0.3s ease,
+        background 0.3s ease !important;
+}
+
+.glass-enhanced:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Enhanced pulse animation for important elements */
+.pulse-glass {
+    animation: pulse-glass 2s infinite !important;
+}
+
+@keyframes pulse-glass {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4) !important;
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0) !important;
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0) !important;
+    }
+}
+
+/* Enhanced shimmer effect */
+.shimmer-glass {
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.shimmer-glass::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    transform: translateX(-100%) !important;
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0,
+        rgba(255, 255, 255, 0.2) 20%,
+        rgba(255, 255, 255, 0.5) 60%,
+        rgba(255, 255, 255, 0)
+    ) !important;
+    animation: shimmer 2s infinite !important;
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%) !important;
+    }
+}
+
+/* 5. Responsive Glass Effects */
+
+/* Adjust glass effects for mobile devices */
+@media (max-width: 768px) {
+    .glass-enhanced {
+        backdrop-filter: blur(10px) !important; /* Reduced blur for performance on mobile */
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    
+    .btn.glass-enhanced {
+        padding: 12px 16px !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .card.glass-enhanced {
+        margin-bottom: 15px !important;
+    }
+}
+
+/* 6. Color Variants for Glass Effect */
+
+/* Primary glass variant */
+.glass-primary {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border: 1px solid rgba(96, 165, 250, 0.25) !important;
+}
+
+/* Secondary glass variant */
+.glass-secondary {
+    background: rgba(139, 92, 246, 0.15) !important;
+    border: 1px solid rgba(167, 139, 250, 0.25) !important;
+}
+
+/* Success glass variant */
+.glass-success {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid rgba(52, 211, 153, 0.25) !important;
+}
+
+/* Warning glass variant */
+.glass-warning {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(251, 191, 36, 0.25) !important;
+}
+
+/* Danger glass variant */
+.glass-danger {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border: 1px solid rgba(248, 113, 113, 0.25) !important;
+}
+
+/* Info glass variant */
+.glass-info {
+    background: rgba(6, 182, 212, 0.15) !important;
+    border: 1px solid rgba(103, 232, 249, 0.25) !important;
+}
+
+/* Dark glass variant */
+.glass-dark {
+    background: rgba(30, 35, 55, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Light glass variant */
+.glass-light {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.glass-light h1,
+.glass-light h2,
+.glass-light h3,
+.glass-light h4,
+.glass-light h5,
+.glass-light h6 {
+    color: rgba(0, 0, 0, 0.9) !important;
+}
+
+.glass-light p,
+.glass-light span,
+.glass-light div {
+    color: rgba(0, 0, 0, 0.7) !important;
+}
