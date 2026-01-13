@@ -191,7 +191,7 @@ class WebGIS {
             maxZoom: 19
         });
         
-        L.control.zoom({ position: 'topright' }).addTo(this.map);
+        L.control.zoom({ position: 'topleft' }).addTo(this.map);
 
         // Base layers - REAL data sources
         this.baseLayers = {
