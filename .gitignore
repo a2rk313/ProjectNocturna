@@ -1,51 +1,58 @@
 ```
-# Environment
-.env
-.env.local
-*.env.*
-
 # Dependencies
 node_modules/
 
-# Build artifacts
-dist/
-build/
-target/
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.venv/
-venv/
+# Environment
 .env
+.env.local
+.env.*
 
 # Logs
 *.log
-
-# Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Gradle
-.gradle/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.nox/
+*.cover
+*.log
+.DS_Store
+Thumbs.db
 
-# MyPy
-.mypy_cache/
+# Build results
+dist/
+build/
+*.egg-info/
+.eggs/
+.installed.cfg
+*.egg
 
-# PyTest
+# Testing
 .pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 ```
