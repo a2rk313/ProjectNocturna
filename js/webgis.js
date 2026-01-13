@@ -225,6 +225,9 @@ class WebGIS {
         // Add legend for light pollution data
         this.addLightPollutionLegend();
         
+        // Add legend for Bortle Scale
+        this.addBortleScaleLegend();
+        
         // Draw event
         this.map.on(L.Draw.Event.CREATED, (e) => {
             this.drawnItems.clearLayers();
@@ -277,6 +280,63 @@ class WebGIS {
                     </div>
                 </div>
                 <div class="dataset-source">NASA VIIRS DNB Composite</div>
+            `;
+            
+            return div;
+        };
+        
+        legend.addTo(this.map);
+    }
+    
+    // Add Bortle Scale Legend
+    addBortleScaleLegend() {
+        // Create a custom legend control for Bortle Scale
+        const legend = L.control({position: 'bottomleft'});
+        
+        legend.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'bortle-legend');
+            
+            div.innerHTML = `
+                <div class="bortle-legend-title">Bortle Scale Classification</div>
+                <div class="bortle-legend-scale">
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-1-color"></div>
+                        <span>Class 1: Excellent Dark Sky</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-2-color"></div>
+                        <span>Class 2: Typical True Dark Sky</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-3-color"></div>
+                        <span>Class 3: Rural Sky</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-4-color"></div>
+                        <span>Class 4: Rural/Suburban Transition</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-5-color"></div>
+                        <span>Class 5: Suburban Sky</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-6-color"></div>
+                        <span>Class 6: Bright Suburban Sky</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-7-color"></div>
+                        <span>Class 7: Suburban/Urban Transition</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-8-color"></div>
+                        <span>Class 8: City Sky</span>
+                    </div>
+                    <div class="bortle-legend-item">
+                        <div class="bortle-legend-color bortle-9-color"></div>
+                        <span>Class 9: Inner City Sky</span>
+                    </div>
+                </div>
+                <div class="dataset-source">Astronomical Visibility Classification</div>
             `;
             
             return div;
