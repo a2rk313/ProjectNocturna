@@ -789,3 +789,50 @@ html {
 .mode-card:nth-child(2) {
     animation-delay: 0.4s;
 }
+
+/* Additional enhancements for better visual hierarchy */
+.hero-title {
+    text-shadow: 0 0 30px rgba(96, 165, 250, 0.6);
+    margin-bottom: 15px;
+}
+
+/* Enhanced footer styling */
+footer {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--glass-border);
+    margin-top: 40px;
+}
+
+/* Improved responsive spacing */
+@media (max-width: 576px) {
+    .mode-selection-container {
+        padding: 15px 10px;
+    }
+    
+    .hero-title {
+        font-size: 1.5rem;
+    }
+    
+    .card-title {
+        font-size: 1.5rem;
+    }
+    
+    .mode-header {
+        padding: 20px 15px 10px;
+    }
+    
+    .features-list {
+        padding: 0 15px;
+    }
+    
+    .feature-item {
+        padding: 12px 0;
+        gap: 10px;
+    }
+    
+    .btn {
+        padding: 14px 25px;
+        font-size: 0.95rem;
+    }
+}

@@ -1003,12 +1003,50 @@ body {
     left: 0; 
     z-index: 1; 
 }
-.leaflet-container { background: linear-gradient(135deg, #1e3a8a, #0f172a); font-family: 'Inter', sans-serif; }
-.leaflet-bottom.leaflet-right { bottom: 0 !important; right: 0 !important; margin: 0 !important; z-index: 1000 !important; }
-.leaflet-control-attribution { background: rgba(15, 23, 42, 0.8) !important; color: rgba(255, 255, 255, 0.6) !important; font-size: 0.65rem; }
+/* Map container and controls */
+.leaflet-container { 
+    background: linear-gradient(135deg, #1e3a8a, #0f172a); 
+    font-family: 'Inter', sans-serif; 
+}
+
+/* Attribution control */
+.leaflet-control-attribution { 
+    background: rgba(15, 23, 42, 0.8) !important; 
+    color: rgba(255, 255, 255, 0.6) !important; 
+    font-size: 0.65rem; 
+}
 .leaflet-control-attribution a { color: #60a5fa !important; }
-.leaflet-top.leaflet-right { right: 15px !important; top: 15px !important; z-index: 1000; }
-.leaflet-control-zoom a { background: rgba(15, 23, 42, 0.9) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; color: white !important; border-radius: 6px !important; width: 30px !important; height: 30px !important; line-height: 30px !important; }
+/* Positioning for different control types */
+.leaflet-top.leaflet-right { 
+    right: 15px !important; 
+    top: 15px !important; 
+    z-index: 1000; 
+}
+
+.leaflet-bottom.leaflet-right { 
+    bottom: 15px !important; 
+    right: 15px !important; 
+    z-index: 1000 !important; 
+    margin: 0 !important;
+}
+
+.leaflet-control-zoom a { 
+    background: var(--glass-bg) !important; 
+    border: 1px solid var(--glass-border) !important; 
+    color: white !important; 
+    border-radius: 6px !important; 
+    width: 32px !important; 
+    height: 32px !important; 
+    line-height: 32px !important; 
+    font-size: 16px !important;
+    transition: all 0.2s ease;
+}
+
+.leaflet-control-zoom a:hover { 
+    background: rgba(255, 255, 255, 0.15) !important; 
+    border-color: var(--cosmic-primary) !important;
+    transform: scale(1.05);
+}
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: rgba(15, 23, 42, 0.95) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); color: white !important; }
 .leaflet-popup-content h6 { color: #60a5fa; font-size: 0.9rem; margin-bottom: 5px; }
 .leaflet-popup-content p { color: rgba(255, 255, 255, 0.9); margin: 0; font-size: 0.8rem; }
@@ -1121,52 +1159,56 @@ body {
     }
 }
 
-/* LANDING PAGE STYLES (for index.html) */
-.hero-title {
-    font-weight: 800;
-    background: linear-gradient(to right, #fff, #a5f3fc);
+
+/* General utilities */
+.text-gradient-primary {
+    background: linear-gradient(135deg, var(--cosmic-primary), var(--cosmic-secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 30px rgba(165, 243, 252, 0.3);
+    background-clip: text;
 }
 
-.mode-card {
-    background: rgba(16, 24, 45, 0.6);
-    border: 1px solid rgba(0, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    cursor: pointer;
-    height: 100%;
-    overflow: hidden;
-    position: relative;
-}
-
-.mode-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    border-color: #00d2ff;
-    box-shadow: 0 10px 40px rgba(0, 210, 255, 0.2);
-}
-
-.mode-icon {
-    font-size: 3.5rem;
-    margin-bottom: 1.5rem;
-    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+.text-gradient-success {
+    background: linear-gradient(135deg, var(--cosmic-success), var(--cosmic-success-light));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 15px rgba(0, 210, 255, 0.4));
+    background-clip: text;
 }
 
-.animate-up {
-    animation: fadeInUp 1s ease-out;
+.text-gradient-warning {
+    background: linear-gradient(135deg, var(--cosmic-warning), var(--cosmic-amber-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Ensure Loading Screen Transition works */
+/* Loading screen transition */
 .loading-screen {
     opacity: 1;
     transition: opacity 0.5s ease-out;
+}
+
+/* Animation utilities */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
