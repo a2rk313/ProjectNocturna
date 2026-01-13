@@ -103,6 +103,7 @@ class WebGIS {
             }
         } catch (error) {
             console.error('❌ Error initializing GeoServer Manager:', error);
+            // Still continue with initialization despite GeoServer failure
         }
     }
     
@@ -740,26 +741,37 @@ class WebGIS {
         
         return new Promise((resolve) => {
             setTimeout(() => {
-                // 1. Clean up previous mode completely
-                this.cleanupAllTools();
-                
-                // 2. Update current mode
-                this.currentMode = mode;
-                
-                // 3. Update UI
-                this.updateUIForMode(mode);
-                
-                // 4. Initialize the new mode
-                this.initializeMode(mode);
-                
-                // 5. Re-bind common UI listeners
-                this.initUIListeners();
-                
-                // 6. Hide loader
-                if (loader) loader.style.display = 'none';
-                
-                console.log(`✅ ${mode} mode activated`);
-                resolve(true);
+                try {
+                    // 1. Clean up previous mode completely
+                    this.cleanupAllTools();
+
+                    // 2. Update current mode
+                    this.currentMode = mode;
+
+                    // 3. Update UI
+                    this.updateUIForMode(mode);
+
+                    // 4. Initialize the new mode
+                    this.initializeMode(mode);
+
+                    // 5. Re-bind common UI listeners
+                    this.initUIListeners();
+                } catch (error) {
+                    console.error(`❌ Error during ${mode} mode setup:`, error);
+                    // Emit error message to user
+                    if (window.SystemBus) {
+                        window.SystemBus.emit("system:message", `⚠️ Error loading ${mode} mode: ${error.message}`);
+                    }
+                } finally {
+                    // 6. Always hide loader regardless of errors
+                    if (loader) {
+                        loader.style.display = "none";
+                        loader.style.opacity = "0";
+                    }
+
+                    console.log(`✅ ${mode} mode activated`);
+                    resolve(true);
+                }
             }, 800);
         });
     }

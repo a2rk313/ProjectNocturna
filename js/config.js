@@ -9,12 +9,18 @@ class AppConfig {
         // API endpoints
         this.apiBaseUrl = this.isVercel ? '' : '/api';
         
+        // GeoServer configuration
+        this.geoserverUrl = this.isLocalhost ? 'http://localhost:8080/geoserver' : 
+                           this.isVercel ? 'https://your-vercel-app.vercel.app/geoserver-proxy' :
+                           'http://localhost:8080/geoserver';
+        
         this.init();
     }
     
     init() {
         console.log(`🌍 Environment: ${this.isVercel ? 'Vercel' : this.isLocalhost ? 'Local' : 'Production'}`);
         console.log(`📡 API Base URL: ${this.apiBaseUrl || '/api'}`);
+        console.log(`🌍 GeoServer URL: ${this.geoserverUrl}`);
     }
     
     getApiUrl(endpoint) {
@@ -32,6 +38,10 @@ class AppConfig {
     
     getStaticUrl(path) {
         return path; // Static files are served from root
+    }
+    
+    getGeoserverUrl() {
+        return this.geoserverUrl;
     }
 }
 
