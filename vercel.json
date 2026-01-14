@@ -45,6 +45,18 @@
       "dest": "/server.js"
     },
     {
+      "src": "^/api/(.*)$",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/app.html",
+      "dest": "/app.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }

@@ -18,8 +18,13 @@ const supabase = createClient(
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://project-nocturna.vercel.app', 'https://project-nocturna-web.vercel.app']
-    : ['http://localhost:3000', 'http://localhost:5000'],
+    ? [
+        'https://project-nocturna.vercel.app',
+        'https://project-nocturna-web.vercel.app',
+        /\.vercel\.app$/,  // Allow any vercel.app subdomain
+        'https://project-nocturna-git-develop-a2rks-projects-d04b644f.vercel.app'  // Your specific deployment
+      ]
+    : ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000'],
   credentials: true
 }));
 
