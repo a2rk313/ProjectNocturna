@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
   entry: './src/client/index.js',
@@ -21,6 +22,12 @@ module.exports = {
       }
     ]
   },
+  plugins: [
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process/browser'
+    })
+  ],
   mode: 'production',
   optimization: {
     minimize: true
@@ -28,10 +35,18 @@ module.exports = {
   resolve: {
     fallback: {
       "path": require.resolve("path-browserify"),
-      "crypto": require.resolve("crypto-browserify"),
+      "crypto": false,
       "stream": require.resolve("stream-browserify"),
       "buffer": require.resolve("buffer"),
-      "util": require.resolve("util")
+      "util": require.resolve("util/"),
+      "assert": require.resolve("assert"),
+      "http": require.resolve("stream-http"),
+      "https": require.resolve("https-browserify"),
+      "os": require.resolve("os-browserify/browser"),
+      "url": require.resolve("url"),
+      "zlib": require.resolve("browserify-zlib"),
+      "querystring": require.resolve("querystring-es3"),
+      "process": require.resolve("process/browser")
     }
   }
 };
