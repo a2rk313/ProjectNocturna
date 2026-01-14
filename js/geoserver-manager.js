@@ -63,29 +63,57 @@ class GeoServerManager {
      */
     async healthCheck() {
         try {
-            const response = await fetch(`${this.baseUrl}/rest/about/version`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Basic ${btoa('admin:geoserver')}` // Basic auth
+            // For Vercel deployment, use our API proxy to avoid CORS issues
+            if (window.AppConfig && (window.AppConfig.isVercel || window.location.hostname.includes('vercel'))) {
+                const response = await fetch('/api/geoserver/health', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return {
+                        status: 'healthy',
+                        connected: true,
+                        version: data.version || 'unknown',
+                        timestamp: new Date().toISOString()
+                    };
+                } else {
+                    return {
+                        status: 'unhealthy',
+                        connected: false,
+                        error: `HTTP ${response.status}`,
+                        timestamp: new Date().toISOString()
+                    };
                 }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                return {
-                    status: 'healthy',
-                    connected: true,
-                    version: data.about.version,
-                    timestamp: new Date().toISOString()
-                };
             } else {
-                return {
-                    status: 'unhealthy',
-                    connected: false,
-                    error: `HTTP ${response.status}`,
-                    timestamp: new Date().toISOString()
-                };
+                // Original approach for local development
+                const response = await fetch(`${this.baseUrl}/rest/about/version`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Basic ${btoa('admin:geoserver')}` // Basic auth
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return {
+                        status: 'healthy',
+                        connected: true,
+                        version: data.about.version,
+                        timestamp: new Date().toISOString()
+                    };
+                } else {
+                    return {
+                        status: 'unhealthy',
+                        connected: false,
+                        error: `HTTP ${response.status}`,
+                        timestamp: new Date().toISOString()
+                    };
+                }
             }
         } catch (error) {
             return {

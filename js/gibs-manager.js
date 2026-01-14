@@ -13,9 +13,23 @@ class GIBSManager {
         try {
             // Fetch available GIBS layers from the API
             const response = await fetch('/api/gibs/layers');
-            const data = await response.json();
             
-            this.layerConfigs = data.layers;
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const responseText = await response.text();
+            let data;
+            
+            try {
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('❌ GIBS Manager JSON parsing failed:', parseError);
+                console.error('❌ Raw response:', responseText);
+                throw new Error(`Invalid JSON response: ${parseError.message}`);
+            }
+            
+            this.layerConfigs = data.layers || {};
             this.isInitialized = true;
             
             console.log('🌍 GIBS Manager initialized with', Object.keys(this.layerConfigs).length, 'layer categories');
