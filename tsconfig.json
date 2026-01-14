@@ -9,10 +9,16 @@
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowJs": false
   },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
   "exclude": [
     "**/*.js",
-    "node_modules"
+    "node_modules",
+    "server-refactored.js"
   ]
 }

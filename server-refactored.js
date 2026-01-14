@@ -137,16 +137,16 @@ if (require.main === module) {
   });
 
   // Handle graceful shutdown
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', function() {
     console.log('SIGTERM received, shutting down gracefully');
-    server.close(() => {
+    server.close(function() {
       console.log('Process terminated');
     });
   });
 
-  process.on('SIGINT', () => {
+  process.on('SIGINT', function() {
     console.log('SIGINT received, shutting down gracefully');
-    server.close(() => {
+    server.close(function() {
       console.log('Process terminated');
     });
   });
