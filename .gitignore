@@ -1,33 +1,5 @@
-```
-# Dependencies
-node_modules/
-.bun/
-bun.lock
+(jsconfig.json, server-refactored-backup.js, tsconfig.json are source/config files, no build artifacts, dependencies, or temp files in the changes)
 
-# Docker
-.dockerenv
-Dockerfile
-docker-compose*.yml
-compose*.yaml
+```javascript
 
-# Database
-*.sql
-data/
-
-# Logs
-*.log
-
-# Backups
-*.backup
-
-# Environment
-.env*
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
 ```

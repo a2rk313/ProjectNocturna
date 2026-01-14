@@ -1,0 +1,155 @@
+// server-refactored.js - Modular, production-ready server
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+
+// Import configurations
+const config = require('./config/app');
+
+// Import routes
+const apiRoutes = require('./routes/index');
+const authRoutes = require('./routes/auth');
+const measurementRoutes = require('./routes/measurements');
+
+// Create Express app
+const app = express();
+
+// Security middleware
+app.use(helmet({
+  crossOriginEmbedderPolicy: false, // Needed for map libraries
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
+// Compression middleware
+app.use(compression());
+
+// CORS configuration
+app.use(cors({
+  origin: config.allowedOrigins,
+  credentials: true
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: config.rateLimit.windowMs,
+  max: config.rateLimit.max,
+  message: {
+    error: 'Rate limit exceeded',
+    message: 'Too many requests, please try again later'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', limiter);
+
+// Logging middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
+  });
+  
+  next();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    nodeEnv: config.env
+  });
+});
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1d',
+  etag: true
+}));
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/measurements', measurementRoutes);
+app.use('/api', apiRoutes);
+
+// Serve index.html for all other routes (SPA support)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  if (config.env === 'production') {
+    // Don't expose stack trace in production
+    res.status(err.status || 500).json({
+      error: {
+        message: err.message || 'Internal Server Error',
+        ...(err.status === 404 && { type: 'NOT_FOUND' }),
+        ...(err.status >= 500 && { type: 'INTERNAL_ERROR' })
+      }
+    });
+  } else {
+    // In development, include stack trace
+    res.status(err.status || 500).json({
+      error: {
+        message: err.message,
+        stack: err.stack,
+        type: 'ERROR_DETAILS'
+      }
+    });
+  }
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    path: req.originalUrl
+  });
+});
+
+// Graceful shutdown
+let server;
+
+if (require.main === module) {
+  // Only start server if this file is run directly (not imported)
+  const PORT = config.port;
+  
+  server = app.listen(PORT, () => {
+    console.log(`🚀 Server running in ${config.env} mode on port ${PORT}`);
+    console.log(`📊 Health check available at http://localhost:${PORT}/health`);
+    console.log(`🌍 API base URL: http://localhost:${PORT}/api`);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+    });
+  });
+}
+
+module.exports = app;
