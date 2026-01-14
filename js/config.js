@@ -39,6 +39,10 @@ class AppConfig {
         if (this.isLocalhost) {
             return 'http://localhost:8080/geoserver';
         }
+        // For Vercel, use proxy through our own API to avoid CORS issues
+        if (this.isVercel) {
+            return '/api/geoserver';  // Proxy through our API
+        }
         // Return production geoserver URL (to be configured)
         return 'https://your-production-domain.com/geoserver';
     }

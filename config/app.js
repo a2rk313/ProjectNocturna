@@ -25,7 +25,7 @@ const envSchema = Joi.object({
   RATE_LIMIT_WINDOW_MS: Joi.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: Joi.number().default(100),
   API_VERSION: Joi.string().default('v1'),
-  ALLOWED_ORIGINS: Joi.string().default('http://localhost:3000'),
+  ALLOWED_ORIGINS: Joi.string().default('http://localhost:3000,http://localhost:5000,https://*.vercel.app'),
 }).unknown();
 
 const { value: envVars, error } = envSchema.validate(process.env);
