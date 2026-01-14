@@ -16,6 +16,11 @@ const pool = new Pool({
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+// Function to determine if we should force real data (even in development)
+function shouldUseRealData() {
+    return process.env.NODE_ENV === 'development' || process.env.USE_REAL_DATA === 'true';
+}
+
 // NASA VIIRS Nighttime Lights Data API - Corrected for light pollution research
 // NOTE: The actual VIIRS NTL API requires special access and credentials
 // We'll implement a realistic mock that simulates the real data structure
@@ -96,43 +101,46 @@ app.get('/api/viirs/:year/:month?', async (req, res) => {
                 console.log('NASA API not accessible, using enhanced dataset:', nasaError.message);
             }
 
-            // Use our enhanced dataset to generate realistic data
-            const enhancedData = getLightPollutionData(centerLat, centerLng, {
-                radius: Math.min(2, Math.max(0.1, (maxLat - minLat) / 2))
-            });
-
-            // If we have enhanced data, use it
-            if (enhancedData && enhancedData.data && enhancedData.data.length > 0) {
-                console.log(`✅ Using enhanced dataset for VIIRS request: ${enhancedData.data.length} points`);
-
-                // Transform the enhanced data to match VIIRS format
-                const transformedData = enhancedData.data.map(point => ({
-                    lat: point.lat,
-                    lng: point.lng,
-                    brightness: 21.8 - (point.brightness * 0.8), // Convert SQM to VIIRS-like brightness
-                    frp: (22.5 - point.brightness) * 0.5, // Fire Radiative Power equivalent
-                    confidence: point.confidence === 'high' ? 90 : 50,
-                    date: point.timestamp,
-                    source: 'Enhanced Light Pollution Dataset'
-                }));
-
-                res.json({
-                    source: 'Enhanced Light Pollution Dataset (VIIRS Equivalent)',
-                    year,
-                    month: month || 'annual',
-                    count: transformedData.length,
-                    avg_brightness: enhancedData.summary.avg_sqm,
-                    min_brightness: enhancedData.summary.min_sqm,
-                    max_brightness: enhancedData.summary.max_sqm,
-                    data: transformedData.slice(0, 1000), // Limit for performance
-                    metadata: {
-                        enhanced_dataset: true,
-                        geographic_patterns_applied: true,
-                        closest_reference: enhancedData.summary.closest_reference,
-                        citations: enhancedData.metadata.citations
-                    }
+            // Only use enhanced dataset if we're NOT in development mode (to avoid mock data in dev)
+            if (!shouldUseRealData()) {
+                // Use our enhanced dataset to generate realistic data
+                const enhancedData = getLightPollutionData(centerLat, centerLng, {
+                    radius: Math.min(2, Math.max(0.1, (maxLat - minLat) / 2))
                 });
-                return;
+
+                // If we have enhanced data, use it
+                if (enhancedData && enhancedData.data && enhancedData.data.length > 0) {
+                    console.log(`✅ Using enhanced dataset for VIIRS request: ${enhancedData.data.length} points`);
+
+                    // Transform the enhanced data to match VIIRS format
+                    const transformedData = enhancedData.data.map(point => ({
+                        lat: point.lat,
+                        lng: point.lng,
+                        brightness: 21.8 - (point.brightness * 0.8), // Convert SQM to VIIRS-like brightness
+                        frp: (22.5 - point.brightness) * 0.5, // Fire Radiative Power equivalent
+                        confidence: point.confidence === 'high' ? 90 : 50,
+                        date: point.timestamp,
+                        source: 'Enhanced Light Pollution Dataset'
+                    }));
+
+                    res.json({
+                        source: 'Enhanced Light Pollution Dataset (VIIRS Equivalent)',
+                        year,
+                        month: month || 'annual',
+                        count: transformedData.length,
+                        avg_brightness: enhancedData.summary.avg_sqm,
+                        min_brightness: enhancedData.summary.min_sqm,
+                        max_brightness: enhancedData.summary.max_sqm,
+                        data: transformedData.slice(0, 1000), // Limit for performance
+                        metadata: {
+                            enhanced_dataset: true,
+                            geographic_patterns_applied: true,
+                            closest_reference: enhancedData.summary.closest_reference,
+                            citations: enhancedData.metadata.citations
+                        }
+                    });
+                    return;
+                }
             }
         } else {
             // Default area when no bbox provided
@@ -186,37 +194,40 @@ app.get('/api/viirs/:year/:month?', async (req, res) => {
                 console.log('NASA API not accessible, using enhanced dataset:', nasaError.message);
             }
 
-            // Use default US central region
-            const enhancedData = getLightPollutionData(40, -95, { radius: 1.5 });
+            // Only use enhanced dataset if we're NOT in development mode (to avoid mock data in dev)
+            if (!shouldUseRealData()) {
+                // Use default US central region
+                const enhancedData = getLightPollutionData(40, -95, { radius: 1.5 });
 
-            // Transform the enhanced data to match VIIRS format
-            const transformedData = enhancedData.data.map(point => ({
-                lat: point.lat,
-                lng: point.lng,
-                brightness: 21.8 - (point.brightness * 0.8), // Convert SQM to VIIRS-like brightness
-                frp: (22.5 - point.brightness) * 0.5, // Fire Radiative Power equivalent
-                confidence: point.confidence === 'high' ? 90 : 50,
-                date: point.timestamp,
-                source: 'Enhanced Light Pollution Dataset'
-            }));
+                // Transform the enhanced data to match VIIRS format
+                const transformedData = enhancedData.data.map(point => ({
+                    lat: point.lat,
+                    lng: point.lng,
+                    brightness: 21.8 - (point.brightness * 0.8), // Convert SQM to VIIRS-like brightness
+                    frp: (22.5 - point.brightness) * 0.5, // Fire Radiative Power equivalent
+                    confidence: point.confidence === 'high' ? 90 : 50,
+                    date: point.timestamp,
+                    source: 'Enhanced Light Pollution Dataset'
+                }));
 
-            res.json({
-                source: 'Enhanced Light Pollution Dataset (VIIRS Equivalent)',
-                year,
-                month: month || 'annual',
-                count: transformedData.length,
-                avg_brightness: enhancedData.summary.avg_sqm,
-                min_brightness: enhancedData.summary.min_sqm,
-                max_brightness: enhancedData.summary.max_sqm,
-                data: transformedData.slice(0, 1000), // Limit for performance
-                metadata: {
-                    enhanced_dataset: true,
-                    geographic_patterns_applied: true,
-                    closest_reference: enhancedData.summary.closest_reference,
-                    citations: enhancedData.metadata.citations
-                }
-            });
-            return;
+                res.json({
+                    source: 'Enhanced Light Pollution Dataset (VIIRS Equivalent)',
+                    year,
+                    month: month || 'annual',
+                    count: transformedData.length,
+                    avg_brightness: enhancedData.summary.avg_sqm,
+                    min_brightness: enhancedData.summary.min_sqm,
+                    max_brightness: enhancedData.summary.max_sqm,
+                    data: transformedData.slice(0, 1000), // Limit for performance
+                    metadata: {
+                        enhanced_dataset: true,
+                        geographic_patterns_applied: true,
+                        closest_reference: enhancedData.summary.closest_reference,
+                        citations: enhancedData.metadata.citations
+                    }
+                });
+                return;
+            }
         }
 
         // If we couldn't get real data, use the enhanced dataset
@@ -305,7 +316,49 @@ app.get('/api/world-atlas/:region?', async (req, res) => {
         const { region } = req.params;
         const { lat, lng } = req.query;
         
-        // Load sample data from our comprehensive dataset
+        // Try to get real data from the database first if in development mode
+        if (shouldUseRealData() && lat && lng) {
+            // Query the database for real measurements near the requested location
+            const result = await pool.query(`
+                SELECT 
+                    ST_Y(geom) as lat, 
+                    ST_X(geom) as lng,
+                    sqm_reading as sqm,
+                    bortle_class,
+                    measured_at,
+                    location_description
+                FROM light_measurements
+                WHERE ST_DWithin(
+                    geom::geography, 
+                    ST_SetSRID(ST_Point($1, $2), 4326)::geography, 
+                    50000  -- 50km radius
+                )
+                ORDER BY geom <-> ST_SetSRID(ST_Point($1, $2), 4326)
+                LIMIT 1
+            `, [parseFloat(lng), parseFloat(lat)]);
+            
+            if (result.rows.length > 0) {
+                const measurement = result.rows[0];
+                res.json({
+                    lat: parseFloat(lat),
+                    lng: parseFloat(lng),
+                    sqm: measurement.sqm,
+                    bortle_class: measurement.bortle_class,
+                    measured_at: measurement.measured_at,
+                    location_description: measurement.location_description,
+                    source: 'Real-time Database Measurement',
+                    quality: 'research_grade',
+                    metadata: {
+                        resolution: 'point_measurement',
+                        distance_to_nearest_station: 'calculated',
+                        data_source: 'Project Nocturna Database'
+                    }
+                });
+                return;
+            }
+        }
+
+        // Load sample data from our comprehensive dataset (only used when not in development)
         const sampleData = {
             "urban_centers": [
                 { "lat": 40.7128, "lng": -74.0060, "sqm": 14.2, "bortle_class": 9, "classification": "poor" },
