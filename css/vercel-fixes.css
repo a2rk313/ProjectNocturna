@@ -138,7 +138,7 @@ body::before {
 /* 10. Fix for any potential white flash issues */
 .loading-screen,
 .loading-content {
-    background: rgba(10, 15, 28, 0.98) !important;
+    background: rgba(10, 15, 28, 0.85) !important; /* Reduced opacity to allow some content visibility in case of errors */
     backdrop-filter: var(--glass-blur-heavy) !important;
     -webkit-backdrop-filter: var(--glass-blur-heavy) !important;
 }

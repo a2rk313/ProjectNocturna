@@ -183,7 +183,7 @@
     left: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    background: rgba(10, 15, 28, 0.98) !important; /* Increased opacity for better overlay */
+    background: rgba(10, 15, 28, 0.85) !important; /* Reduced opacity to allow some content visibility in case of errors */
     z-index: 9999 !important;
     display: flex !important;
     align-items: center !important;
