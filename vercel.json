@@ -5,8 +5,8 @@
       "src": "server-refactored.js",
       "use": "@vercel/node",
       "config": { 
-        "includeFiles": ["**/**"],
-        "excludeFiles": ["node_modules/**", ".git/**", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup", "docs/**", "screenshots/**"]
+        "includeFiles": ["server-refactored.js", "config/**", "routes/**", "controllers/**", "services/**", "middleware/**", "utils/**", "lib/**", "api/**", "package.json", "package-lock.json"],
+        "excludeFiles": ["node_modules/**", ".git/**", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup", "docs/**", "screenshots/**", "*.md", "README*", "scripts/**", "data/**"]
       }
     },
     {
