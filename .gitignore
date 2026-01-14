@@ -1,3 +1,33 @@
-```javascript
+```
+# Dependencies
+node_modules/
+.bun/
+bun.lock
 
+# Docker
+.dockerenv
+Dockerfile
+docker-compose*.yml
+compose*.yaml
+
+# Database
+*.sql
+data/
+
+# Logs
+*.log
+
+# Backups
+*.backup
+
+# Environment
+.env*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
 ```
