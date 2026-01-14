@@ -798,8 +798,11 @@ class WebGIS {
             loader.style.opacity = '1';
         }
         
-        return new Promise((resolve) => {
-            setTimeout(() => {
+        return new Promise(async (resolve) => {
+            try {
+                // Use a more robust approach with async/await instead of setTimeout
+                await new Promise(resolveInner => setTimeout(resolveInner, 800));
+                
                 // 1. Clean up previous mode completely
                 this.cleanupAllTools();
                 
@@ -815,12 +818,19 @@ class WebGIS {
                 // 5. Re-bind common UI listeners
                 this.initUIListeners();
                 
-                // 6. Hide loader
-                if (loader) loader.style.display = 'none';
+            } catch (error) {
+                console.error(`Error during ${mode} mode initialization:`, error);
+                window.SystemBus.emit('system:message', `⚠️ Error initializing ${mode} mode. Some features may not work properly.`);
+            } finally {
+                // 6. Always hide loader regardless of success or failure
+                if (loader) {
+                    loader.style.display = 'none';
+                    loader.style.opacity = '0';
+                }
                 
-                console.log(`✅ ${mode} mode activated`);
+                console.log(`✅ ${mode} mode activation attempt completed`);
                 resolve(true);
-            }, 800);
+            }
         });
     }
 
@@ -872,21 +882,30 @@ class WebGIS {
     initializeMode(mode) {
         console.log(`⚙️ Initializing ${mode} mode controller...`);
         
-        if (mode === 'citizen') {
-            if (window.CitizenMode) {
-                this.citizenMode = new window.CitizenMode(this);
-                this.citizenMode.initialize();
-                console.log("✅ Citizen Mode initialized");
+        try {
+            if (mode === 'citizen') {
+                if (window.CitizenMode) {
+                    this.citizenMode = new window.CitizenMode(this);
+                    this.citizenMode.initialize();
+                    console.log("✅ Citizen Mode initialized");
+                } else {
+                    console.warn("⚠️ CitizenMode class not available");
+                }
+            } else if (mode === 'scientific') {
+                if (window.ScientificMode) {
+                    this.scientificMode = new window.ScientificMode(this);
+                    this.scientificMode.initialize();
+                    console.log("✅ Scientific Mode initialized");
+                    
+                    // Setup scientific layer controls
+                    this.setupScientificLayerControls();
+                } else {
+                    console.warn("⚠️ ScientificMode class not available");
+                }
             }
-        } else if (mode === 'scientific') {
-            if (window.ScientificMode) {
-                this.scientificMode = new window.ScientificMode(this);
-                this.scientificMode.initialize();
-                console.log("✅ Scientific Mode initialized");
-                
-                // Setup scientific layer controls
-                this.setupScientificLayerControls();
-            }
+        } catch (error) {
+            console.error(`❌ Error initializing ${mode} mode:`, error);
+            window.SystemBus.emit('system:message', `⚠️ Error initializing ${mode} mode: ${error.message}`);
         }
     }
 
