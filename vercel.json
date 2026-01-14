@@ -6,7 +6,7 @@
       "use": "@vercel/node",
       "config": { 
         "includeFiles": ["**/**"],
-        "excludeFiles": ["node_modules/**", ".git/**", "*.md", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup", "docs/**", "screenshots/**"]
+        "excludeFiles": ["node_modules/**", ".git/**", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup", "docs/**", "screenshots/**"]
       }
     },
     {
@@ -34,37 +34,22 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/geoserver/(.*)",
-      "dest": "/server-refactored.js",
-      "methods": ["GET", "POST", "PUT", "DELETE"]
+      "source": "/api/geoserver/:path*",
+      "destination": "/server-refactored.js"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/server-refactored.js"
+      "source": "/api/:path*",
+      "destination": "/server-refactored.js"
     },
     {
-      "src": "^/api/(.*)$",
-      "dest": "/server-refactored.js"
-    },
-    {
-      "src": "/health",
-      "dest": "/server-refactored.js"
-    },
-    {
-      "src": "/",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/app.html",
-      "dest": "/app.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/health",
+      "destination": "/server-refactored.js"
     }
   ],
+  "cleanUrls": true,
+  "trailingSlash": false,
   "env": {
     "NODE_ENV": "production"
   },

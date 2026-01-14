@@ -1,14 +1,33 @@
 ```
 # Dependencies
 node_modules/
+.bun/
+bun.lock
 
-# Environment variables
-.env.local
-.env.*
+# Docker
+.dockerenv
+Dockerfile
+docker-compose*.yml
+compose*.yaml
+
+# Database
+*.sql
+data/
 
 # Logs
 *.log
 
-# Editor/IDE
+# Backups
+*.backup
+
+# Environment
+.env*
+
+# IDE
 .vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
 ```
