@@ -74,10 +74,16 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public'), {
+// Serve static files from the root directory for Vercel deployment
+app.use(express.static(path.join(__dirname), {
   maxAge: '1d',
-  etag: true
+  etag: true,
+  // Explicitly set content-type for CSS files to avoid MIME type issues
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+  }
 }));
 
 // API Routes
@@ -85,9 +91,24 @@ app.use('/api/auth', authRoutes);
 app.use('/api/measurements', measurementRoutes);
 app.use('/api', apiRoutes);
 
-// Serve index.html for all other routes (SPA support)
-app.get('*', (req, res) => {
+// Serve HTML files for non-API routes (SPA support)
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'app.html'));
+});
+
+// Catch-all for other frontend routes to support client-side routing
+app.get(/^(?!\/api\/).*$/, (req, res) => {
+  // Check if it's a known HTML page
+  if (req.path === '/index.html' || req.path === '/app.html') {
+    res.sendFile(path.join(__dirname, req.path.substring(1)));
+  } else {
+    // For other frontend routes, serve index.html (for SPA routing)
+    res.sendFile(path.join(__dirname, 'index.html'));
+  }
 });
 
 // Error handling middleware
