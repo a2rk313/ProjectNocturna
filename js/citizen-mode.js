@@ -52,13 +52,94 @@ class CitizenMode {
             // Get current location or map center
             const center = this.webGIS.map.getCenter();
             
-            // In a real implementation, this would call a weather/astronomy API
-            // For now, we'll use mock data but structure it for real API integration
+            // Initialize weather service and get real conditions
+            const weatherService = new WeatherService();
+            const conditions = await weatherService.getStargazingConditions(
+                center.lat,
+                center.lng
+            );
             
             const content = `
                 <div class="text-center">
                     <h5><i class="fas fa-cloud-sun"></i> Stargazing Forecast</h5>
                     <p>Tonight's conditions based on current weather data:</p>
+                    
+                    <div class="alert alert-${conditions.recommendation === 'Excellent' ? 'success' : conditions.recommendation === 'Good' ? 'info' : 'warning'}">
+                        <strong>Quality: ${conditions.quality}/10 (${conditions.recommendation})</strong>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-4">
+                            <div class="bg-dark p-2 rounded">
+                                <i class="fas fa-cloud text-info"></i>
+                                <div class="mt-1"><strong>${conditions.cloudCover}%</strong></div>
+                                <small>Cloud Cover</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-dark p-2 rounded">
+                                <i class="fas fa-eye text-success"></i>
+                                <div class="mt-1"><strong>${conditions.visibility} km</strong></div>
+                                <small>Visibility</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-dark p-2 rounded">
+                                <i class="fas fa-wind text-secondary"></i>
+                                <div class="mt-1"><strong>${conditions.windSpeed} m/s</strong></div>
+                                <small>Wind Speed</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6><i class="fas fa-moon"></i> Moon Phase</h6>
+                        <div class="d-flex justify-content-center align-items-center">
+                            <span class="fs-3 me-2">${conditions.moon.emoji}</span>
+                            <div>
+                                <div><strong>${conditions.moon.phase}</strong></div>
+                                <div class="small">${conditions.moon.illumination.toFixed(1)}% illuminated</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6><i class="fas fa-info-circle"></i> Conditions Summary</h6>
+                        <p class="small">${conditions.conditions_summary}</p>
+                    </div>
+                    
+                    ${conditions.best_times && conditions.best_times.length > 0 ? `
+                    <div class="mt-3">
+                        <h6><i class="fas fa-clock"></i> Best Observation Times</h6>
+                        <div class="small">
+                            ${conditions.best_times.map(time => `<div>${time}</div>`).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="mt-3">
+                        <p class="small text-muted">Location: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}</p>
+                        <p class="small text-muted">Source: Open-Meteo API and astronomical calculations</p>
+                    </div>
+                </div>
+            `;
+            
+            window.SystemBus.emit('ui:show_modal', { 
+                title: "Stargazing Forecast", 
+                content: content 
+            });
+            
+        } catch (error) {
+            console.error('Forecast error:', error);
+            window.SystemBus.emit('system:message', "❌ Failed to get forecast data.");
+            
+            // Fallback to original implementation
+            const center = this.webGIS.map.getCenter();
+            
+            const content = `
+                <div class="text-center">
+                    <h5><i class="fas fa-cloud-sun"></i> Stargazing Forecast</h5>
+                    <p>Weather service temporarily unavailable. Showing mock data:</p>
                     <div class="row mt-3">
                         <div class="col-4">
                             <div class="bg-dark p-2 rounded">
@@ -90,13 +171,9 @@ class CitizenMode {
             `;
             
             window.SystemBus.emit('ui:show_modal', { 
-                title: "Stargazing Forecast", 
+                title: "Stargazing Forecast (Fallback)", 
                 content: content 
             });
-            
-        } catch (error) {
-            console.error('Forecast error:', error);
-            window.SystemBus.emit('system:message', "❌ Failed to get forecast data.");
         }
     }
 
