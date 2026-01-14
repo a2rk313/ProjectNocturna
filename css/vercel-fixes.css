@@ -10,7 +10,7 @@ body {
     position: relative !important;
 }
 
-/* 2. Fix for potential white flashes during loading */
+/* 2. Fix for potential white flashes during loading - COMMENTED OUT AS IT WAS HIDING CONTENT
 body::before {
     content: '';
     position: fixed;
@@ -23,6 +23,7 @@ body::before {
     pointer-events: none;
     transition: opacity 0.3s ease;
 }
+*/
 
 /* 3. Ensure proper glass morphism rendering on all browsers */
 .cosmic-panel,
