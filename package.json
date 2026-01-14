@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "NODE_ENV=development nodemon server.js",
     "start": "NODE_ENV=production node server.js",
+    "refactor-start": "NODE_ENV=production node server-refactored.js",
     "build": "npm run build:client && npm run build:server",
     "build:server": "babel server.js --out-dir dist --presets env",
+    "build:refactored": "babel server-refactored.js --out-dir dist-refactored --presets env",
     "build:client": "webpack --mode production",
     "seed": "node scripts/seed.js",
     "migrate": "node scripts/migrate.js",
@@ -18,7 +20,9 @@
     "prettier": "prettier --write .",
     "vercel-dev": "vercel dev",
     "vercel-deploy": "vercel --prod",
-    "install-hdf5": "echo 'To enable full HDF5 processing, run: npm install hdf5' && echo 'Note: This requires system dependencies like HDF5 library'"
+    "install-hdf5": "echo 'To enable full HDF5 processing, run: npm install hdf5' && echo 'Note: This requires system dependencies like HDF5 library'",
+    "health-check": "node -e \"fetch('http://localhost:3000/health').then(res => res.json()).then(console.log).catch(e => console.error('Health check failed:', e));\"",
+    "analyze": "source-map-explorer dist/bundle.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",

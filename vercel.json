@@ -2,11 +2,11 @@
   "version": 2,
   "builds": [
     {
-      "src": "server.js",
+      "src": "server-refactored.js",
       "use": "@vercel/node",
       "config": { 
         "includeFiles": ["**/**"],
-        "excludeFiles": ["node_modules/**", ".git/**", "*.md", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup"]
+        "excludeFiles": ["node_modules/**", ".git/**", "*.md", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup", "docs/**", "screenshots/**"]
       }
     },
     {
@@ -37,16 +37,20 @@
   "routes": [
     {
       "src": "/api/geoserver/(.*)",
-      "dest": "/server.js",
+      "dest": "/server-refactored.js",
       "methods": ["GET", "POST", "PUT", "DELETE"]
     },
     {
       "src": "/api/(.*)",
-      "dest": "/server.js"
+      "dest": "/server-refactored.js"
     },
     {
       "src": "^/api/(.*)$",
-      "dest": "/server.js"
+      "dest": "/server-refactored.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/server-refactored.js"
     },
     {
       "src": "/",
@@ -63,5 +67,28 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        }
+      ]
+    }
+  ]
 }

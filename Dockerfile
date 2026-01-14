@@ -16,8 +16,20 @@ RUN npm ci --only=production
 # Copy the rest of the application code
 COPY . .
 
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs &&\
+    adduser -S nextjs -u 1001
+
+# Change ownership of the app directory to the non-root user
+RUN chown -R nextjs:nodejs /usr/src/app
+USER nextjs
+
 # Stage 2: Production Environment (Smaller & Secure)
 FROM node:20-alpine
+
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs &&\
+    adduser -S nextjs -u 1001
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -27,7 +39,10 @@ WORKDIR /usr/src/app
 RUN apk add --no-cache tini
 
 # Copy artifacts from the builder stage
-COPY --from=builder /usr/src/app ./
+COPY --from=builder --chown=nextjs:nodejs /usr/src/app ./ 
+
+# Switch to non-root user
+USER nextjs
 
 # Use Tini as the entry point
 ENTRYPOINT ["/sbin/tini", "--"]
@@ -36,4 +51,4 @@ ENTRYPOINT ["/sbin/tini", "--"]
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["npm", "run", "refactor-start"]
