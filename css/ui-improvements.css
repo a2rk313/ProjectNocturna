@@ -1,0 +1,556 @@
+/* UI Improvements CSS - Addressing layout, positioning, visual design, and usability issues */
+
+/* 1. Layout and Positioning Improvements */
+
+/* Fix zoom controls positioning to avoid overlap with UI elements */
+.leaflet-control-zoom {
+    position: absolute !important;
+    top: 100px !important; /* Move down from top to avoid overlapping with navbar */
+    left: auto !important;
+    right: 20px !important; /* Move to right side to avoid left UI elements */
+    margin: 10px !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+    background: var(--glass-bg) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+/* Adjust map container to properly utilize available space */
+.cosmic-map {
+    height: calc(100vh - 55px) !important;
+    width: 100% !important;
+    position: fixed !important;
+    top: 55px !important; /* Account for navbar height */
+    left: 0 !important;
+    z-index: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Improved panel positioning and sizing */
+.control-panel {
+    position: fixed !important;
+    top: 75px !important;
+    left: 20px !important;
+    z-index: 1000 !important;
+    width: 300px !important; /* Increased width for better usability */
+    max-height: calc(100vh - 150px) !important;
+    overflow-y: auto !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--cosmic-primary) transparent !important;
+    border-radius: 16px !important;
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+/* Fix mode selection panel styling consistency */
+.mode-tools {
+    display: none !important;
+}
+
+.mode-tools.active {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+}
+
+/* Data layers panel positioning */
+.data-layers-panel {
+    position: fixed !important;
+    top: 75px !important;
+    right: 20px !important;
+    z-index: 1000 !important;
+    width: 320px !important; /* Increased width for better readability */
+    max-height: calc(100vh - 150px) !important;
+    overflow-y: auto !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--cosmic-secondary) transparent !important;
+    border-radius: 16px !important;
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+/* Time controls panel positioning */
+.time-controls-panel {
+    position: fixed !important;
+    bottom: 20px !important;
+    left: 20px !important;
+    z-index: 1000 !important;
+    width: 300px !important; /* Increased width for better usability */
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--cosmic-primary) transparent !important;
+    border-radius: 16px !important;
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+/* 2. Visual Design Improvements */
+
+/* Consistent color scheme across components */
+.cosmic-panel {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    transition: all var(--transition-normal) !important;
+    position: relative !important;
+}
+
+/* Improved visual hierarchy */
+.panel-header {
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+    cursor: pointer !important;
+    position: relative !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+}
+
+.panel-header h6 {
+    margin: 0 !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important; /* Increased font size for better readability */
+    font-family: var(--font-display) !important;
+}
+
+/* Better button styling with consistent sizing and spacing */
+.control-panel .btn,
+.data-layers-panel .btn,
+.time-controls-panel .btn {
+    border-radius: 12px !important;
+    padding: 14px 16px !important; /* Increased padding for better touch targets */
+    text-align: left !important;
+    width: 100% !important;
+    border: none !important;
+    color: white !important;
+    margin-bottom: 12px !important; /* Increased spacing between buttons */
+    font-size: 0.9rem !important; /* Increased font size for better readability */
+    transition: all var(--transition-normal) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important; /* Increased icon-text gap */
+    min-height: 50px !important; /* Ensure minimum touch target size */
+}
+
+/* Enhanced button hover effects */
+.control-panel .btn:hover,
+.data-layers-panel .btn:hover,
+.time-controls-panel .btn:hover {
+    transform: translateY(-2px) !important;
+    filter: brightness(1.1) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Improved button contrast and readability */
+.btn-cosmic-primary,
+.btn-cosmic-info,
+.btn-cosmic-warning,
+.btn-cosmic-danger,
+.btn-cosmic-success,
+.btn-cosmic-purple {
+    color: white !important;
+    border: none !important;
+    font-weight: 500 !important;
+}
+
+/* Better text contrast for readability */
+.cosmic-panel .text-light,
+.cosmic-panel .form-check-label,
+.cosmic-panel .panel-header h6 {
+    color: rgba(255, 255, 255, 0.9) !important; /* Increased contrast */
+}
+
+/* 3. Usability Improvements */
+
+/* Enhanced loading states */
+.loading-screen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(10, 15, 28, 0.98) !important; /* Increased opacity for better overlay */
+    z-index: 9999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    backdrop-filter: var(--glass-blur-heavy) !important;
+    transition: opacity var(--transition-slow) !important;
+}
+
+.loading-content {
+    background: var(--glass-bg-light) !important;
+    padding: 50px !important; /* Increased padding */
+    border-radius: 28px !important; /* Increased border radius */
+    backdrop-filter: var(--glass-blur-heavy) !important;
+    border: 1px solid var(--glass-border-light) !important;
+    box-shadow: var(--glass-shadow) !important;
+    max-width: 500px !important;
+    width: 90% !important;
+    text-align: center !important;
+}
+
+/* Better error and success messaging */
+.chat-messages {
+    height: 280px !important; /* Increased height for better visibility */
+    overflow-y: auto !important;
+    padding: 20px !important; /* Increased padding */
+    background: rgba(255, 255, 255, 0.03) !important;
+    font-size: 0.9rem !important; /* Increased font size */
+    border-bottom: 1px solid var(--glass-border) !important;
+    flex-grow: 1 !important;
+}
+
+.message-content {
+    background: rgba(255, 255, 255, 0.08) !important;
+    padding: 16px 20px !important; /* Increased padding */
+    border-radius: 20px !important; /* Increased border radius */
+    max-width: 85% !important;
+    word-wrap: break-word !important;
+    font-size: 0.9rem !important; /* Increased font size */
+}
+
+/* 4. Responsive Design Improvements */
+
+/* Better responsive behavior for all screen sizes */
+@media (max-width: 1200px) {
+    .control-panel {
+        width: 280px !important;
+    }
+    
+    .data-layers-panel {
+        width: 280px !important;
+    }
+    
+    .time-controls-panel {
+        width: 280px !important;
+    }
+}
+
+@media (max-width: 992px) {
+    .control-panel {
+        width: 260px !important;
+        left: 15px !important;
+    }
+    
+    .data-layers-panel {
+        width: 260px !important;
+        right: 15px !important;
+    }
+    
+    .time-controls-panel {
+        width: 260px !important;
+        left: 15px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Stack panels vertically on smaller screens */
+    .control-panel {
+        position: fixed !important;
+        top: 70px !important;
+        left: 10px !important;
+        width: calc(100% - 20px) !important; /* Full width minus margins */
+        max-width: none !important;
+        z-index: 1000 !important;
+    }
+    
+    .data-layers-panel {
+        position: fixed !important;
+        top: 70px !important;
+        right: 10px !important;
+        width: calc(100% - 20px) !important; /* Full width minus margins */
+        max-width: none !important;
+        z-index: 1000 !important;
+    }
+    
+    .time-controls-panel {
+        position: fixed !important;
+        bottom: 10px !important;
+        left: 10px !important;
+        width: calc(100% - 20px) !important; /* Full width minus margins */
+        z-index: 1000 !important;
+    }
+    
+    /* Adjust zoom controls for mobile */
+    .leaflet-control-zoom {
+        top: 10px !important;
+        right: 10px !important;
+    }
+    
+    /* Increase button touch targets for mobile */
+    .control-panel .btn,
+    .data-layers-panel .btn,
+    .time-controls-panel .btn {
+        padding: 16px 18px !important;
+        font-size: 1rem !important;
+        min-height: 56px !important;
+    }
+    
+    /* Increase chat message font size */
+    .message-content {
+        font-size: 1rem !important;
+        padding: 18px 22px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Further optimize for very small screens */
+    .control-panel,
+    .data-layers-panel,
+    .time-controls-panel {
+        width: calc(100% - 20px) !important;
+        left: 10px !important;
+        right: auto !important;
+        bottom: auto !important;
+    }
+    
+    .cosmic-navbar {
+        padding: 12px 15px !important;
+    }
+    
+    .chatbot-container {
+        width: calc(100% - 20px) !important;
+        right: 10px !important;
+        bottom: 10px !important;
+        left: 10px !important;
+    }
+    
+    /* Adjust button sizes for small screens */
+    .control-panel .btn,
+    .data-layers-panel .btn,
+    .time-controls-panel .btn {
+        padding: 18px 20px !important;
+        font-size: 1.05rem !important;
+        min-height: 60px !important;
+    }
+}
+
+/* 5. Additional Accessibility Improvements */
+
+/* Focus states for keyboard navigation */
+.btn:focus,
+input:focus,
+select:focus {
+    outline: 2px solid var(--cosmic-primary-light) !important;
+    outline-offset: 2px !important;
+}
+
+/* Better contrast for form elements */
+.form-check-input {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid var(--glass-border) !important;
+    margin-right: 12px !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--cosmic-primary) !important;
+    border-color: var(--cosmic-primary) !important;
+}
+
+/* Improved visual feedback for interactive elements */
+.cosmic-check {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 14px !important; /* Increased spacing */
+    padding: 12px 14px !important; /* Increased padding */
+    border-radius: 10px !important; /* Increased border radius */
+    transition: background 0.3s ease !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+    cursor: pointer !important;
+}
+
+.cosmic-check:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    transform: translateX(4px) !important;
+}
+
+/* Better divider styling */
+.panel-divider {
+    height: 1px !important;
+    background: linear-gradient(90deg, transparent, var(--glass-border), transparent) !important;
+    margin: 16px 20px !important; /* Increased margins */
+}
+
+/* Enhanced legend styling */
+.lp-legend {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 16px !important; /* Increased border radius */
+    padding: 20px !important; /* Increased padding */
+    box-shadow: var(--glass-shadow) !important;
+    position: absolute !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    z-index: 1000 !important;
+    max-width: 300px !important; /* Increased max width */
+}
+
+.lp-legend-title {
+    font-weight: 600 !important;
+    margin-bottom: 16px !important; /* Increased spacing */
+    color: white !important;
+    font-size: 1rem !important; /* Increased font size */
+    text-align: center !important;
+}
+
+/* Better tooltip styling */
+.tooltip-inner {
+    background: var(--glass-bg-light) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--glass-border-light) !important;
+    border-radius: 10px !important; /* Increased border radius */
+    color: white !important;
+    padding: 10px 16px !important; /* Increased padding */
+    font-size: 0.85rem !important; /* Increased font size */
+    box-shadow: var(--glass-shadow) !important;
+}
+
+/* Improved map popup styling */
+.leaflet-popup-content-wrapper {
+    background: var(--glass-bg-light) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border-radius: 16px !important; /* Increased border radius */
+    border: 1px solid var(--glass-border-light) !important;
+    box-shadow: var(--glass-shadow-hover) !important;
+}
+
+.leaflet-popup-content {
+    margin: 16px !important; /* Increased margin */
+}
+
+.leaflet-popup-content h6 {
+    color: var(--cosmic-primary-light) !important;
+    font-size: 1rem !important; /* Increased font size */
+    margin-bottom: 8px !important; /* Increased spacing */
+}
+
+.leaflet-popup-content p {
+    color: rgba(255, 255, 255, 0.9) !important; /* Better contrast */
+    margin: 4px 0 !important;
+    font-size: 0.9rem !important; /* Increased font size */
+}
+
+/* Enhanced analysis panel styling */
+.analysis-panel {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 2000 !important;
+    width: 90% !important;
+    max-width: 900px !important; /* Increased max width */
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    display: none !important;
+    border-radius: 24px !important; /* Increased border radius */
+    background: var(--glass-bg-light) !important;
+    backdrop-filter: var(--glass-blur-heavy) !important;
+    border: 1px solid var(--glass-border-light) !important;
+    box-shadow: var(--glass-shadow-hover) !important;
+}
+
+/* Better scrollbar styling */
+.cosmic-scrollbar::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.cosmic-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--cosmic-primary) !important;
+    border-radius: 4px !important;
+}
+
+.cosmic-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1) !important;
+    border-radius: 4px !important;
+}
+
+/* Improved form controls */
+.form-select,
+.form-control {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: white !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+}
+
+.form-select:focus,
+.form-control:focus {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: var(--cosmic-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Better visual feedback for active states */
+.active {
+    background: linear-gradient(135deg, var(--cosmic-primary), var(--cosmic-primary-dark)) !important;
+    border-color: var(--cosmic-primary) !important;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Improved collapse/expand animations */
+.panel-body {
+    transition: all var(--transition-slow) !important;
+    overflow: hidden !important;
+    max-height: 1000px !important;
+    opacity: 1 !important;
+}
+
+.panel-collapsed .panel-body {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Enhanced icon styling */
+.collapse-icon {
+    transition: transform var(--transition-normal) !important;
+    color: rgba(255, 255, 255, 0.8) !important; /* Increased contrast */
+    font-size: 1.1rem !important; /* Increased size */
+    cursor: pointer !important;
+    padding: 6px !important;
+    border-radius: 6px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.collapse-icon:hover {
+    color: white !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(1.1) !important;
+}
+
+/* Better badge styling */
+.mode-badge {
+    font-size: 0.75rem !important; /* Increased size */
+    padding: 6px 12px !important; /* Increased padding */
+    border-radius: 18px !important; /* Increased border radius */
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    min-height: 28px !important; /* Ensure minimum height */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}

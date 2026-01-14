@@ -1,44 +1,81 @@
 {
   "name": "project-nocturna",
-  "version": "3.1.0",
-  "type": "commonjs",
-  "description": "Full-Stack WebGIS platform for light pollution analysis with Supabase and Vercel",
-  "main": "api/index.js",
-  "engines": {
-    "node": ">=20.0.0"
-  },
+  "version": "1.0.0",
+  "description": "Real-time light pollution monitoring platform",
+  "main": "server.js",
   "scripts": {
-    "start": "node api/index.js",
-    "dev": "concurrently \"nodemon api/index.js\" \"live-server --port=8081 --watch=js,css,html,data\"",
-    "deploy": "vercel --prod"
+    "dev": "NODE_ENV=development nodemon server.js",
+    "start": "NODE_ENV=production node server.js",
+    "refactor-start": "NODE_ENV=production node server-refactored.js",
+    "build": "npm run build:client && npm run build:server",
+    "build:server": "babel server.js --out-dir dist --presets env",
+    "build:refactored": "babel server-refactored.js --out-dir dist-refactored --presets env",
+    "build:client": "webpack --mode production",
+    "seed": "node scripts/seed.js",
+    "migrate": "node scripts/migrate.js",
+    "test": "jest --verbose",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --ext .js,.jsx",
+    "lint:fix": "eslint . --ext .js,.jsx --fix",
+    "prettier": "prettier --write .",
+    "vercel-dev": "vercel dev",
+    "vercel-deploy": "vercel --prod",
+    "install-hdf5": "echo 'To enable full HDF5 processing, run: npm install hdf5' && echo 'Note: This requires system dependencies like HDF5 library'",
+    "health-check": "node -e \"fetch('http://localhost:3000/health').then(res => res.json()).then(console.log).catch(e => console.error('Health check failed:', e));\"",
+    "analyze": "source-map-explorer dist/bundle.js"
   },
   "dependencies": {
-    "@turf/turf": "^7.1.0",
-    "axios": "^1.7.9",
-    "bootstrap": "^5.3.3",
-    "chart.js": "^4.4.7",
+    "@supabase/supabase-js": "^2.90.1",
+    "axios": "^1.13.2",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "compression": "^1.7.4",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "leaflet": "^1.9.4",
-    "leaflet-draw": "^1.0.4",
-    "leaflet-routing-machine": "^3.2.12",
-    "leaflet.heat": "^0.2.0",
-    "papaparse": "^5.4.1",
-    "pg": "^8.13.1"
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.0.0",
+    "helmet": "^8.1.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "redis": "^4.6.13",
+    "swagger-ui-express": "^5.0.0",
+    "winston": "^3.13.0",
+    "axios-retry": "^4.5.0",
+    "h5wasm": "^0.8.11",
+    "openai": "^6.16.0",
+    "turf": "^3.0.14",
+    "uuid": "^9.0.1",
+    "moment": "^2.30.1",
+    "lodash": "^4.17.21",
+    "moment-timezone": "^0.5.45",
+    "validator": "^13.11.0",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.4",
+    "csv-parser": "^3.0.0",
+    "papaparse": "^5.4.1"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
-    "live-server": "^1.2.2",
-    "nodemon": "^3.1.7"
+    "@vercel/node": "^2.15.10"
+  },
+  "optionalDependencies": {
+    "hdf5": "^1.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": [
-    "webgis",
     "light-pollution",
-    "supabase",
-    "vercel",
-    "postgis"
+    "environmental-monitoring",
+    "geospatial",
+    "nasa",
+    "viirs",
+    "earth-observation",
+    "remote-sensing",
+    "dark-sky",
+    "astronomy"
   ],
-  "author": "Light Pollution Research Team",
+  "author": "Project Nocturna Team",
   "license": "MIT"
 }
