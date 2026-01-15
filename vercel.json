@@ -4,52 +4,34 @@
     {
       "src": "server-refactored.js",
       "use": "@vercel/node",
-      "config": { 
-        "includeFiles": ["server-refactored.js", "config/**", "routes/**", "controllers/**", "services/**", "middleware/**", "utils/**", "lib/**", "api/**", "package.json", "package-lock.json"],
-        "excludeFiles": ["node_modules/**", ".git/**", "Dockerfile", "compose.yaml", "docker-compose.*", "podman-compose.yaml", "test_*", "*_backup", "docs/**", "screenshots/**", "*.md", "README*", "scripts/**", "data/**"]
+      "config": {
+        "includeFiles": [
+          "config/**",
+          "controllers/**",
+          "lib/**",
+          "middleware/**",
+          "routes/**",
+          "services/**",
+          "utils/**"
+        ]
       }
     },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
     {
-      "src": "index.html",
-      "use": "@vercel/static"
+      "src": "/api/((?!geoserver).*)",
+      "dest": "/pages/api"
     },
     {
-      "src": "app.html",
-      "use": "@vercel/static"
+      "src": "/api/geoserver/:path*",
+      "dest": "/server-refactored.js"
     },
     {
-      "src": "css/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "js/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "images/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "pages/**",
-      "use": "@vercel/static"
+      "src": "/(.*)",
+      "dest": "/public/$1"
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/geoserver/:path*",
-      "destination": "/server-refactored.js"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/server-refactored.js"
-    },
-    {
-      "source": "/health",
-      "destination": "/server-refactored.js"
-    }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false,
   "env": {
     "NODE_ENV": "production"
   },
@@ -57,23 +39,16 @@
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=63072000; includeSubDomains; preload"
         }
       ]
     }
-  ]
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
 }

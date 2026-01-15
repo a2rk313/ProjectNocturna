@@ -1,4 +1,4 @@
-// Enhanced Chatbot Implementation - Replaces n8n workflow
+// Enhanced Chatbot Implementation - Improved Version
 // Provides intelligent responses for light pollution research and WebGIS interactions
 
 class LightPollutionChatbot {
@@ -15,7 +15,9 @@ class LightPollutionChatbot {
                 /take\s+me\s+to\s+(.+)/i,
                 /view\s+(.+)/i,
                 /(.+)\s+location/i,
-                /(.+)\s+map/i
+                /(.+)\s+map/i,
+                /find\s+(.+)/i,
+                /locate\s+(.+)/i
             ],
             extract_data: [
                 /analyze\s+(this\s+)?area/i,
@@ -25,7 +27,9 @@ class LightPollutionChatbot {
                 /get\s+measurements/i,
                 /analyze\s+selected/i,
                 /draw\s+area/i,
-                /select\s+area/i
+                /select\s+area/i,
+                /get\s+data\s+for\s+area/i,
+                /study\s+this\s+region/i
             ],
             find_dark_sky: [
                 /dark\s+sky/i,
@@ -34,7 +38,10 @@ class LightPollutionChatbot {
                 /observatory/i,
                 /dark\s+park/i,
                 /best\s+view/i,
-                /where\s+to\s+see\s+stars/i
+                /where\s+to\s+see\s+stars/i,
+                /good\s+spot\s+to\s+stargaze/i,
+                /dark\s+sky\s+preserves/i,
+                /least\s+light\s+pollution/i
             ],
             get_help: [
                 /help/i,
@@ -42,7 +49,9 @@ class LightPollutionChatbot {
                 /what\s+can\s+i\s+do/i,
                 /tutorial/i,
                 /guide/i,
-                /instructions/i
+                /instructions/i,
+                /what\s+commands/i,
+                /features/i
             ],
             scientific_analysis: [
                 /scientific/i,
@@ -51,40 +60,93 @@ class LightPollutionChatbot {
                 /predict/i,
                 /forecast/i,
                 /trend/i,
-                /statistics/i
+                /statistics/i,
+                /model/i,
+                /simulation/i,
+                /ecological\s+impact/i
+            ],
+            export_data: [
+                /export/i,
+                /download/i,
+                /save\s+data/i,
+                /get\s+csv/i,
+                /data\s+export/i,
+                /save\s+results/i
             ]
+        };
+        
+        // Predefined responses for quick answers
+        this.quickResponses = {
+            'hello': "Hello! I'm Lumina, your light pollution research assistant. I can help you navigate the map, analyze light pollution data, find dark sky locations, and perform scientific analysis. What would you like to explore?",
+            'hi': "Hi there! I'm Lumina, your light pollution research assistant. I can help you navigate the map, analyze light pollution data, find dark sky locations, and perform scientific analysis. What would you like to explore?",
+            'thanks': "You're welcome! Is there anything else I can help you with regarding light pollution research?",
+            'thank you': "You're very welcome! Feel free to ask if you have more questions about light pollution or dark sky preservation.",
+            'bye': "Goodbye! Don't forget to check out our dark sky locations and light pollution analysis tools. Have a great day!",
+            'goodbye': "Goodbye! Thanks for exploring Project Nocturna with me. Remember to keep our night skies dark for astronomy and wildlife!"
+        };
+        
+        // Common questions and their responses
+        this.faq = {
+            'what is light pollution': "Light pollution is the excessive or misdirected artificial light produced by human activities that brightens the night sky and disrupts natural darkness. It affects astronomical observations, wildlife behavior, and human health.",
+            'how does light pollution affect wildlife': "Light pollution disrupts migration patterns of birds, affects nesting behavior of sea turtles, interferes with insect pollination, and alters predator-prey relationships. Many species rely on natural light cycles for navigation and reproduction.",
+            'what is a dark sky preserve': "A dark sky preserve is an area designated for its exceptional starry nights and natural nocturnal habitat. These areas have strict lighting controls to minimize light pollution and preserve the natural night environment.",
+            'how can i reduce light pollution': "You can reduce light pollution by using shielded outdoor fixtures that direct light downward, choosing warm-colored LED bulbs, turning off unnecessary lights at night, supporting dark sky initiatives in your community, and using motion sensors for security lighting."
         };
     }
 
     // Main chat processing method
     async processMessage(userInput, context = {}) {
         try {
+            // Normalize input
+            const normalizedInput = userInput.trim();
+            
+            // Check for quick responses first
+            const quickResponse = this.checkQuickResponse(normalizedInput);
+            if (quickResponse) {
+                return {
+                    action: 'chat',
+                    message: quickResponse
+                };
+            }
+            
+            // Check FAQ
+            const faqResponse = this.checkFAQ(normalizedInput);
+            if (faqResponse) {
+                return {
+                    action: 'chat',
+                    message: faqResponse
+                };
+            }
+            
             // Add user message to history
-            this.addToHistory('user', userInput);
+            this.addToHistory('user', normalizedInput);
             
             // Detect intent
-            const intent = this.detectIntent(userInput);
+            const intent = this.detectIntent(normalizedInput);
             
             // Process based on intent
             let response;
             switch (intent) {
                 case 'zoom_to':
-                    response = await this.handleZoomTo(userInput, context);
+                    response = await this.handleZoomTo(normalizedInput, context);
                     break;
                 case 'extract_data':
-                    response = await this.handleDataExtraction(userInput, context);
+                    response = await this.handleDataExtraction(normalizedInput, context);
                     break;
                 case 'find_dark_sky':
-                    response = await this.handleDarkSkySearch(userInput, context);
+                    response = await this.handleDarkSkySearch(normalizedInput, context);
                     break;
                 case 'scientific_analysis':
-                    response = await this.handleScientificAnalysis(userInput, context);
+                    response = await this.handleScientificAnalysis(normalizedInput, context);
+                    break;
+                case 'export_data':
+                    response = await this.handleExportData(normalizedInput, context);
                     break;
                 case 'get_help':
-                    response = this.handleHelp(userInput, context);
+                    response = this.handleHelp(normalizedInput, context);
                     break;
                 default:
-                    response = await this.handleGeneralChat(userInput, context);
+                    response = await this.handleGeneralChat(normalizedInput, context);
             }
             
             // Add bot response to history
@@ -100,6 +162,39 @@ class LightPollutionChatbot {
                 error: error.message
             };
         }
+    }
+
+    // Check for quick responses
+    checkQuickResponse(userInput) {
+        const lowerInput = userInput.toLowerCase().trim();
+        
+        for (const [trigger, response] of Object.entries(this.quickResponses)) {
+            if (lowerInput.includes(trigger)) {
+                return response;
+            }
+        }
+        
+        return null;
+    }
+
+    // Check FAQ
+    checkFAQ(userInput) {
+        const lowerInput = userInput.toLowerCase().trim();
+        
+        for (const [question, answer] of Object.entries(this.faq)) {
+            if (lowerInput.includes(question)) {
+                return answer;
+            }
+        }
+        
+        // Try to match partial questions
+        for (const [question, answer] of Object.entries(this.faq)) {
+            if (question.includes(lowerInput) || lowerInput.includes(question.split(' ')[0])) {
+                return answer;
+            }
+        }
+        
+        return null;
     }
 
     // Intent detection using pattern matching
@@ -119,7 +214,7 @@ class LightPollutionChatbot {
 
     // Handle zoom/location requests
     async handleZoomTo(userInput, context) {
-        const match = userInput.match(/(?:zoom\s+to|go\s+to|show\s+me|navigate\s+to|take\s+me\s+to|view|find)\s+(.+)/i);
+        const match = userInput.match(/(?:zoom\s+to|go\s+to|show\s+me|navigate\s+to|take\s+me\s+to|view|find|locate)\s+(.+)/i);
         const location = match ? match[1].trim() : '';
         
         if (!location) {
@@ -178,7 +273,7 @@ class LightPollutionChatbot {
         if (!context.selectedArea && !context.hasSelection) {
             return {
                 action: 'extract_data',
-                message: "To analyze light pollution, please first draw an area on the map. Use the drawing tools to select a region, then I can provide detailed analysis."
+                message: "To analyze light pollution, please first draw an area on the map using the drawing tools. Click the 'Select Region' button and draw a polygon over the area you want to analyze. Then I can provide detailed analysis."
             };
         }
         
@@ -231,6 +326,22 @@ class LightPollutionChatbot {
         }
     }
 
+    // Handle export data requests
+    async handleExportData(userInput, context) {
+        if (!context.selectedArea && !context.hasSelection) {
+            return {
+                action: 'chat',
+                message: "To export data, you first need to analyze an area. Please select a region on the map and analyze it, then I can help you export the results in various formats."
+            };
+        }
+        
+        return {
+            action: 'export_data',
+            message: "Preparing your data export. I can provide the results in CSV, GeoJSON, or Shapefile formats. Which format would you prefer?",
+            options: ['CSV', 'GeoJSON', 'Shapefile']
+        };
+    }
+
     // Handle scientific analysis requests
     async handleScientificAnalysis(userInput, context) {
         const analysisTypes = {
@@ -238,7 +349,9 @@ class LightPollutionChatbot {
             'trend': 'trend analysis', 
             'forecast': 'forecasting',
             'statistics': 'statistical analysis',
-            'research': 'comprehensive analysis'
+            'research': 'comprehensive analysis',
+            'model': 'mathematical modeling',
+            'simulation': 'environmental simulation'
         };
         
         let analysisType = 'comprehensive analysis';
@@ -271,6 +384,7 @@ class LightPollutionChatbot {
 **Navigation Commands:**
 • "Zoom to [location]" - Navigate to any place
 • "Show me [city]" - Go to a specific location
+• "Go to [landmark]" - Find and zoom to landmarks
 
 **Analysis Commands:**
 • "Analyze this area" - Measure light pollution
@@ -286,11 +400,18 @@ class LightPollutionChatbot {
 • "Predict light pollution" - Future trends
 • "Analyze trends" - Historical patterns
 • "Statistics" - Detailed measurements
+• "Export data" - Download results
+
+**Information Commands:**
+• "What is light pollution?" - Learn about the issue
+• "How does light pollution affect wildlife?" - Environmental impact
+• "How can I reduce light pollution?" - Practical tips
 
 **Tips:**
 • Draw an area on the map before requesting analysis
 • I can help with both basic and advanced research
 • All analyses use real NASA satellite data when available
+• Ask me questions about light pollution and dark sky preservation
 
 What would you like to explore today?
         `;
@@ -308,12 +429,15 @@ What would you like to explore today?
             "I can help you understand light pollution using real satellite data. Try selecting an area on the map for analysis.",
             "Did you know? Light pollution wastes billions in energy costs annually. I can analyze energy waste in your region.",
             "Dark sky preservation is important for astronomy and ecosystem health. Would you like to find dark sky locations near you?",
-            "I use NASA VIIRS satellite data for accurate light pollution measurements. What aspect interests you most?"
+            "I use NASA VIIRS satellite data for accurate light pollution measurements. What aspect interests you most?",
+            "The International Dark-Sky Association certifies areas with exceptional night skies. Would you like to learn more?",
+            "Artificial light at night disrupts circadian rhythms in humans and animals. I can show you how light pollution varies in different regions."
         ];
         
         // Check if this might be a light pollution related question
         const lightPollutionKeywords = [
-            'light', 'pollution', 'dark', 'sky', 'stars', 'night', 'energy', 'wildlife', 'health'
+            'light', 'pollution', 'dark', 'sky', 'stars', 'night', 'energy', 'wildlife', 'health', 
+            'astronomy', 'stargazing', 'observatory', 'brightness', 'satellite', 'viirs', 'sqm'
         ];
         
         const isRelated = lightPollutionKeywords.some(keyword => 
@@ -335,7 +459,8 @@ What would you like to explore today?
         const generalResponses = [
             "I'm specialized in light pollution analysis and dark sky research. I can help you navigate to locations, analyze light pollution, find dark sky parks, and provide scientific insights. What would you like to explore?",
             "As a light pollution research assistant, I can help you with mapping, analysis, and finding dark sky locations. Try asking me to zoom to a location or analyze an area!",
-            "I focus on helping with light pollution research and dark sky preservation. I can navigate to places, analyze satellite data, and find the best stargazing spots. How can I assist you today?"
+            "I focus on helping with light pollution research and dark sky preservation. I can navigate to places, analyze satellite data, and find the best stargazing spots. How can I assist you today?",
+            "I'm Lumina, your light pollution research assistant. I work with NASA satellite data to provide insights about light pollution and dark sky preservation. What would you like to know?"
         ];
         
         return {
@@ -374,7 +499,7 @@ What would you like to explore today?
         
         if (!context.hasSelection) {
             suggestions.push({
-                text: "Analyze this area",
+                text: "Select an area to analyze",
                 action: "prompt_selection",
                 icon: "📊"
             });
@@ -382,16 +507,22 @@ What would you like to explore today?
         
         if (context.mapCenter) {
             suggestions.push({
-                text: "Find dark sky parks",
+                text: "Find dark sky parks nearby",
                 action: "find_dark_sky",
                 icon: "🌌"
             });
         }
         
         suggestions.push({
-            text: "Get help",
+            text: "Show me available commands",
             action: "get_help", 
             icon: "❓"
+        });
+        
+        suggestions.push({
+            text: "Tell me about light pollution",
+            action: "learn_lp",
+            icon: "📚"
         });
         
         return suggestions;
@@ -403,7 +534,12 @@ What would you like to explore today?
             conversation: this.conversationHistory,
             export_date: new Date().toISOString(),
             session_id: this.generateSessionId(),
-            chatbot_version: "1.0.0"
+            chatbot_version: "2.0.0",
+            summary: {
+                total_messages: this.conversationHistory.length,
+                user_messages: this.conversationHistory.filter(msg => msg.role === 'user').length,
+                assistant_messages: this.conversationHistory.filter(msg => msg.role === 'assistant').length
+            }
         };
     }
 

@@ -436,7 +436,7 @@ class WebGIS {
         
         // Create a tile layer that shows NASA's VIIRS nighttime lights
         this.viirsTileLayer = L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
-            attribution: 'Imagery provided by services from the Global Imagery Browse Services (GIBS), operated by the NASA/GSFC/Earth Science Data and Information System (<a href=\"https://earthdata.nasa.gov\">ESDIS</a>) with funding provided by NASA/HQ.',
+            attribution: 'Imagery provided by services from the Global Imagery Browse Services (GIBS), operated by the NASA/GSFC/Earth Science Data and Information System (<a href="https://earthdata.nasa.gov">ESDIS</a>) with funding provided by NASA/HQ.',
             tilematrixset: 'GoogleMapsCompatible_Level8/',
             maxZoom: 8,
             format: 'jpg',
@@ -1401,7 +1401,7 @@ class WebGIS {
                 this.addChatMessage(`⚠️ ${response.message}`, 'assistant');
                 break;
                 
-            default:
+default:
                 this.addChatMessage(response.message || "Action processed.", 'assistant');
         }
     }

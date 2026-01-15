@@ -148,7 +148,7 @@
                         sessionId: requestData.sessionId,
                         timestamp: requestData.timestamp
                     }),
-                    signal: AbortSignal.timeout(N8N_CONFIG.timeout || 15000)
+                    signal: AbortSignal.timeout(15000)
                 });
 
                 if (!response.ok) {
