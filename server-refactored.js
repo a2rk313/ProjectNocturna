@@ -6,6 +6,7 @@ const path = require('path');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 // Import configurations
 const config = require('./config/app');
@@ -49,6 +50,30 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api/', limiter);
+
+// Proxy middleware for GeoServer
+const geoServerProxy = createProxyMiddleware('/api/geoserver', {
+  target: process.env.GEOSERVER_URL || 'http://localhost:8080/geoserver',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/geoserver': '', // Remove /api/geoserver prefix when forwarding
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    console.log(`Proxying request: ${req.method} ${req.url} -> GeoServer`);
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    console.log(`Response from GeoServer: ${proxyRes.statusCode}`);
+  },
+  onError: (err, req, res) => {
+    console.error('GeoServer proxy error:', err);
+    res.status(500).json({
+      error: 'GeoServer connection failed',
+      message: 'Unable to connect to the GeoServer'
+    });
+  }
+});
+
+app.use('/api/geoserver', geoServerProxy);
 
 // Logging middleware
 app.use((req, res, next) => {

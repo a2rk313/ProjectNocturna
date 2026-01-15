@@ -1,5 +1,5 @@
 
-import { GoogleGenerativeAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize the Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
