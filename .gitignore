@@ -1,1 +1,3 @@
-Nothing needs to be added to the .gitignore file since the changes only include JavaScript source files in the public directory, which should be tracked by git.
+```
+node_modules/
+```

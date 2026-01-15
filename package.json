@@ -45,7 +45,7 @@
     "winston": "^3.13.0",
     "axios-retry": "^4.5.0",
     "h5wasm": "^0.8.11",
-    "@google/genai": "^0.1.0",
+    "@google/generative-ai": "^0.11.0",
     "turf": "^3.0.14",
     "uuid": "^9.0.1",
     "moment": "^2.30.1",
