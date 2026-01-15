@@ -12,20 +12,20 @@
           "middleware/**",
           "routes/**",
           "services/**",
-          "utils/**"
+          "utils/**",
+          "package.json"
         ]
       }
-    },
-    { "src": "public/**", "use": "@vercel/static" }
+    }
   ],
   "rewrites": [
     {
-      "source": "/api/geoserver/:path*",
+      "source": "/api/(.*)",
       "destination": "/server-refactored.js"
     },
     {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
+      "source": "/(.*)",
+      "destination": "/server-refactored.js"
     }
   ],
   "env": {

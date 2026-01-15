@@ -99,8 +99,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve static files from the root directory for Vercel deployment
-app.use(express.static(path.join(__dirname), {
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1d',
   etag: true,
   // Explicitly set content-type for CSS files to avoid MIME type issues
@@ -118,21 +118,21 @@ app.use('/api', apiRoutes);
 
 // Serve HTML files for non-API routes (SPA support)
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'app.html'));
+  res.sendFile(path.join(__dirname, 'public', 'app.html'));
 });
 
 // Catch-all for other frontend routes to support client-side routing
 app.get(/^(?!\/api\/).*$/, (req, res) => {
   // Check if it's a known HTML page
   if (req.path === '/index.html' || req.path === '/app.html') {
-    res.sendFile(path.join(__dirname, req.path.substring(1)));
+    res.sendFile(path.join(__dirname, 'public', req.path.replace('/', '')));
   } else {
     // For other frontend routes, serve index.html (for SPA routing)
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
 });
 
@@ -169,14 +169,15 @@ app.use((req, res) => {
   });
 });
 
-// Graceful shutdown
-let server;
+// Export the app for Vercel
+module.exports = app;
 
+// Start server only if run directly (not imported)
 if (require.main === module) {
   // Only start server if this file is run directly (not imported)
-  const PORT = config.port;
+  const PORT = config.port || process.env.PORT || 3000;
   
-  server = app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`🚀 Server running in ${config.env} mode on port ${PORT}`);
     console.log(`📊 Health check available at http://localhost:${PORT}/health`);
     console.log(`🌍 API base URL: http://localhost:${PORT}/api`);
@@ -197,5 +198,3 @@ if (require.main === module) {
     });
   });
 }
-
-module.exports = app;
