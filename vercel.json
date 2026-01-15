@@ -1,33 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server-refactored.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "config/**",
-          "controllers/**",
-          "lib/**",
-          "middleware/**",
-          "routes/**",
-          "services/**",
-          "utils/**",
-          "package.json"
-        ]
-      }
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/server-refactored.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/server-refactored.js"
-    }
-  ],
   "env": {
     "NODE_ENV": "production"
   },
