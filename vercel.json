@@ -18,14 +18,14 @@
       }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "server-refactored.js"
+      "source": "/api/(.*)",
+      "destination": "/server-refactored.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "server-refactored.js"
+      "source": "/(.*)",
+      "destination": "/server-refactored.js"
     }
   ],
   "env": {
