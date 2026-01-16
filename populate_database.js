@@ -1,23 +1,46 @@
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
-// Database connection
+// Create PostgreSQL connection pool
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
+  user: process.env.DB_USER || 'nocturna_user',
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'nocturna_db',
-  password: process.env.DB_PASSWORD || 'postgres',
-  port: process.env.DB_PORT || 5432,
+  password: process.env.DB_PASSWORD || 'nocturna_pass',
+  port: parseInt(process.env.DB_PORT) || 5432,
 });
+
+// Function to apply database schema
+async function applySchema() {
+  const schemaPath = path.join(__dirname, 'light_pollution_schema.sql');
+  const schema = fs.readFileSync(schemaPath, 'utf8');
+  
+  console.log('Applying database schema...');
+  try {
+    await pool.query(schema);
+    console.log('Database schema applied successfully!');
+  } catch (err) {
+    console.error('Error applying schema:', err);
+    throw err;
+  }
+}
+
+// Function to initialize database (apply schema and ensure tables exist)
+async function initializeDatabase() {
+  // Apply the schema first
+  await applySchema();
+}
 
 // Function to fetch and insert real light pollution data
 async function populateDatabase() {
   try {
     console.log('Connecting to database...');
     
-    // Test connection
-    const client = await pool.connect();
-    console.log('Connected to database successfully!');
+    // Initialize database tables
+    await initializeDatabase();
+    console.log('Database initialized successfully!');
 
     // Insert sample users
     const usersData = [
@@ -42,93 +65,76 @@ async function populateDatabase() {
     ];
 
     for (const userData of usersData) {
-      const insertUserQuery = `
+      const insertUserSQL = `
         INSERT INTO users (username, email, password_hash, role, expertise_level)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (email) DO NOTHING
-        RETURNING id, uuid;
+        ON CONFLICT (username) DO NOTHING
       `;
       
-      const result = await client.query(insertUserQuery, [
+      await pool.query(insertUserSQL, [
         userData.username,
         userData.email,
         '$2b$10$example_hash_for_demo', // bcrypt hash example
         userData.role,
         userData.expertise_level
       ]);
-      
-      if (result.rows.length > 0) {
-        console.log(`Inserted user: ${userData.username}`);
-      } else {
-        console.log(`User ${userData.username} already exists`);
-      }
+      console.log(`Inserted user: ${userData.username}`);
     }
 
-    // Fetch real light pollution data from external APIs
-    console.log('Fetching real light pollution data...');
-    
     // Example: Insert sample light pollution measurements
     const measurements = [
       {
         latitude: 40.7128, // New York City
         longitude: -74.0060,
         sky_brightness: 17.5,
-        timestamp: new Date(Date.now() - 86400000) // Yesterday
+        timestamp: new Date(Date.now() - 86400000).toISOString() // Yesterday
       },
       {
         latitude: 34.0522, // Los Angeles
         longitude: -118.2437,
         sky_brightness: 16.8,
-        timestamp: new Date(Date.now() - 86400000)
+        timestamp: new Date(Date.now() - 86400000).toISOString()
       },
       {
         latitude: 41.9028, // Chicago
         longitude: -87.6298,
         sky_brightness: 17.2,
-        timestamp: new Date(Date.now() - 86400000)
+        timestamp: new Date(Date.now() - 86400000).toISOString()
       },
       {
         latitude: 39.9526, // Philadelphia
         longitude: -75.1652,
         sky_brightness: 17.0,
-        timestamp: new Date(Date.now() - 86400000)
+        timestamp: new Date(Date.now() - 86400000).toISOString()
       },
       {
         latitude: 29.7604, // Houston
         longitude: -95.3698,
         sky_brightness: 16.5,
-        timestamp: new Date(Date.now() - 86400000)
+        timestamp: new Date(Date.now() - 86400000).toISOString()
       }
     ];
 
+    // Get a random user ID for the measurements
+    const userResult = await pool.query('SELECT uuid FROM users ORDER BY RANDOM() LIMIT 1');
+    const userId = userResult.rows.length > 0 ? userResult.rows[0].uuid : null;
+
     for (const measurement of measurements) {
-      const insertMeasurementQuery = `
-        INSERT INTO light_measurements (
-          latitude, longitude, location, sky_brightness_mag_arcsec2, 
-          measurement_datetime, submitted_by_user_id, measurement_quality_score
-        )
-        VALUES ($1, $2, ST_GeogFromText($3), $4, $5, $6, $7)
-        ON CONFLICT DO NOTHING;
+      const insertMeasurementSQL = `
+        INSERT INTO light_measurements (latitude, longitude, sky_brightness_mag_arcsec2, 
+          measurement_datetime, measurement_quality_score, submitted_by_user_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `;
       
-      // Get a random user ID for the submitter
-      const randomUserResult = await client.query(
-        'SELECT uuid FROM users ORDER BY RANDOM() LIMIT 1'
-      );
-      
-      if (randomUserResult.rows.length > 0) {
-        await client.query(insertMeasurementQuery, [
-          measurement.latitude,
-          measurement.longitude,
-          `POINT(${measurement.longitude} ${measurement.latitude})`,
-          measurement.sky_brightness,
-          measurement.timestamp,
-          randomUserResult.rows[0].uuid,
-          0.85 // Good quality score
-        ]);
-        
-        console.log(`Inserted measurement for (${measurement.latitude}, ${measurement.longitude})`);
-      }
+      await pool.query(insertMeasurementSQL, [
+        measurement.latitude,
+        measurement.longitude,
+        measurement.sky_brightness,
+        measurement.timestamp,
+        0.85, // Good quality score
+        userId
+      ]);
+      console.log(`Inserted measurement for (${measurement.latitude}, ${measurement.longitude})`);
     }
 
     // Insert satellite data (simulated with realistic values)
@@ -137,42 +143,37 @@ async function populateDatabase() {
         latitude: 40.7128,
         longitude: -74.0060,
         radiance: 12.45,
-        date: new Date(Date.now() - 86400000 * 7) // A week ago
+        date: new Date(Date.now() - 86400000 * 7).toISOString() // A week ago
       },
       {
         latitude: 34.0522,
         longitude: -118.2437,
         radiance: 15.21,
-        date: new Date(Date.now() - 86400000 * 7)
+        date: new Date(Date.now() - 86400000 * 7).toISOString()
       },
       {
         latitude: 41.9028,
         longitude: -87.6298,
         radiance: 11.89,
-        date: new Date(Date.now() - 86400000 * 7)
+        date: new Date(Date.now() - 86400000 * 7).toISOString()
       }
     ];
 
     for (const satData of satelliteData) {
-      const insertSatelliteQuery = `
-        INSERT INTO satellite_light_data (
-          latitude, longitude, location, radiance_value, acquisition_date, 
-          satellite_source, data_quality_flag
-        )
-        VALUES ($1, $2, ST_GeogFromText($3), $4, $5, $6, $7)
-        ON CONFLICT DO NOTHING;
+      const insertSatelliteSQL = `
+        INSERT INTO satellite_light_data (latitude, longitude, radiance_value, acquisition_date, 
+          satellite_source, data_quality_flag)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `;
       
-      await client.query(insertSatelliteQuery, [
+      await pool.query(insertSatelliteSQL, [
         satData.latitude,
         satData.longitude,
-        `POINT(${satData.longitude} ${satData.latitude})`,
         satData.radiance,
         satData.date,
         'VIIRS',
         1 // High quality
       ]);
-      
       console.log(`Inserted satellite data for (${satData.latitude}, ${satData.longitude})`);
     }
 
@@ -205,27 +206,22 @@ async function populateDatabase() {
     ];
 
     for (const env of envContexts) {
-      const insertEnvQuery = `
-        INSERT INTO environmental_context (
-          latitude, longitude, location, temperature_celsius, 
+      const insertEnvSQL = `
+        INSERT INTO environmental_context (latitude, longitude, temperature_celsius, 
           humidity_percentage, atmospheric_pressure_hpa, 
-          urban_rural_classification, timestamp
-        )
-        VALUES ($1, $2, ST_GeogFromText($3), $4, $5, $6, $7, $8)
-        ON CONFLICT DO NOTHING;
+          urban_rural_classification, timestamp)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
       `;
       
-      await client.query(insertEnvQuery, [
+      await pool.query(insertEnvSQL, [
         env.latitude,
         env.longitude,
-        `POINT(${env.longitude} ${env.latitude})`,
         env.temp,
         env.humidity,
         env.pressure,
         env.classification,
-        new Date()
+        new Date().toISOString()
       ]);
-      
       console.log(`Inserted environmental context for (${env.latitude}, ${env.longitude})`);
     }
 
@@ -254,40 +250,29 @@ async function populateDatabase() {
       }
     ];
 
+    // Get a random user ID for the light sources
+    const userResult = await pool.query('SELECT uuid FROM users ORDER BY RANDOM() LIMIT 1');
+    const userId = userResult.rows.length > 0 ? userResult.rows[0].uuid : null;
+
     for (const source of lightSources) {
-      const insertSourceQuery = `
-        INSERT INTO light_sources (
-          latitude, longitude, location, source_type, 
-          intensity_lumens, color_temperature_kelvin, 
-          contributed_by_user_id
-        )
-        VALUES ($1, $2, ST_GeogFromText($3), $4, $5, $6, $7)
-        ON CONFLICT DO NOTHING;
+      const insertSourceSQL = `
+        INSERT INTO light_sources (latitude, longitude, source_type, 
+          intensity_lumens, color_temperature_kelvin, contributed_by_user_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `;
       
-      // Get a random user ID for the contributor
-      const randomUserResult = await client.query(
-        'SELECT uuid FROM users ORDER BY RANDOM() LIMIT 1'
-      );
-      
-      if (randomUserResult.rows.length > 0) {
-        await client.query(insertSourceQuery, [
-          source.latitude,
-          source.longitude,
-          `POINT(${source.longitude} ${source.latitude})`,
-          source.type,
-          source.lumens,
-          source.kelvin,
-          randomUserResult.rows[0].uuid
-        ]);
-        
-        console.log(`Inserted light source for (${source.latitude}, ${source.longitude})`);
-      }
+      await pool.query(insertSourceSQL, [
+        source.latitude,
+        source.longitude,
+        source.type,
+        source.lumens,
+        source.kelvin,
+        userId
+      ]);
+      console.log(`Inserted light source for (${source.latitude}, ${source.longitude})`);
     }
 
     console.log('Database populated successfully!');
-    
-    client.release();
   } catch (err) {
     console.error('Error populating database:', err);
     throw err;
@@ -298,9 +283,17 @@ async function populateDatabase() {
 populateDatabase()
   .then(() => {
     console.log('Database population completed.');
-    process.exit(0);
+    // Close the database connection
+    pool.end(() => {
+      console.log('Database connection closed.');
+      process.exit(0);
+    });
   })
   .catch((err) => {
     console.error('Database population failed:', err);
-    process.exit(1);
+    // Close the database connection even if there's an error
+    pool.end(() => {
+      console.log('Database connection closed.');
+      process.exit(1);
+    });
   });
