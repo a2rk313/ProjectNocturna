@@ -1,12 +1,26 @@
 // server-refactored.js - Modular, production-ready server
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const helmet = require('helmet');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+let dotenv, express, cors, path, helmet, compression, rateLimit, createProxyMiddleware;
+
+try {
+  dotenv = require('dotenv');
+  dotenv.config();
+} catch (error) {
+  console.warn('dotenv not found, continuing without environment variables');
+}
+
+try {
+  express = require('express');
+  cors = require('cors');
+  path = require('path');
+  helmet = require('helmet');
+  compression = require('compression');
+  rateLimit = require('express-rate-limit');
+  ({ createProxyMiddleware } = require('http-proxy-middleware'));
+} catch (error) {
+  console.error('Missing required dependencies. Please run: npm install');
+  console.error('Error:', error.message);
+  process.exit(1);
+}
 
 // Import configurations
 const config = require('./config/app');
@@ -52,26 +66,47 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Proxy middleware for GeoServer
-const geoServerProxy = createProxyMiddleware('/api/geoserver', {
-  target: process.env.GEOSERVER_URL || 'http://localhost:8080/geoserver',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/geoserver': '', // Remove /api/geoserver prefix when forwarding
-  },
-  onProxyReq: (proxyReq, req, res) => {
-    console.log(`Proxying request: ${req.method} ${req.url} -> GeoServer`);
-  },
-  onProxyRes: (proxyRes, req, res) => {
-    console.log(`Response from GeoServer: ${proxyRes.statusCode}`);
-  },
-  onError: (err, req, res) => {
-    console.error('GeoServer proxy error:', err);
-    res.status(500).json({
-      error: 'GeoServer connection failed',
-      message: 'Unable to connect to the GeoServer'
+const geoServerProxy = process.env.GEOSERVER_URL 
+  ? createProxyMiddleware('/api/geoserver', {
+      target: process.env.GEOSERVER_URL || 'http://localhost:8080/geoserver',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/api/geoserver': '', // Remove /api/geoserver prefix when forwarding
+      },
+      onProxyReq: (proxyReq, req, res) => {
+        console.log(`Proxying request: ${req.method} ${req.url} -> GeoServer`);
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        console.log(`Response from GeoServer: ${proxyRes.statusCode}`);
+      },
+      onError: (err, req, res) => {
+        console.error('GeoServer proxy error:', err);
+        res.status(500).json({
+          error: 'GeoServer connection failed',
+          message: 'Unable to connect to the GeoServer'
+        });
+      }
+    })
+  : createProxyMiddleware('/api/geoserver', {
+      target: 'http://localhost:8080/geoserver',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/api/geoserver': '', // Remove /api/geoserver prefix when forwarding
+      },
+      onProxyReq: (proxyReq, req, res) => {
+        console.log(`Proxying request: ${req.method} ${req.url} -> GeoServer`);
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        console.log(`Response from GeoServer: ${proxyRes.statusCode}`);
+      },
+      onError: (err, req, res) => {
+        console.error('GeoServer proxy error:', err);
+        res.status(500).json({
+          error: 'GeoServer connection failed',
+          message: 'Unable to connect to the GeoServer'
+        });
+      }
     });
-  }
-});
 
 app.use('/api/geoserver', geoServerProxy);
 
