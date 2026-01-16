@@ -3,24 +3,74 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
+// Check if database exists, if not create it
+async function ensureDatabaseExists() {
+  // Connect to default postgres database first
+  const defaultPool = new Pool({
+    user: process.env.DB_USER || 'nocturna_user',
+    host: process.env.DB_HOST || 'localhost',
+    database: 'postgres',  // Connect to default postgres DB first
+    password: process.env.DB_PASSWORD || 'nocturna_pass',
+    port: parseInt(process.env.DB_PORT) || 5432,
+  });
+
+  try {
+    const dbName = process.env.DB_NAME || 'nocturna_db';
+    
+    // Check if database exists
+    const dbExists = await defaultPool.query(
+      'SELECT 1 FROM pg_catalog.pg_database WHERE datname = $1', 
+      [dbName]
+    );
+    
+    if (dbExists.rowCount === 0) {
+      console.log(`Database ${dbName} does not exist, creating it...`);
+      // Create the database
+      await defaultPool.query(`CREATE DATABASE ${dbName}`);
+      console.log(`Database ${dbName} created successfully!`);
+    } else {
+      console.log(`Database ${dbName} already exists.`);
+    }
+  } finally {
+    await defaultPool.end();
+  }
+}
+
 // Create PostgreSQL connection pool
-const pool = new Pool({
-  user: process.env.DB_USER || 'nocturna_user',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'nocturna_db',
-  password: process.env.DB_PASSWORD || 'nocturna_pass',
-  port: parseInt(process.env.DB_PORT) || 5432,
-});
+async function createConnectionPool() {
+  const pool = new Pool({
+    user: process.env.DB_USER || 'nocturna_user',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'nocturna_db',
+    password: process.env.DB_PASSWORD || 'nocturna_pass',
+    port: parseInt(process.env.DB_PORT) || 5432,
+  });
+  
+  return pool;
+}
 
 // Function to apply database schema
-async function applySchema() {
+async function applySchema(pool) {
   const schemaPath = path.join(__dirname, 'light_pollution_schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
   
   console.log('Applying database schema...');
   try {
-    await pool.query(schema);
-    console.log('Database schema applied successfully!');
+    // Check if tables already exist
+    const result = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
+      );
+    `);
+    
+    if (!result.rows[0].exists) {
+      await pool.query(schema);
+      console.log('Database schema applied successfully!');
+    } else {
+      console.log('Database schema already exists, skipping creation.');
+    }
   } catch (err) {
     console.error('Error applying schema:', err);
     throw err;
@@ -28,18 +78,22 @@ async function applySchema() {
 }
 
 // Function to initialize database (apply schema and ensure tables exist)
-async function initializeDatabase() {
+async function initializeDatabase(pool) {
   // Apply the schema first
-  await applySchema();
+  await applySchema(pool);
 }
 
 // Function to fetch and insert real light pollution data
 async function populateDatabase() {
   try {
+    console.log('Ensuring database exists...');
+    await ensureDatabaseExists();
+    
     console.log('Connecting to database...');
+    const pool = await createConnectionPool();
     
     // Initialize database tables
-    await initializeDatabase();
+    await initializeDatabase(pool);
     console.log('Database initialized successfully!');
 
     // Insert sample users
@@ -84,32 +138,32 @@ async function populateDatabase() {
     // Example: Insert sample light pollution measurements
     const measurements = [
       {
-        latitude: 40.7128, // New York City
-        longitude: -74.0060,
+        latitude: 40.712800, // New York City
+        longitude: -74.006000,
         sky_brightness: 17.5,
         timestamp: new Date(Date.now() - 86400000).toISOString() // Yesterday
       },
       {
-        latitude: 34.0522, // Los Angeles
-        longitude: -118.2437,
+        latitude: 34.052200, // Los Angeles
+        longitude: -118.243700,
         sky_brightness: 16.8,
         timestamp: new Date(Date.now() - 86400000).toISOString()
       },
       {
-        latitude: 41.9028, // Chicago
-        longitude: -87.6298,
+        latitude: 41.902800, // Chicago
+        longitude: -87.629800,
         sky_brightness: 17.2,
         timestamp: new Date(Date.now() - 86400000).toISOString()
       },
       {
-        latitude: 39.9526, // Philadelphia
-        longitude: -75.1652,
+        latitude: 39.952600, // Philadelphia
+        longitude: -75.165200,
         sky_brightness: 17.0,
         timestamp: new Date(Date.now() - 86400000).toISOString()
       },
       {
-        latitude: 29.7604, // Houston
-        longitude: -95.3698,
+        latitude: 29.760400, // Houston
+        longitude: -95.369800,
         sky_brightness: 16.5,
         timestamp: new Date(Date.now() - 86400000).toISOString()
       }
@@ -140,20 +194,20 @@ async function populateDatabase() {
     // Insert satellite data (simulated with realistic values)
     const satelliteData = [
       {
-        latitude: 40.7128,
-        longitude: -74.0060,
+        latitude: 40.712800,
+        longitude: -74.006000,
         radiance: 12.45,
         date: new Date(Date.now() - 86400000 * 7).toISOString() // A week ago
       },
       {
-        latitude: 34.0522,
-        longitude: -118.2437,
+        latitude: 34.052200,
+        longitude: -118.243700,
         radiance: 15.21,
         date: new Date(Date.now() - 86400000 * 7).toISOString()
       },
       {
-        latitude: 41.9028,
-        longitude: -87.6298,
+        latitude: 41.902800,
+        longitude: -87.629800,
         radiance: 11.89,
         date: new Date(Date.now() - 86400000 * 7).toISOString()
       }
@@ -180,24 +234,24 @@ async function populateDatabase() {
     // Insert environmental context data
     const envContexts = [
       {
-        latitude: 40.7128,
-        longitude: -74.0060,
+        latitude: 40.712800,
+        longitude: -74.006000,
         temp: 15.6,
         humidity: 65,
         pressure: 1013.25,
         classification: 'urban'
       },
       {
-        latitude: 34.0522,
-        longitude: -118.2437,
+        latitude: 34.052200,
+        longitude: -118.243700,
         temp: 18.3,
         humidity: 45,
         pressure: 1012.80,
         classification: 'urban'
       },
       {
-        latitude: 36.7783, // California rural area
-        longitude: -119.4179,
+        latitude: 36.778300, // California rural area
+        longitude: -119.417900,
         temp: 12.4,
         humidity: 55,
         pressure: 1014.10,
@@ -228,22 +282,22 @@ async function populateDatabase() {
     // Insert light sources
     const lightSources = [
       {
-        latitude: 40.7589, // Times Square area
-        longitude: -73.9851,
+        latitude: 40.758900, // Times Square area
+        longitude: -73.985100,
         type: 'commercial',
         lumens: 50000,
         kelvin: 4000
       },
       {
-        latitude: 34.0544, // Downtown LA
-        longitude: -118.2437,
+        latitude: 34.054400, // Downtown LA
+        longitude: -118.243700,
         type: 'street_light',
         lumens: 15000,
         kelvin: 3000
       },
       {
-        latitude: 41.8781, // Chicago Loop
-        longitude: -87.6298,
+        latitude: 41.878100, // Chicago Loop
+        longitude: -87.629800,
         type: 'industrial',
         lumens: 75000,
         kelvin: 5000
@@ -273,6 +327,9 @@ async function populateDatabase() {
     }
 
     console.log('Database populated successfully!');
+    
+    // Close the database connection
+    await pool.end();
   } catch (err) {
     console.error('Error populating database:', err);
     throw err;
@@ -283,17 +340,11 @@ async function populateDatabase() {
 populateDatabase()
   .then(() => {
     console.log('Database population completed.');
-    // Close the database connection
-    pool.end(() => {
-      console.log('Database connection closed.');
-      process.exit(0);
-    });
+    console.log('Database connection closed.');
+    process.exit(0);
   })
   .catch((err) => {
     console.error('Database population failed:', err);
-    // Close the database connection even if there's an error
-    pool.end(() => {
-      console.log('Database connection closed.');
-      process.exit(1);
-    });
+    console.log('Database connection closed.');
+    process.exit(1);
   });
