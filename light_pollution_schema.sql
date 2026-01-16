@@ -68,7 +68,7 @@ CREATE TABLE satellite_light_data (
 -- Table for user profiles
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    uuid UUID DEFAULT gen_random_uuid(),
+    uuid UUID DEFAULT gen_random_uuid() UNIQUE,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -99,6 +99,25 @@ CREATE TABLE sensors (
     owner_user_id UUID REFERENCES users(uuid),
     status VARCHAR(20) DEFAULT 'active', -- active, inactive, retired
     notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE analysis_reports (
+    id SERIAL PRIMARY KEY,
+    uuid UUID DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    report_type VARCHAR(50), -- trend_analysis, comparison, event_based
+    author_user_id UUID REFERENCES users(uuid),
+    generated_datetime TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    parameters_used JSONB, -- Parameters used for the analysis
+    methodology TEXT,
+    summary_statistics JSONB, -- Statistical summary
+    findings TEXT,
+    recommendations TEXT,
+    data_visualizations JSONB, -- Links or references to visualizations
+    report_file_url VARCHAR(255), -- Link to downloadable report
+    is_public BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -160,26 +179,6 @@ CREATE TABLE light_sources (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Table for analysis reports
-CREATE TABLE analysis_reports (
-    id SERIAL PRIMARY KEY,
-    uuid UUID DEFAULT gen_random_uuid(),
-    title VARCHAR(255) NOT NULL,
-    report_type VARCHAR(50), -- trend_analysis, comparison, event_based
-    author_user_id UUID REFERENCES users(uuid),
-    generated_datetime TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    parameters_used JSONB, -- Parameters used for the analysis
-    methodology TEXT,
-    summary_statistics JSONB, -- Statistical summary
-    findings TEXT,
-    recommendations TEXT,
-    data_visualizations JSONB, -- Links or references to visualizations
-    report_file_url VARCHAR(255), -- Link to downloadable report
-    is_public BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- Create indexes for performance
 CREATE INDEX idx_light_measurements_location ON light_measurements USING GIST(location);
 CREATE INDEX idx_light_measurements_datetime ON light_measurements(measurement_datetime);
@@ -208,3 +207,4 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECU
 CREATE TRIGGER update_sensors_updated_at BEFORE UPDATE ON sensors FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 CREATE TRIGGER update_light_sources_updated_at BEFORE UPDATE ON light_sources FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 CREATE TRIGGER update_analysis_reports_updated_at BEFORE UPDATE ON analysis_reports FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
