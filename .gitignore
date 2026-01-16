@@ -1,1 +1,4 @@
-Nothing needs to be added to the .gitignore file since the changes only include JavaScript source files (.js) which are legitimate project files that should be tracked in version control.
+```
+node_modules/
+package-lock.json
+```
