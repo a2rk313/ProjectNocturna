@@ -251,8 +251,8 @@ async function populateDatabase() {
     ];
 
     // Get a random user ID for the light sources
-    const userResult = await pool.query('SELECT uuid FROM users ORDER BY RANDOM() LIMIT 1');
-    const userId = userResult.rows.length > 0 ? userResult.rows[0].uuid : null;
+    const userResult2 = await pool.query('SELECT uuid FROM users ORDER BY RANDOM() LIMIT 1');
+    const userId2 = userResult2.rows.length > 0 ? userResult2.rows[0].uuid : null;
 
     for (const source of lightSources) {
       const insertSourceSQL = `
@@ -267,7 +267,7 @@ async function populateDatabase() {
         source.type,
         source.lumens,
         source.kelvin,
-        userId
+        userId2
       ]);
       console.log(`Inserted light source for (${source.latitude}, ${source.longitude})`);
     }
