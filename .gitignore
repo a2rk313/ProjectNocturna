@@ -1,11 +1,11 @@
 ```
-# Environment files
+# Dependencies
+node_modules/
+
+# Environment
 .env
 .env.local
 *.env.*
-
-# Dependencies
-node_modules/
 
 # Logs and temp files
 *.log
@@ -15,6 +15,57 @@ node_modules/
 .vscode/
 .idea/
 
-# Package manager
-package-lock.json
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+.env
+
+# Build outputs
+dist/
+build/
+target/
+out/
+
+# Compression
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Gradle
+.gradle/
 ```
