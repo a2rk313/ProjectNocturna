@@ -36,7 +36,19 @@ const app = express();
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false, // Needed for map libraries
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],  // Allow inline scripts
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],  // Allow inline styles and external CSS
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      fontSrc: ["'self'", "https:"],
+      connectSrc: ["'self'", "https:"],
+      frameSrc: ["'self'", "https:"],
+      objectSrc: ["'none'"]
+    }
+  }
 }));
 
 // Compression middleware
