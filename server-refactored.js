@@ -65,9 +65,9 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Proxy middleware for GeoServer
+// Proxy middleware for GeoServer (Fixed for v3.x)
 const geoServerProxy = process.env.GEOSERVER_URL 
-  ? createProxyMiddleware('/api/geoserver', {
+  ? createProxyMiddleware({
       target: process.env.GEOSERVER_URL || 'http://localhost:8080/geoserver',
       changeOrigin: true,
       pathRewrite: {
@@ -87,7 +87,7 @@ const geoServerProxy = process.env.GEOSERVER_URL
         });
       }
     })
-  : createProxyMiddleware('/api/geoserver', {
+  : createProxyMiddleware({
       target: 'http://localhost:8080/geoserver',
       changeOrigin: true,
       pathRewrite: {
