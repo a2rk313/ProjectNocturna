@@ -94,6 +94,13 @@ body {
     box-shadow: 0 0 15px var(--neon-cyan);
 }
 
+/* Active/Glowing Button for Selected Mode */
+.btn-cosmic.active {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 20px var(--neon-cyan), 0 0 30px rgba(0, 243, 255, 0.6);
+}
+
 /* Form Inputs */
 .form-control, .form-select {
     background: rgba(0, 0, 0, 0.4) !important;
