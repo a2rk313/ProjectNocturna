@@ -1,4 +1,29 @@
-/**
+class ScientificMode {
+    constructor(webGIS) {
+        this.webGIS = webGIS;
+        this.activeLayers = {};
+        this.layerConfig = {
+            opacity: 0.7,
+            heatmapColors: ['#00f', '#0ff', '#0f0', '#ff0', '#f80', '#f00'],
+            ecoImpactColors: ['#2e7d32', '#4caf50', '#ffeb3b', '#ff9800', '#f44336'], // Green to Red scale
+            spectralColors: ['#1a237e', '#283593', '#3949ab', '#5c6bc0', '#7986cb', '#9fa8da', '#ff9800', '#f44336']
+        };
+        
+        this.citations = [
+            "Falchi, F. et al. (2016). The new world atlas of artificial night sky brightness. Science Advances, 2(6), e1600377.",
+            "NASA Earth Observations. (2023). VIIRS Day/Night Band Nighttime Lights.",
+            "Gaston, K.J. et al. (2013). The biological impacts of artificial light at night. Nature, 503(7476), 342-346."
+        ];
+        
+        this.initialize();
+    }
+    
+    async initialize() {
+        console.log("✅ ScientificMode class initialized");
+        // Additional initialization if needed
+    }
+
+    /**
      * Show World Atlas Research Layer with real data
      */
     async showWorldAtlasLayer() {
@@ -1557,3 +1582,6 @@ displayEnhancedPredictions(data) {
     // Create chart after modal is displayed
     setTimeout(() => this.renderPredictionChart(chartData), 300);
 }
+
+// Export for use in other modules
+window.ScientificMode = ScientificMode;
