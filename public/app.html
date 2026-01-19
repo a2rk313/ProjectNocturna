@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/lib/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="/lib/leaflet.draw.css" />
     <!-- Removed leaflet.heat CSS as it causes MIME type errors - styles are handled internally -->
-    <link href="/lib/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/bootstrap.bundle.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
@@ -392,12 +392,32 @@
 <script src="/js/webgis.js"></script>
 
     <script>
-        // Init Bootstrap Tooltips
+        // Global error handling to prevent crashes
+        window.addEventListener('error', function(e) {
+            console.error('Global error caught:', e.error);
+            if (window.SystemBus) {
+                window.SystemBus.emit('system:message', `⚠️ Application error: ${e.error?.message || 'Unknown error'}`);
+            }
+        });
+
+        // Load WebGIS with error handling
         document.addEventListener('DOMContentLoaded', function() {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl)
-            })
+            try {
+                // Initialize the application
+                window.webGIS = new WebGIS();
+                
+                // Init Bootstrap Tooltips if available
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to initialize WebGIS:', error);
+                document.getElementById('loadingScreen').style.display = 'none';
+                alert('Application failed to initialize. Please refresh the page.');
+            }
         });
     </script>
 </body>
