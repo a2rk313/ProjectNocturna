@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with PostGIS extension
+  postgis:
+    image: postgis/postgis:15-3.3
+    container_name: nocturna-postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nocturna_db
+      POSTGRES_USER: nocturna_user
+      POSTGRES_PASSWORD: nocturna_password
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nocturna_user -d nocturna_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # GeoServer for serving geospatial data
+  geoserver:
+    image: kartoza/geoserver:2.24.0
+    container_name: nocturna-geoserver
+    restart: unless-stopped
+    environment:
+      - GEOSERVER_ADMIN_USER=admin
+      - GEOSERVER_ADMIN_PASSWORD=geoserver
+      - DBTYPE=postgis
+      - DBHOST=postgis
+      - DBPORT=5432
+      - DBNAME=nocturna_db
+      - DBSCHEMA=public
+      - DBUSER=nocturna_user
+      - DBPASS=nocturna_password
+    volumes:
+      - geoserver_data:/opt/geoserver/data
+      - ./geoserver-config:/opt/geoserver/www
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgis
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/geoserver/web/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Project Nocturna Next.js Application
+  app:
+    build: .
+    container_name: nocturna-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://nocturna_user:nocturna_password@postgis:5432/nocturna_db
+      - NEXT_PUBLIC_SUPABASE_URL=
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgis
+      - geoserver
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgis_data:
+  geoserver_data:
