@@ -125,6 +125,56 @@ class VIIRSDownloader {
     return Buffer.from(minimalTiffHex, "hex");
   }
 
+  /**
+   * Creates a proper NASA Earthdata authenticated session
+   */
+  private async createEarthdataSession(): Promise<any> {
+    const appKey = process.env.NASA_EARTHDATA_APP_KEY;
+    const username = process.env.NASA_EARTHDATA_USERNAME;
+    const password = process.env.NASA_EARTHDATA_PASSWORD;
+
+    let authHeaders: { [key: string]: string } = { 'User-Agent': 'ProjectNocturna/2.0' };
+    let authMethod = 'none';
+
+    // Prioritize App Key (Bearer token) authentication
+    if (appKey) {
+        authHeaders['Authorization'] = `Bearer ${appKey}`;
+        authMethod = 'AppKey';
+    }
+    // Fallback to Basic authentication with username/password
+    else if (username && password) {
+        authHeaders['Authorization'] = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+        authMethod = 'Basic';
+    }
+    // Proceed without authentication if no credentials are provided
+    else {
+        console.warn('NASA Earthdata credentials not found. Proceeding without authentication.');
+        return { headers: authHeaders };
+    }
+
+    // Test authentication using a more reliable endpoint
+    try {
+      console.log(`🧪 Testing NASA Earthdata authentication using ${authMethod} method...`);
+      // This endpoint is designed for checking credentials and app keys.
+      const testResponse = await fetch('https://urs.earthdata.nasa.gov/api/users/tokens', {
+        headers: authHeaders
+      });
+
+      if (!testResponse.ok) {
+        console.error(`❌ NASA Earthdata authentication failed with status: ${testResponse.status}`);
+        console.warn('Proceeding without authentication. Downloads of real data will likely fail.');
+        return { headers: { 'User-Agent': 'ProjectNocturna/2.0' } };
+      }
+
+      console.log('✅ NASA Earthdata authentication successful.');
+      return { headers: authHeaders };
+
+    } catch (error) {
+      console.error('❌ An error occurred while verifying NASA Earthdata authentication:', error);
+      console.warn('Proceeding without authentication.');
+      return { headers: { 'User-Agent': 'ProjectNocturna/2.0' } };
+    }
+  }
   
 
   /**
