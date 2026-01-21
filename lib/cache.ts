@@ -81,14 +81,19 @@ class CacheManager {
   private redisCache: RedisCache = new RedisCache();
 
   async get<T>(key: string): Promise<T | null> {
-    // Try Redis first, fall back to in-memory
-    const redisValue = await this.redisCache.get<T>(key);
-    if (redisValue !== null) {
-      return redisValue;
+    // Try in-memory cache first
+    const memoryValue = this.inMemoryCache.get<T>(key);
+    if (memoryValue !== null) {
+      return memoryValue;
     }
 
-    const memoryValue = this.inMemoryCache.get<T>(key);
-    return memoryValue;
+    // Fall back to Redis
+    const redisValue = await this.redisCache.get<T>(key);
+    if (redisValue !== null) {
+      // Populate in-memory cache for future requests
+      this.inMemoryCache.set(key, redisValue);
+    }
+    return redisValue;
   }
 
   async set<T>(key: string, value: T, ttlSeconds: number = 3600): Promise<void> {
