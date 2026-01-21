@@ -191,14 +191,10 @@ class VIIRSDownloader {
       endTime = `${year + 1}-01-01T00:00:00Z`;
     }
 
-    // Use the correct provider for VIIRS data - VNP products are typically in LAADS
-    const provider = 'LAADS';
-
     const params = new URLSearchParams({
       'page_size': '2000',
       'short_name': product,
-      'temporal': `${startTime},${endTime}`,
-      'provider': provider
+      'temporal': `${startTime},${endTime}`
     });
 
     const cmrUrl = `${this.config.baseUrl}?${params}`;
