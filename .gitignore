@@ -1,62 +1,59 @@
-```
 # Dependencies
 node_modules/
 
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
-# Build artifacts
-dist/
-build/
-target/
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.py.class
-*.py.obj
+.Python
+venv/
+.venv/
+.env
 
-# Logs
-*.log
+# Build outputs
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+.coverage.*
+.nyc_output/
+coverage-final.json
 
-# Temporary files
-*.tmp
-*.temp
-*.swp
-*.swo
+# TypeScript/JavaScript
+*.tsbuildinfo
+.next/
+.nuxt/
+public/dist/
 
-# OS
+# OS generated files
 .DS_Store
 Thumbs.db
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# IDE
-.vscode/
-.idea/
-*.iml
-*.ipr
-*.iws
-
-# Distribution / packaging
-*.tar.gz
-*.whl
-*.egg
-*.egg-info/
+ehthumbs.db
+Icon?
+desktop.ini
 
 # Testing
-.pytest_cache/
 .mypy_cache/
-.tox/
+.pytest_cache/
+.hypothesis/
 
-# Compressed files
+# Compression
 *.zip
 *.gz
 *.tar
@@ -75,4 +72,79 @@ htmlcov/
 *.Z
 *.lz
 *.lzo
-```
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+
+# Gradle
+.gradle/
+build/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.so
+
+# C/C++
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.exe
+*.out
+*.app
+*.iobj
+*.ipdb
+*.pdb
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+
+# Rust
+*.so
+*.dylib
+*.dSYM/
+*.dll
+*.exe
+
+# Ruby
+*.gem
+*.rbc
+*.sass-cache
+.bundle/
+vendor/bundle/
+.rbenv-gemsets
+.rbenv-version
+.gem/
+.Gemfile.lock
+.rspec
+Guardfile
+.ruby-version
+
+# Julia
+.julia/
+.Julia_env/
+*.ji
+*.jl.bak
+*.jl~
+
+# Zig
+zig-cache/
+zig-out/
+*.zig.cache
+
+# Julia artifacts
+julia-*/
