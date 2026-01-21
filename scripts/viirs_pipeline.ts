@@ -1,9 +1,7 @@
 import { getPostGISPool } from '../lib/database';
-import { nasaAuth } from '../lib/nasa_auth';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import 'dotenv/config';
 
 interface VIIRSConfig {
   baseUrl: string;
@@ -118,11 +116,8 @@ class VIIRSDownloader {
   private createPlaceholderGeoTIFF(metadata: VIIRSMetadata): Buffer {
     // This creates a minimal valid GeoTIFF placeholder
     // Real implementation would download actual NASA data
-    // A valid 1x1 pixel 8-bit GeoTIFF (Black)
-    const minimalTiffHex =
-        "49492a00080000000300000103000100000001000000010103000100000001000000" +
-        "1701030001000000010000002600000000000000";
-    return Buffer.from(minimalTiffHex, "hex");
+    const header = Buffer.alloc(1024); // Minimal GeoTIFF header
+    return header;
   }
 
   /**
@@ -133,49 +128,27 @@ class VIIRSDownloader {
     const username = process.env.NASA_EARTHDATA_USERNAME;
     const password = process.env.NASA_EARTHDATA_PASSWORD;
 
-    let authHeaders: { [key: string]: string } = { 'User-Agent': 'ProjectNocturna/2.0' };
-    let authMethod = 'none';
+    const authHeaders: { [key: string]: string } = { 'User-Agent': 'ProjectNocturna/2.0' };
 
     // Prioritize App Key (Bearer token) authentication
     if (appKey) {
-        authHeaders['Authorization'] = `Bearer ${appKey}`;
-        authMethod = 'AppKey';
+      console.log('🔑 Using NASA Earthdata App Key for authentication.');
+      authHeaders['Authorization'] = `Bearer ${appKey}`;
     }
     // Fallback to Basic authentication with username/password
     else if (username && password) {
-        authHeaders['Authorization'] = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
-        authMethod = 'Basic';
+      console.log('👤 Using NASA Earthdata username/password for authentication.');
+      authHeaders['Authorization'] = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
     }
     // Proceed without authentication if no credentials are provided
     else {
-        console.warn('NASA Earthdata credentials not found. Proceeding without authentication.');
-        return { headers: authHeaders };
+      console.warn('NASA Earthdata credentials not found. Proceeding without authentication.');
     }
 
-    // Test authentication using a more reliable endpoint
-    try {
-      console.log(`🧪 Testing NASA Earthdata authentication using ${authMethod} method...`);
-      // This endpoint is designed for checking credentials and app keys.
-      const testResponse = await fetch('https://urs.earthdata.nasa.gov/api/users/tokens', {
-        headers: authHeaders
-      });
-
-      if (!testResponse.ok) {
-        console.error(`❌ NASA Earthdata authentication failed with status: ${testResponse.status}`);
-        console.warn('Proceeding without authentication. Downloads of real data will likely fail.');
-        return { headers: { 'User-Agent': 'ProjectNocturna/2.0' } };
-      }
-
-      console.log('✅ NASA Earthdata authentication successful.');
-      return { headers: authHeaders };
-
-    } catch (error) {
-      console.error('❌ An error occurred while verifying NASA Earthdata authentication:', error);
-      console.warn('Proceeding without authentication.');
-      return { headers: { 'User-Agent': 'ProjectNocturna/2.0' } };
-    }
+    // The function now directly returns the headers without a separate test.
+    // The actual data request will serve as the authentication test.
+    return { headers: authHeaders };
   }
-  
 
   /**
    * Gets available VIIRS data from NASA CMR (Common Metadata Repository)
@@ -202,11 +175,14 @@ class VIIRSDownloader {
     const cmrUrl = `${this.config.baseUrl}?${params}`;
     console.log(`Searching CMR: ${cmrUrl}`);
 
-    // Use the new NASA authentication utility
-    const response = await nasaAuth.fetchWithAuth(cmrUrl, {
+    // Create authenticated session for NASA Earthdata
+    const session = await this.createEarthdataSession();
+
+    const response = await fetch(cmrUrl, {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'ProjectNocturna/2.0'
+        'User-Agent': 'ProjectNocturna/2.0',
+        ...session?.headers
       }
     });
 
@@ -242,6 +218,9 @@ class VIIRSDownloader {
 
     console.log(`Found ${granules.length} granules for ${productId} in ${year}${month ? `/${month}` : ''}`);
 
+    // Create authenticated session
+    const session = await this.createEarthdataSession();
+
     for (const granule of granules) {
       const urls = granule.links || [];
       const downloadUrl = urls.find((link: any) =>
@@ -261,53 +240,16 @@ class VIIRSDownloader {
       console.log(`Downloading ${filename}...`);
 
       try {
-        // Add retry logic for downloads using the new NASA auth utility
-        let success = false;
+        // Add retry logic for downloads
+        let response;
         let retryCount = 0;
         const maxRetries = 3;
 
-        while (!success && retryCount < maxRetries) {
+        while (retryCount < maxRetries) {
           try {
-            const response = await nasaAuth.fetchWithAuth(downloadUrl.href);
-            
+            response = await fetch(downloadUrl.href, session || {});
             if (response.ok) {
-              const buffer = await response.arrayBuffer();
-
-              // Validate file integrity after download
-              const expectedSize = parseInt(response.headers.get('content-length') || '0');
-              if (expectedSize > 0 && buffer.byteLength !== expectedSize) {
-                console.warn(`File size mismatch for ${filename}: expected ${expectedSize}, got ${buffer.byteLength}`);
-              }
-
-              fs.writeFileSync(filepath, Buffer.from(buffer));
-
-              // Create metadata
-              const metadata: VIIRSMetadata = {
-                product: productId,
-                year,
-                month,
-                date: granule.time_start ? granule.time_start.substring(0, 10) : undefined,
-                satellite: granule.platform || 'Suomi-NPP',
-                version: granule.version_id || 'v1.1',
-                processing_level: 'L3',
-                units: 'nW/cm²/sr',
-                pixel_size: '500m',
-                coordinate_system: 'EPSG:4326',
-                source_url: downloadUrl.href,
-                download_date: new Date().toISOString(),
-                file_size: buffer.byteLength,
-                checksum: this.calculateChecksum(Buffer.from(buffer))
-              };
-
-              // Write metadata
-              const metadataPath = filepath + '.metadata.json';
-              fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-
-              downloadedFiles.push(filepath);
-              downloadedFiles.push(metadataPath);
-
-              console.log(`Downloaded: ${filename} (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`);
-              success = true;
+              break; // Success, exit retry loop
             } else {
               console.warn(`Download attempt ${retryCount + 1} failed for ${filename}: ${response.status} ${response.statusText}`);
               retryCount++;
@@ -324,7 +266,7 @@ class VIIRSDownloader {
           }
         }
 
-        if (!success) {
+        if (!response || !response.ok) {
           console.error(`Failed to download ${filename} after ${maxRetries} attempts`);
           // Create a placeholder file to track the failure
           const placeholderPath = filepath + '.failed';
@@ -337,6 +279,43 @@ class VIIRSDownloader {
           downloadedFiles.push(placeholderPath);
           continue;
         }
+
+        const buffer = await response.arrayBuffer();
+
+        // Validate file integrity after download
+        const expectedSize = parseInt(response.headers.get('content-length') || '0');
+        if (expectedSize > 0 && buffer.byteLength !== expectedSize) {
+          console.warn(`File size mismatch for ${filename}: expected ${expectedSize}, got ${buffer.byteLength}`);
+        }
+
+        fs.writeFileSync(filepath, Buffer.from(buffer));
+
+        // Create metadata
+        const metadata: VIIRSMetadata = {
+          product: productId,
+          year,
+          month,
+          date: granule.time_start ? granule.time_start.substring(0, 10) : undefined,
+          satellite: granule.platform || 'Suomi-NPP',
+          version: granule.version_id || 'v1.1',
+          processing_level: 'L3',
+          units: 'nW/cm²/sr',
+          pixel_size: '500m',
+          coordinate_system: 'EPSG:4326',
+          source_url: downloadUrl.href,
+          download_date: new Date().toISOString(),
+          file_size: buffer.byteLength,
+          checksum: this.calculateChecksum(Buffer.from(buffer))
+        };
+
+        // Write metadata
+        const metadataPath = filepath + '.metadata.json';
+        fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+
+        downloadedFiles.push(filepath);
+        downloadedFiles.push(metadataPath);
+
+        console.log(`Downloaded: ${filename} (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`);
       } catch (error) {
         console.error(`Error downloading ${filename}:`, error);
         // Create a placeholder file to track the failure
