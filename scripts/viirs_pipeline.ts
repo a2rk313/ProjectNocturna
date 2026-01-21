@@ -116,8 +116,11 @@ class VIIRSDownloader {
   private createPlaceholderGeoTIFF(metadata: VIIRSMetadata): Buffer {
     // This creates a minimal valid GeoTIFF placeholder
     // Real implementation would download actual NASA data
-    const header = Buffer.alloc(1024); // Minimal GeoTIFF header
-    return header;
+    // A valid 1x1 pixel 8-bit GeoTIFF (Black)
+    const minimalTiffHex =
+        "49492a00080000000300000103000100000001000000010103000100000001000000" +
+        "1701030001000000010000002600000000000000";
+    return Buffer.from(minimalTiffHex, "hex");
   }
 
   /**

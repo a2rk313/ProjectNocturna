@@ -39,6 +39,19 @@ function MapBoundsUpdater({ onBoundsChange }: { onBoundsChange: (bounds: LatLngB
   return null;
 }
 
+function MapCommandHandler() {
+  const map = useMap();
+  const { mapCommand } = useSelection();
+
+  useEffect(() => {
+    if (mapCommand?.type === 'flyTo') {
+      map.flyTo(mapCommand.center, mapCommand.zoom || 10, { animate: true, duration: 1.5 });
+    }
+  }, [mapCommand, map]);
+
+  return null;
+}
+
 interface MapViewProps {
   viirsVisible?: boolean;
   viirsOpacity?: number;
@@ -53,16 +66,25 @@ export default function MapView({
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
   const { setSelectedPoint, setSelectedArea, selectionMode, setSelectionMode } = useSelection();
   const [params, setParams] = useSearchParams();
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   // Custom Basemap State
   const [activeBasemap, setActiveBasemap] = useState('dark');
   const selectedBasemap = BASEMAP_OPTIONS.find(b => b.id === activeBasemap) || BASEMAP_OPTIONS[0];
 
+  const showFeedback = (msg: string) => {
+    setFeedbackMessage(msg);
+    setTimeout(() => setFeedbackMessage(null), 3000);
+  };
+
   const handleSelection = (selection: { type: 'point' | 'polygon'; coordinates: [number, number] | [number, number][] }) => {
     if (selection.type === 'point') {
-      setSelectedPoint(selection.coordinates as [number, number]);
+      const coords = selection.coordinates as [number, number];
+      setSelectedPoint(coords);
+      showFeedback(`Location selected: ${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`);
     } else if (selection.type === 'polygon') {
       setSelectedArea(selection.coordinates as [number, number][]);
+      showFeedback('Area captured successfully');
     }
   };
 
@@ -119,13 +141,15 @@ export default function MapView({
 
         <LocationSelector mode={selectionMode} onSelectionChange={handleSelection} />
         <MapBoundsUpdater onBoundsChange={setMapBounds} />
+        <MapCommandHandler />
       </MapContainer>
 
-      <div className="absolute top-4 left-4 z-[1000]">
+      <div className="absolute top-40 right-4 z-[1000]">
         <LocationSelectionControls
           onSelectionChange={(selection) => {
             if (selection.type === 'gps' && selection.coordinates) {
               setSelectedPoint(selection.coordinates);
+              showFeedback(`GPS Location acquired: ${selection.coordinates[0].toFixed(5)}, ${selection.coordinates[1].toFixed(5)}`);
             } else if (selection.type === 'marker' && selection.coordinates) {
               setSelectedPoint(selection.coordinates as [number, number]);
             } else if (selection.type === 'polygon') {
@@ -134,6 +158,12 @@ export default function MapView({
           }}
         />
       </div>
+
+      {feedbackMessage && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[2000] bg-emerald-600/90 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium backdrop-blur-sm animate-in fade-in slide-in-from-top-4">
+          {feedbackMessage}
+        </div>
+      )}
 
       <Chatbot mapBounds={mapBounds} />
     </div>

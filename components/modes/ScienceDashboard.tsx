@@ -1,8 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SciencePanel from './SciencePanel';
+import { useSelection } from '@/context/SelectionContext';
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false });
 
@@ -11,6 +12,16 @@ export default function ScienceDashboard() {
   const [viirsVisible, setViirsVisible] = useState(true);
   const [opacity, setOpacity] = useState(0.7);
   const [viirsStyle, setViirsStyle] = useState('viirs_radiance'); // Default style
+
+  const { mapCommand } = useSelection();
+
+  useEffect(() => {
+    if (mapCommand?.type === 'setLayer') {
+      if (mapCommand.layer === 'viirs' || mapCommand.layer === 'night_lights') {
+        setViirsVisible(mapCommand.visible);
+      }
+    }
+  }, [mapCommand]);
 
   return (
     <div className="relative w-full h-full">

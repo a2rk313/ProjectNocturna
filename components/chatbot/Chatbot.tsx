@@ -5,12 +5,14 @@ import { MessageCircle, X, Send } from 'lucide-react';
 import { LatLngBounds } from 'leaflet';
 import ChatMessage from './ChatMessage';
 import { sendMessage } from '@/lib/chatbot';
+import { useSelection } from '@/context/SelectionContext';
 
 interface ChatbotProps {
   mapBounds: LatLngBounds | null;
 }
 
 export default function Chatbot({ mapBounds }: ChatbotProps) {
+  const { executeMapCommand } = useSelection();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
     {
@@ -43,8 +45,12 @@ export default function Chatbot({ mapBounds }: ChatbotProps) {
         ? `${mapBounds.getSouth()},${mapBounds.getWest()},${mapBounds.getNorth()},${mapBounds.getEast()}`
         : null;
 
-      const response = await sendMessage(userMessage, boundsStr);
-      setMessages((prev) => [...prev, { role: 'assistant', content: response }]);
+      const data = await sendMessage(userMessage, boundsStr);
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
+
+      if (data.action) {
+        executeMapCommand(data.action);
+      }
     } catch (error) {
       console.error('Chatbot error:', error);
       setMessages((prev) => [

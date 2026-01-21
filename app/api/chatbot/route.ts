@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
 const ChatbotSchema = z.object({
   message: z.string().min(1).max(1000),
@@ -14,93 +15,117 @@ const ChatbotSchema = z.object({
   }).optional(),
 });
 
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+const tools = [
+  {
+    functionDeclarations: [
+      {
+        name: "navigate_map",
+        description: "Moves the map to a specific location (latitude/longitude) with an optional zoom level.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            lat: { type: SchemaType.NUMBER, description: "Latitude of the location" },
+            lon: { type: SchemaType.NUMBER, description: "Longitude of the location" },
+            zoom: { type: SchemaType.NUMBER, description: "Zoom level (1-18). Default is 10." },
+            location_name: { type: SchemaType.STRING, description: "Name of the location for confirmation" }
+          },
+          required: ["lat", "lon"]
+        }
+      },
+      {
+        name: "set_layer_visibility",
+        description: "Turns a map layer on or off.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            layer_id: {
+              type: SchemaType.STRING,
+              description: "The ID of the layer. Options: 'viirs' (Night Lights), 'parks' (Dark Sky Parks), 'measurements' (SQM Heatmap)."
+            },
+            visible: { type: SchemaType.BOOLEAN, description: "True to show, false to hide." }
+          },
+          required: ["layer_id", "visible"]
+        }
+      }
+    ]
+  }
+];
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = ChatbotSchema.parse(body);
     const { message, bounds, context } = validatedData;
 
-    // Generate context-aware response
-    const response = generateAIResponse(message, bounds, context);
+    if (!process.env.GEMINI_API_KEY) {
+      // Fallback if no key provided
+      return NextResponse.json({
+        success: true,
+        response: "I'm sorry, I cannot access my advanced brain functions right now (Missing API Key). But I can still help guide you manually!",
+        action: null
+      });
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", tools: tools });
+
+    const chat = model.startChat({
+      history: [
+        {
+          role: "user",
+          parts: [{ text: "You are Lumina, an intelligent assistant for Project Nocturna, a WebGIS for light pollution analysis. You can control the map. Use tools when the user asks to go somewhere or see a layer." }],
+        },
+        {
+          role: "model",
+          parts: [{ text: "Understood. I am Lumina. I can navigate the map and toggle layers (VIIRS, Parks, Measurements) to help users analyze light pollution." }],
+        }
+      ],
+    });
+
+    const msgWithContext = `User Context: ${JSON.stringify(context || {})}. Map Bounds: ${JSON.stringify(bounds || {})}. User Message: ${message}`;
+    const result = await chat.sendMessage(msgWithContext);
+    const response = result.response;
+
+    // Check for function calls
+    const functionCalls = response.functionCalls();
+
+    let action = null;
+    let textResponse = response.text() || "Processing your request on the map...";
+
+    if (functionCalls && functionCalls.length > 0) {
+      const call = functionCalls[0];
+      if (call.name === 'navigate_map') {
+        action = {
+          type: 'flyTo',
+          center: [call.args.lat, call.args.lon],
+          zoom: call.args.zoom || 10
+        };
+        textResponse = `Navigating to ${call.args.location_name || 'destination'}...`;
+      } else if (call.name === 'set_layer_visibility') {
+        action = {
+          type: 'setLayer',
+          layer: call.args.layer_id,
+          visible: call.args.visible
+        };
+        textResponse = `${call.args.visible ? 'Enabling' : 'Disabling'} ${call.args.layer_id} layer.`;
+      }
+    }
 
     return NextResponse.json({ 
       success: true,
-      response,
+      response: textResponse,
+      action: action,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid request format',
-        details: error.errors
-      }, { status: 400 });
-    }
-    
     console.error('Chatbot API error:', error);
+    // Fallback response in case of API error
     return NextResponse.json({ 
-      success: false,
-      error: 'Chatbot service unavailable' 
-    }, { status: 500 });
+      success: true, // Return true to show message
+      response: "I'm having trouble connecting to my AI core. Please try again later.",
+      error: 'AI Error'
+    });
   }
-}
-
-function generateAIResponse(message: string, bounds?: any, context?: any): string {
-  const lowerMessage = message.toLowerCase();
-  
-  // Location-aware responses
-  if (context?.lat && context?.lon) {
-    if (lowerMessage.includes('light pollution') || lowerMessage.includes('radiance')) {
-      return `Based on your location at ${context.lat.toFixed(4)}, ${context.lon.toFixed(4)}, I can analyze the current light pollution levels. Would you like me to run a detailed assessment?`;
-    }
-    if (lowerMessage.includes('dark sky') || lowerMessage.includes('stargazing')) {
-      return `I can help you find the best dark sky sites near ${context.lat.toFixed(4)}, ${context.lon.toFixed(4)}. Let me search for nearby parks and low-light areas.`;
-    }
-  }
-  
-  // Map bounds aware responses
-  if (bounds) {
-    const area = calculateArea(bounds);
-    if (area > 10000) {
-      return `You're looking at a large area (${area.toFixed(0)} km²). For detailed analysis, try zooming in to a specific region.`;
-    }
-  }
-  
-  // Enhanced rule-based responses
-  if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-    return "Greetings, stargazer! I'm Lumina, your cosmic guide. How can I assist you with your night sky journey today?";
-  } else if (lowerMessage.includes('site') || lowerMessage.includes('park') || lowerMessage.includes('where')) {
-    return context?.lat && context?.lon 
-      ? "Let me find the nearest Dark Sky Parks and stargazing locations for your area."
-      : "You can find certified Dark Sky Parks in 'Citizen Mode' via the Parks tab, or search nearby locations in Discovery mode.";
-  } else if (lowerMessage.includes('pollution') || lowerMessage.includes('light')) {
-    if (bounds) {
-      return "For the current map area, I can analyze light pollution levels using VIIRS satellite data. Check the Scientific Mode for detailed radiance analysis.";
-    } else {
-      return "Light pollution affects 80% of the world's population. I can help you analyze current conditions and trends using satellite data.";
-    }
-  } else if (lowerMessage.includes('bortle')) {
-    return "The Bortle Scale measures night sky brightness from Class 1 (excellent dark skies) to Class 9 (inner-city). I can determine the Bortle class for your location using satellite data.";
-  } else if (lowerMessage.includes('viirs')) {
-    return "VIIRS provides high-quality nighttime light data from space. I use this to measure current radiance levels and analyze light pollution trends over time.";
-  } else if (lowerMessage.includes('weather') || lowerMessage.includes('cloud')) {
-    return "You can check cloud cover and moon phase in the Observation Planner (Citizen Mode) to find the best nights for stargazing.";
-  } else if (lowerMessage.includes('trend') || lowerMessage.includes('energy')) {
-    return "Switch to Scientific Mode to run comprehensive trend analysis and energy waste assessments using historical satellite data.";
-  } else if (lowerMessage.includes('help')) {
-    return "I can help you with: finding dark sky sites, analyzing light pollution, understanding the Bortle scale, VIIRS data analysis, energy waste assessments, and observation planning. What interests you most?";
-  }
-  
-  return "Hello! I'm Lumina, your cosmic guide for Project Nocturna. I can help you discover dark skies, analyze light pollution, and plan observations. What would you like to explore?";
-}
-
-function calculateArea(bounds: any): number {
-  // Simple rectangular area calculation in km² (rough approximation)
-  const latDiff = bounds._northEast.lat - bounds._southWest.lat;
-  const lngDiff = bounds._northEast.lng - bounds._southWest.lng;
-  // Convert degrees to approximate km (111 km per degree latitude, varies by longitude)
-  const avgLat = (bounds._northEast.lat + bounds._southWest.lat) / 2;
-  const kmPerDegLng = 111 * Math.cos(avgLat * Math.PI / 180);
-  return Math.abs(latDiff * 111 * lngDiff * kmPerDegLng);
 }

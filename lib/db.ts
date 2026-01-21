@@ -28,7 +28,11 @@ export async function getDarkSkyParks(limit: number = 20, offset: number = 0) {
 
     const result = await pool.query(query, [limit, offset]);
     return result.rows;
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === '42P01') {
+      console.warn('Table dark_sky_parks_enhanced does not exist, returning empty list.');
+      return [];
+    }
     console.error('Error retrieving dark sky parks:', error);
     return [];
   }
@@ -68,7 +72,11 @@ export async function getDarkSkyParksNearLocation(lat: number, lon: number, radi
 
     const result = await pool.query(query, [lon, lat, radiusKm, limit, offset]);
     return result.rows;
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === '42P01') {
+      console.warn('Table dark_sky_parks_enhanced does not exist, returning empty list.');
+      return [];
+    }
     console.error('Error retrieving dark sky parks near location:', error);
     return [];
   }
@@ -135,7 +143,11 @@ export async function findDarkSkySitesNearby(lat: number, lon: number, radiusKm:
 
     const result = await pool.query(query, [lon, lat, radiusKm]);
     return result.rows;
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === '42P01') {
+      console.warn('Table dark_sky_parks_enhanced or sqm_readings_enhanced does not exist, returning empty list.');
+      return [];
+    }
     console.error('Error finding dark sky sites nearby:', error);
     return [];
   }
