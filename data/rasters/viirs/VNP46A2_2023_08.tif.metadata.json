@@ -10,7 +10,7 @@
   "pixel_size": "500m",
   "coordinate_system": "EPSG:4326",
   "source_url": "https://cmr.earthdata.nasa.gov/search/granules.json/VNP46A2/2023",
-  "download_date": "2026-01-21T14:38:13.342Z",
+  "download_date": "2026-01-21T07:51:51.260Z",
   "file_size": 0,
   "checksum": "placeholder"
 }
