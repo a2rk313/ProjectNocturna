@@ -1,53 +1,57 @@
 ```
-# Environment variables
+# Dependencies
+node_modules/
+
+# Environment
 .env
+.env.local
+.env.*
 
-# Data processing artifacts (if any temporary files are created during processing)
-*.tmp
-*.temp
+# Build artifacts
+dist/
+build/
+target/
 
-# Logs
-*.log
-
-# Editor/IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# System files
-.DS_Store
-Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py.class
+*.py.obj
 
-# Build directories (if present)
-build/
-dist/
-target/
+# Logs
+*.log
 
-# Virtual environments
-venv/
-.venv/
-env/
-.ENV
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
 
-# Dependency directories
-node_modules/
-.npm/
-.yarn/
-bower_components/
+# OS
+.DS_Store
+Thumbs.db
 
-# Test and coverage
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Distribution / packaging
+*.tar.gz
+*.whl
+*.egg
+*.egg-info/
+
+# Testing
 .pytest_cache/
 .mypy_cache/
 .tox/
