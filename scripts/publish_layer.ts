@@ -63,8 +63,8 @@ async function publishLayerMain() {
     else if (res.status === 201) console.log('  Workspace created successfully.');
     else if (!res.ok) console.error('  Failed to create workspace:', await res.text());
 
-    // 2. Create DataStore
-    console.log(`Creating data store '${STORE}'...`);
+    // 2. Create OR Update DataStore
+    console.log(`Configuring data store '${STORE}'...`);
     const storePayload = {
         dataStore: {
             name: STORE,
@@ -75,18 +75,50 @@ async function publishLayerMain() {
                 user: DB_USER,
                 passwd: DB_PASS,
                 dbtype: 'postgis',
-                schema: 'public'
+                schema: 'public',
+                // Add these to prevent connection timeouts during validation
+                'Evictor run periodicity': 300,
+                'Max open prepared statements': 50,
+                'encode functions': true,
+                'Batch insert size': 1,
+                'Loose bbox': true,
+                'Estimated extends': true,
+                'fetch size': 1000,
+                'Expose primary keys': true,
+                'validate connections': true,
+                'Connection timeout': 20,
+                'Min connections': 1,
+                'Max connections': 10
             }
         }
     };
-    res = await fetch(`${GEOSERVER_URL}/rest/workspaces/${WORKSPACE}/datastores`, {
-        method: 'POST',
-        headers: HEADERS,
-        body: JSON.stringify(storePayload)
+
+    // Try to GET first to see if it exists
+    const checkStore = await fetch(`${GEOSERVER_URL}/rest/workspaces/${WORKSPACE}/datastores/${STORE}`, {
+        method: 'GET',
+        headers: HEADERS
     });
-    if (res.status === 409) console.log('  Data store already exists.');
-    else if (res.status === 201) console.log('  Data store created successfully.');
-    else if (!res.ok) console.error('  Failed to create data store:', await res.text());
+
+    if (checkStore.ok) {
+        // Update existing store (PUT)
+        console.log('  Store exists. Updating configuration...');
+        const res = await fetch(`${GEOSERVER_URL}/rest/workspaces/${WORKSPACE}/datastores/${STORE}`, {
+            method: 'PUT',
+            headers: HEADERS,
+            body: JSON.stringify(storePayload)
+        });
+        if (!res.ok) console.error('  Failed to update store:', await res.text());
+        else console.log('  Store configuration updated.');
+    } else {
+        // Create new store (POST)
+        const res = await fetch(`${GEOSERVER_URL}/rest/workspaces/${WORKSPACE}/datastores`, {
+            method: 'POST',
+            headers: HEADERS,
+            body: JSON.stringify(storePayload)
+        });
+        if (!res.ok) console.error('  Failed to create store:', await res.text());
+        else console.log('  Store created successfully.');
+    }
 
     // 3. Publish Layers
     for (const layer of LAYERS) {
