@@ -62,6 +62,15 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+# Load environment variables from .env file to make them available to the script
+if [ -f .env ]; then
+    echo -e "${BLUE}📦 Loading environment variables from .env file...${NC}"
+    set -o allexport
+    source .env
+    set +o allexport
+    echo -e "${GREEN}✅ Environment variables loaded.${NC}"
+fi
+
 # 3. Setup Data Directories
 echo -e "${BLUE}📁 Setting up data directories...${NC}"
 if [ "$SKIP_DATA" = false ]; then
