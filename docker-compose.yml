@@ -1,0 +1,41 @@
+services:
+  postgis:
+    image: postgis/postgis:15-3.3
+    container_name: nocturna-postgis
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nocturna}
+      POSTGRES_USER: ${POSTGRES_USER:-nocturna}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nocturna_dev_password_change_me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.24.2
+    container_name: nocturna-geoserver
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      # Image supports setting admin creds via env in most deployments; if a given tag ignores these,
+      # you can still log in with default admin/geoserver and change it in the UI.
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER:-admin}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-geoserver_dev_password_change_me}
+    ports:
+      - "${GEOSERVER_PORT:-8080}:8080"
+    volumes:
+      - geoserver_data:/opt/geoserver_data
+      # Host-mounted rasters (VIIRS GeoTIFFs, mosaics, etc.) readable by GeoServer
+      - ./data/rasters:/opt/nocturna_rasters:rw
+
+volumes:
+  postgis_data:
+  geoserver_data:
+

@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 10, 14, 39;
+  --background-end-rgb: 26, 31, 58;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  min-height: 100vh;
+}
+
+/* Leaflet map container styling */
+.leaflet-container {
+  background-color: var(--background-start-rgb);
+}

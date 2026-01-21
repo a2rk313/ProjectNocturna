@@ -1,0 +1,56 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Grand Canyon National Park",
+                "designation": "International Dark Sky Park",
+                "country": "USA",
+                "sqm": 21.9,
+                "bortle": 2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -112.1129,
+                    36.1069
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Waterton-Glacier International Peace Park",
+                "designation": "International Dark Sky Park",
+                "country": "USA/Canada",
+                "sqm": 21.8,
+                "bortle": 2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -113.7870,
+                    48.9999
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Kerry International Dark Sky Reserve",
+                "designation": "International Dark Sky Reserve",
+                "country": "Ireland",
+                "sqm": 21.7,
+                "bortle": 3
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -10.0494,
+                    51.9866
+                ]
+            }
+        }
+    ]
+}

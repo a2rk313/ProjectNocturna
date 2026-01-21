@@ -1,0 +1,9 @@
+$ next dev --port "3001"
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 6.6s
+ ○ Compiling / ...
+[?25h

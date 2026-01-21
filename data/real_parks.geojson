@@ -1,0 +1,175 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Cherry Springs State Park",
+                "designation": "International Dark Sky Park",
+                "country": "USA",
+                "sqm": 21.85,
+                "bortle": 2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -77.8228,
+                    41.6622
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Galloway Forest Park",
+                "designation": "International Dark Sky Park",
+                "country": "UK",
+                "sqm": 21.78,
+                "bortle": 3
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -4.4069,
+                    55.0747
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Jasper National Park",
+                "designation": "Dark Sky Preserve",
+                "country": "Canada",
+                "sqm": 21.90,
+                "bortle": 2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -117.929,
+                    52.8732
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Aoraki Mackenzie",
+                "designation": "International Dark Sky Reserve",
+                "country": "New Zealand",
+                "sqm": 21.95,
+                "bortle": 1
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    170.3705,
+                    -43.9841
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Pic du Midi",
+                "designation": "International Dark Sky Reserve",
+                "country": "France",
+                "sqm": 21.82,
+                "bortle": 2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    0.1411,
+                    42.9372
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Death Valley National Park",
+                "designation": "International Dark Sky Park",
+                "country": "USA",
+                "sqm": 21.92,
+                "bortle": 1
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -117.1331,
+                    36.5323
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "NamibRand Nature Reserve",
+                "designation": "International Dark Sky Reserve",
+                "country": "Namibia",
+                "sqm": 21.98,
+                "bortle": 1
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    15.9108,
+                    -24.9654
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Zselic Starry Sky Park",
+                "designation": "International Dark Sky Park",
+                "country": "Hungary",
+                "sqm": 21.75,
+                "bortle": 3
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    17.7562,
+                    46.2372
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Great Basin National Park",
+                "designation": "International Dark Sky Park",
+                "country": "USA",
+                "sqm": 21.91,
+                "bortle": 2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -114.2634,
+                    38.9304
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Warrumbungle National Park",
+                "designation": "International Dark Sky Park",
+                "country": "Australia",
+                "sqm": 21.88,
+                "bortle": 1
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    148.9959,
+                    -31.2741
+                ]
+            }
+        }
+    ]
+}

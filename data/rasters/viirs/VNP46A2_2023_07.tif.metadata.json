@@ -1,0 +1,16 @@
+{
+  "product": "VNP46A2",
+  "year": 2023,
+  "month": 7,
+  "date": "2023-07",
+  "satellite": "Suomi-NPP",
+  "version": "v1.1",
+  "processing_level": "L3",
+  "units": "nW/cm²/sr",
+  "pixel_size": "500m",
+  "coordinate_system": "EPSG:4326",
+  "source_url": "https://cmr.earthdata.nasa.gov/search/granules.json/VNP46A2/2023",
+  "download_date": "2026-01-21T07:51:49.886Z",
+  "file_size": 0,
+  "checksum": "placeholder"
+}

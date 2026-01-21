@@ -1,0 +1,276 @@
+{
+  "name": "real_parks",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-001",
+        "name": "Natural Bridges National Monument",
+        "designation": "International Dark Sky Park",
+        "country": "USA",
+        "sqm": 21.8,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/natural-bridges/",
+        "established": "2015-04-01",
+        "area_km2": 77.4
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-109.8683, 37.6086]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-002",
+        "name": "Death Valley National Park",
+        "designation": "International Dark Sky Park",
+        "country": "USA",
+        "sqm": 22.0,
+        "bortle": 1,
+        "url": "https://darksky.org/ida-parks/death-valley/",
+        "established": "2013-02-20",
+        "area_km2": 13624.6
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-116.9311, 36.2419]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-003",
+        "name": "Grand Canyon-Parashant National Monument",
+        "designation": "International Dark Sky Park",
+        "country": "USA",
+        "sqm": 21.9,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/grand-canyon-parashant/",
+        "established": "2019-05-01",
+        "area_km2": 4160.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-112.1129, 36.1069]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-004",
+        "name": "Joshua Tree National Park",
+        "designation": "International Dark Sky Park",
+        "country": "USA",
+        "sqm": 21.7,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/joshua-tree/",
+        "established": "2017-08-15",
+        "area_km2": 3197.1
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-115.8014, 33.8734]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-005",
+        "name": "Anza-Borrego Desert State Park",
+        "designation": "International Dark Sky Park",
+        "country": "USA",
+        "sqm": 21.6,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/anza-borrego/",
+        "established": "2018-01-10",
+        "area_km2": 2417.8
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-116.3175, 33.1478]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-006",
+        "name": "Cedar Breaks National Monument",
+        "designation": "International Dark Sky Park",
+        "country": "USA",
+        "sqm": 22.1,
+        "bortle": 1,
+        "url": "https://darksky.org/ida-parks/cedar-breaks/",
+        "established": "2017-08-18",
+        "area_km2": 26.3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-112.8340, 37.6197]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-007",
+        "name": "Great Basin National Park",
+        "designation": "International Dark Sky Park",
+        "country": "USA",
+        "sqm": 22.2,
+        "bortle": 1,
+        "url": "https://darksky.org/ida-parks/great-basin/",
+        "established": "2016-07-01",
+        "area_km2": 312.3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-114.2625, 38.9833]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-008",
+        "name": "Mont-Mégantic International Dark Sky Reserve",
+        "designation": "International Dark Sky Reserve",
+        "country": "Canada",
+        "sqm": 21.8,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/mont-megantic/",
+        "established": "2013-09-19",
+        "area_km2": 206.4
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-71.1478, 45.4597]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-009",
+        "name": "Kielder Observatory and Forest Park",
+        "designation": "International Dark Sky Park",
+        "country": "UK",
+        "sqm": 21.9,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/kielder/",
+        "established": "2018-12-03",
+        "area_km2": 573.2
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-2.9667, 55.2000]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-010",
+        "name": "Kerry International Dark Sky Reserve",
+        "designation": "International Dark Sky Reserve",
+        "country": "Ireland",
+        "sqm": 21.7,
+        "bortle": 3,
+        "url": "https://darksky.org/ida-parks/kerry/",
+        "established": "2019-12-17",
+        "area_km2": 700.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-10.0494, 51.9866]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-011",
+        "name": "Pic du Midi de Bigorre",
+        "designation": "International Dark Sky Reserve",
+        "country": "France",
+        "sqm": 21.5,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/pic-du-midi/",
+        "established": "2013-12-19",
+        "area_km2": 1500.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [0.1417, 42.9381]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-012",
+        "name": "NamibRand International Dark Sky Reserve",
+        "designation": "International Dark Sky Reserve",
+        "country": "Namibia",
+        "sqm": 22.0,
+        "bortle": 1,
+        "url": "https://darksky.org/ida-parks/namibrand/",
+        "established": "2012-05-16",
+        "area_km2": 2020.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [16.5000, -25.5000]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-013",
+        "name": "Aoraki Mackenzie International Dark Sky Reserve",
+        "designation": "International Dark Sky Reserve",
+        "country": "New Zealand",
+        "sqm": 21.9,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/aoraki-mackenzie/",
+        "established": "2022-06-15",
+        "area_km2": 4300.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [170.1167, -43.8000]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-014",
+        "name": "Warrumbungle National Park",
+        "designation": "International Dark Sky Park",
+        "country": "Australia",
+        "sqm": 21.8,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/warrumbungle/",
+        "established": "2019-07-01",
+        "area_km2": 236.8
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [149.2833, -31.8833]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ida-015",
+        "name": "Hortobágy National Park",
+        "designation": "International Dark Sky Park",
+        "country": "Hungary",
+        "sqm": 21.7,
+        "bortle": 2,
+        "url": "https://darksky.org/ida-parks/hortobagy/",
+        "established": "2017-01-31",
+        "area_km2": 820.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [20.9000, 47.2500]
+      }
+    }
+  ]
+}

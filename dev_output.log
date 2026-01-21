@@ -1,0 +1,112 @@
+[0;34m🔭 Project Nocturna: Enhanced Scientific Ecosystem[0m
+[0;34m📁 Setting up data directories...[0m
+[0;34mSetting up data directories...[0m
+[0;32m✓ Data directories created[0m
+[1;33mUsing docker-compose v1.x[0m
+[1;33mUsing command: docker-compose[0m
+[0;34m🐳 Starting Docker Infrastructure...[0m
+[0;32m✅ Docker infrastructure started[0m
+[1;33m⏳ Waiting for PostGIS to be healthy...[0m
+[0;32m✅ PostGIS is healthy![0m
+[0;34m🗄️ Initializing Database & Extensions...[0m
+Connected to DB
+Ensuring extensions (postgis, postgis_raster) are enabled...
+Applying schema: 001_postgis_schema.sql
+Successfully applied 001_postgis_schema.sql
+Applying schema: 002_extended_schema.sql
+Successfully applied 002_extended_schema.sql
+Applying schema: 003_enhanced_schema.sql
+Successfully applied 003_enhanced_schema.sql
+Master schema application completed successfully.
+[0;34m🌱 Ingesting Real Scientific Data...[0m
+[0;34m🏞️ Ingesting Enhanced Dark Sky Parks...[0m
+Starting ingestion from real_parks_enhanced.geojson...
+Validated 15/15 features
+Enhanced dark sky parks schema created
+Clearing existing dark sky parks data...
+Batch 1: Inserted 15 parks (total: 15)
+Successfully ingested 15 dark sky parks from real_parks_enhanced.geojson
+\n=== Ingestion Statistics ===
+Total Parks: 15
+Countries: 9
+Designations: 2
+Average SQM: 21.84
+Average Bortle: 1.80
+========================\n
+[0;34m📊 Ingesting Light Measurements...[0m
+Processing 20 measurements from source: csv
+Valid measurements: 20/20 (Rejected: 0)
+Enhanced SQM readings schema created
+
+CSV Ingestion Summary:
+Accepted: 20
+Rejected: 0
+[0;34m📁 Creating VIIRS data directories...[0m
+[1;33m⚠️  NASA Earthdata credentials not found in environment.[0m
+[1;33m   Set NASA_EARTHDATA_USERNAME and NASA_EARTHDATA_PASSWORD to download real VIIRS data.[0m
+[1;33m   Using mock data for now...[0m
+[0;34m📈 Generating Quality Reports...[0m
+
+=== 30-Day Quality Report ===
+Date       | Total | Stations | Avg SQM | Avg Quality | High Q | Low Q
+-----------|-------|----------|----------|-------------|---------|--------
+=============================
+
+[0;34m📡 Publishing GeoServer Layers...[0m
+[0;32m✅ GeoServer is accessible![0m
+Target GeoServer: http://localhost:8080/geoserver
+Creating workspace 'nocturna'...
+  Workspace already exists.
+Creating data store 'nocturna_postgis'...
+  Failed to create data store: Store 'nocturna_postgis' already exists in workspace 'nocturna'
+Publishing layer 'light_measurements'...
+  Failed to publish 'light_measurements': Error occurred getting table name list.
+Publishing layer 'dark_sky_parks'...
+  Failed to publish 'dark_sky_parks': Unable to obtain connection: The connection attempt failed.
+Done.
+[0;34m🗺️ Creating Raster Views...[0m
+[0;34mGenerating VIIRS report...[0m
+\n=== VIIRS Ingestion Report ===
+Product | Years | Files | Earliest | Latest | Avg Size
+--------|-------|-------|----------|--------|----------
+=============================\n
+[0;32m🚀 Launching Project Nocturna Development Server...[0m
+[0;34m📊 Available Data Management Commands:[0m
+[1;33m  ./data_manager.sh status     # Show system status[0m
+[1;33m  ./data_manager.sh parks ingest <file>   # Ingest parks data[0m
+[1;33m  ./data_manager.sh measurements ingest <file>   # Ingest measurements[0m
+[1;33m  ./data_manager.sh viirs download <product> <year>   # Download VIIRS data[0m
+[1;33m  ./data_manager.sh refresh start   # Start refresh service[0m
+[1;33m  ./data_manager.sh --help   # Show all commands[0m
+
+[0;34m🌐 Application will be available at: http://localhost:3000[0m
+[0;34m🔧 GeoServer available at: http://localhost:8080/geoserver[0m
+[0;32m✨ Project Nocturna is ready![0m
+
+[0;34m🔄 Starting development server...[0m
+$ next dev
+ ⨯ Failed to start server
+275 |                 console.error(err);
+276 |                 process.exit(1);
+277 |             }
+278 |             resolve();
+279 |         });
+280 |         server.listen(port, hostname);
+                     ^
+error: Failed to start server. Is port 3000 in use?
+ syscall: "listen",
+   errno: 0,
+    code: "EADDRINUSE"
+
+      at <anonymous> (node:_http_server:271:39)
+      at <anonymous> (node:_http_server:248:33)
+      at <anonymous> (/home/a2rk/Documents/ProjectNocturna_v2/node_modules/next/dist/server/lib/start-server.js:280:16)
+      at new Promise (1:11)
+      at startServer (/home/a2rk/Documents/ProjectNocturna_v2/node_modules/next/dist/server/lib/start-server.js:191:11)
+      at startServer (/home/a2rk/Documents/ProjectNocturna_v2/node_modules/next/dist/server/lib/start-server.js:107:28)
+      at traceAsyncFn (/home/a2rk/Documents/ProjectNocturna_v2/node_modules/next/dist/trace/trace.js:154:26)
+      at traceAsyncFn (/home/a2rk/Documents/ProjectNocturna_v2/node_modules/next/dist/trace/trace.js:152:28)
+      at <anonymous> (/home/a2rk/Documents/ProjectNocturna_v2/node_modules/next/dist/server/lib/start-server.js:310:35)
+      at <anonymous> (/home/a2rk/Documents/ProjectNocturna_v2/node_modules/next/dist/server/lib/start-server.js:301:43)
+
+[?25h

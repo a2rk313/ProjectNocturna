@@ -1,0 +1,462 @@
+import { getPostGISPool } from '../lib/database';
+import fs from 'fs';
+import path from 'path';
+
+interface LightMeasurement {
+  id?: string;
+  station_id: string;
+  latitude: number;
+  longitude: number;
+  mpsas: number;
+  cloud_cover: number;
+  temperature?: number;
+  humidity?: number;
+  equipment?: string;
+  observer?: string;
+  measured_at: Date;
+  source: string;
+}
+
+interface VIIRSData {
+  year: number;
+  month: number;
+  radiance: number;
+  latitude: number;
+  longitude: number;
+  satellite: string;
+  product: string;
+}
+
+class DataQualityController {
+  static validateMeasurement(measurement: any): LightMeasurement | null {
+    const required = ['station_id', 'latitude', 'longitude', 'mpsas', 'measured_at'];
+    
+    for (const field of required) {
+      if (measurement[field] === undefined || measurement[field] === null) {
+        console.warn(`Missing required field: ${field}`);
+        return null;
+      }
+    }
+
+    // Validate coordinate ranges
+    if (measurement.latitude < -90 || measurement.latitude > 90) {
+      console.warn(`Invalid latitude: ${measurement.latitude}`);
+      return null;
+    }
+    
+    if (measurement.longitude < -180 || measurement.longitude > 180) {
+      console.warn(`Invalid longitude: ${measurement.longitude}`);
+      return null;
+    }
+
+    // Validate SQM ranges (typical: 1-25 mag/arcsec²)
+    if (measurement.mpsas < 1 || measurement.mpsas > 25) {
+      console.warn(`Suspicious SQM value: ${measurement.mpsas}`);
+    }
+
+    // Validate cloud cover (0-100%)
+    if (measurement.cloud_cover < 0 || measurement.cloud_cover > 100) {
+      console.warn(`Invalid cloud cover: ${measurement.cloud_cover}`);
+      return null;
+    }
+
+    return {
+      id: measurement.id,
+      station_id: measurement.station_id,
+      latitude: Number(measurement.latitude),
+      longitude: Number(measurement.longitude),
+      mpsas: Number(measurement.mpsas),
+      cloud_cover: Number(measurement.cloud_cover),
+      temperature: measurement.temperature ? Number(measurement.temperature) : undefined,
+      humidity: measurement.humidity ? Number(measurement.humidity) : undefined,
+      equipment: measurement.equipment,
+      observer: measurement.observer,
+      measured_at: new Date(measurement.measured_at),
+      source: measurement.source || 'unknown'
+    };
+  }
+
+  static detectOutliers(measurements: LightMeasurement[]): LightMeasurement[] {
+    if (measurements.length < 10) return measurements;
+
+    const values = measurements.map(m => m.mpsas).sort((a, b) => a - b);
+    const q1 = values[Math.floor(values.length * 0.25)];
+    const q3 = values[Math.floor(values.length * 0.75)];
+    const iqr = q3 - q1;
+    const lowerBound = q1 - (1.5 * iqr);
+    const upperBound = q3 + (1.5 * iqr);
+
+    return measurements.filter(m => 
+      m.mpsas >= lowerBound && m.mpsas <= upperBound
+    );
+  }
+
+  static calculateQualityScore(measurement: LightMeasurement): number {
+    let score = 100;
+    
+    // Deduct points for high cloud cover
+    if (measurement.cloud_cover > 50) score -= 20;
+    else if (measurement.cloud_cover > 30) score -= 10;
+    
+    // Deduct points for missing equipment info
+    if (!measurement.equipment) score -= 10;
+    if (!measurement.observer) score -= 5;
+    
+    // Deduct points for extreme values (likely errors)
+    if (measurement.mpsas < 5 || measurement.mpsas > 22) score -= 15;
+    
+    return Math.max(0, score);
+  }
+}
+
+class RealTimeDataIngestion {
+  private pool = getPostGISPool();
+
+  async createMeasurementSchema(): Promise<void> {
+    const schema = `
+      CREATE TABLE IF NOT EXISTS public.sqm_readings_enhanced (
+          id BIGSERIAL PRIMARY KEY,
+          external_id TEXT UNIQUE,
+          station_id TEXT NOT NULL,
+          mpsas NUMERIC NOT NULL CHECK (mpsas >= 1 AND mpsas <= 25),
+          cloud_cover NUMERIC CHECK (cloud_cover >= 0 AND cloud_cover <= 100),
+          temperature NUMERIC,
+          humidity NUMERIC,
+          equipment TEXT,
+          observer TEXT,
+          source TEXT DEFAULT 'manual',
+          quality_score INTEGER CHECK (quality_score >= 0 AND quality_score <= 100),
+          location GEOMETRY(Point, 4326) NOT NULL,
+          measured_at TIMESTAMPTZ NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_sqm_readings_enhanced_location 
+        ON public.sqm_readings_enhanced USING GIST (location);
+      CREATE INDEX IF NOT EXISTS idx_sqm_readings_enhanced_time 
+        ON public.sqm_readings_enhanced (measured_at);
+      CREATE INDEX IF NOT EXISTS idx_sqm_readings_enhanced_station 
+        ON public.sqm_readings_enhanced (station_id);
+      CREATE INDEX IF NOT EXISTS idx_sqm_readings_enhanced_quality 
+        ON public.sqm_readings_enhanced (quality_score);
+    `;
+
+    await this.pool.query(schema);
+    console.log('Enhanced SQM readings schema created');
+  }
+
+  async ingestMeasurements(
+    measurements: any[], 
+    options: {
+      source?: string;
+      validateOnly?: boolean;
+      removeOutliers?: boolean;
+    } = {}
+  ): Promise<{ accepted: number; rejected: number; outliers: number }> {
+    const { source = 'api', validateOnly = false, removeOutliers = true } = options;
+    
+    console.log(`Processing ${measurements.length} measurements from source: ${source}`);
+    
+    // Validate measurements
+    const validMeasurements = measurements
+      .map(m => DataQualityController.validateMeasurement(m))
+      .filter(Boolean) as LightMeasurement[];
+
+    console.log(`Valid measurements: ${validMeasurements.length}/${measurements.length}`);
+
+    // Remove outliers if requested
+    let finalMeasurements = validMeasurements;
+    if (removeOutliers && validMeasurements.length > 10) {
+      const outliers = validMeasurements.length - DataQualityController.detectOutliers(validMeasurements).length;
+      finalMeasurements = DataQualityController.detectOutliers(validMeasurements);
+      console.log(`Removed ${outliers} outliers`);
+    }
+
+    if (validateOnly) {
+      return {
+        accepted: finalMeasurements.length,
+        rejected: measurements.length - validMeasurements.length,
+        outliers: validMeasurements.length - finalMeasurements.length
+      };
+    }
+
+    await this.createMeasurementSchema();
+
+    // Calculate quality scores
+    const measurementsWithScore = finalMeasurements.map(m => ({
+      ...m,
+      quality_score: DataQualityController.calculateQualityScore(m)
+    }));
+
+    // Batch insert
+    const batchSize = 100;
+    let inserted = 0;
+    
+    for (let i = 0; i < measurementsWithScore.length; i += batchSize) {
+      const batch = measurementsWithScore.slice(i, i + batchSize);
+      
+      if (batch.length === 0) continue;
+      
+      const values = batch.flatMap(m => [
+        m.id || `${source}_${Date.now()}_${i}`,
+        m.station_id,
+        m.mpsas,
+        m.cloud_cover,
+        m.temperature,
+        m.humidity,
+        m.equipment,
+        m.observer,
+        source,
+        m.quality_score,
+        m.longitude,
+        m.latitude,
+        m.measured_at.toISOString()
+      ]);
+
+      const placeholders = values.map((_, index) => 
+        `($${index * 11 + 1}, $${index * 11 + 2}, $${index * 11 + 3}, $${index * 11 + 4}, $${index * 11 + 5}, $${index * 11 + 6}, $${index * 11 + 7}, $${index * 11 + 8}, $${index * 11 + 9}, $${index * 11 + 10}, ST_SetSRID(ST_MakePoint($${index * 11 + 11}, $${index * 11 + 12}), 4326))`
+      ).join(', ');
+
+      const query = `
+        INSERT INTO public.sqm_readings_enhanced 
+          (external_id, station_id, mpsas, cloud_cover, temperature, humidity, 
+           equipment, observer, source, quality_score, location, measured_at)
+        VALUES ${placeholders}
+        ON CONFLICT (external_id) DO UPDATE SET
+          station_id = EXCLUDED.station_id,
+          mpsas = EXCLUDED.mpsas,
+          cloud_cover = EXCLUDED.cloud_cover,
+          temperature = EXCLUDED.temperature,
+          humidity = EXCLUDED.humidity,
+          equipment = EXCLUDED.equipment,
+          observer = EXCLUDED.observer,
+          source = EXCLUDED.source,
+          quality_score = EXCLUDED.quality_score,
+          location = EXCLUDED.location,
+          measured_at = EXCLUDED.measured_at,
+          updated_at = NOW()
+      `;
+
+      try {
+        await this.pool.query(query);
+        inserted += batch.length;
+      } catch (error) {
+        console.error(`Error inserting batch ${Math.floor(i/batchSize) + 1)}:`, error);
+      }
+    }
+
+    return {
+      accepted: inserted,
+      rejected: measurements.length - validMeasurements.length,
+      outliers: validMeasurements.length - finalMeasurements.length
+    };
+  }
+
+  async ingestFromCSV(filePath: string, options: any = {}): Promise<void> {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const csvData = fs.readFileSync(filePath, 'utf-8');
+    const lines = csvData.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      throw new Error('CSV file must have header and at least one data row');
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const measurements = lines.slice(1).filter(line => line.trim()).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+      const obj: any = {};
+      
+      headers.forEach((header, index) => {
+        obj[header] = values[index] || undefined;
+      });
+      
+      return obj;
+    });
+
+    const result = await this.ingestMeasurements(measurements, { ...options, source: 'csv' });
+    
+    console.log('\nCSV Ingestion Summary:');
+    console.log(`Accepted: ${result.accepted}`);
+    console.log(`Rejected: ${result.rejected}`);
+    console.log(`Outliers: ${result.outliers}`);
+  }
+
+  async ingestFromJSON(filePath: string, options: any = {}): Promise<void> {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const rawData = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(rawData);
+    
+    const measurements = Array.isArray(data) ? data : data.measurements || [];
+    
+    const result = await this.ingestMeasurements(measurements, { ...options, source: 'json' });
+    
+    console.log('\nJSON Ingestion Summary:');
+    console.log(`Accepted: ${result.accepted}`);
+    console.log(`Rejected: ${result.rejected}`);
+    console.log(`Outliers: ${result.outliers}`);
+  }
+
+  async getLatestMeasurements(
+    latitude: number, 
+    longitude: number, 
+    radiusKm: number = 10,
+    limit: number = 50
+  ): Promise<any[]> {
+    const query = `
+      SELECT 
+        external_id, station_id, mpsas, cloud_cover, temperature, humidity,
+        equipment, observer, source, quality_score,
+        ST_Y(location::geometry) as lat,
+        ST_X(location::geometry) as lon,
+        measured_at
+      FROM public.sqm_readings_enhanced
+      WHERE ST_DWithin(
+        location::geography, 
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 
+        $3 * 1000
+      )
+      ORDER BY measured_at DESC
+      LIMIT $4
+    `;
+
+    const result = await this.pool.query(query, [longitude, latitude, radiusKm, limit]);
+    return result.rows;
+  }
+
+  async generateQualityReport(): Promise<void> {
+    const query = `
+      SELECT 
+        COUNT(*) as total_readings,
+        COUNT(DISTINCT station_id) as stations,
+        AVG(mpsas) as avg_mpsas,
+        AVG(quality_score) as avg_quality,
+        COUNT(CASE WHEN quality_score >= 80 THEN 1 END) as high_quality,
+        COUNT(CASE WHEN quality_score < 50 THEN 1 END) as low_quality,
+        DATE_TRUNC('day', measured_at) as measurement_day
+      FROM public.sqm_readings_enhanced
+      WHERE measured_at >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE_TRUNC('day', measured_at)
+      ORDER BY measurement_day DESC
+      LIMIT 30
+    `;
+
+    const result = await this.pool.query(query);
+    
+    console.log('\n=== 30-Day Quality Report ===');
+    console.log('Date       | Total | Stations | Avg SQM | Avg Quality | High Q | Low Q');
+    console.log('-----------|-------|----------|----------|-------------|---------|--------');
+    
+    result.rows.forEach((row: any) => {
+      const date = new Date(row.measurement_day).toISOString().split('T')[0];
+      console.log(`${date} | ${row.total_readings.toString().padStart(5)} | ${row.stations.toString().padStart(8)} | ${row.avg_mpsas?.toFixed(2).padStart(8)} | ${row.avg_quality?.toFixed(1).padStart(11)} | ${row.high_quality.toString().padStart(6)} | ${row.low_quality.toString().padStart(5)}`);
+    });
+    console.log('=============================\n');
+  }
+}
+
+// CLI interface
+async function main() {
+  const args = process.argv.slice(2);
+  
+  if (args.length < 1) {
+    console.log('Usage: bun run scripts/realtime_ingestion.ts <command> [options]');
+    console.log('\nCommands:');
+    console.log('  csv <file>         Ingest measurements from CSV file');
+    console.log('  json <file>        Ingest measurements from JSON file');
+    console.log('  validate <file>     Validate file without ingesting');
+    console.log('  report              Generate quality report');
+    console.log('  latest <lat> <lon>  Get latest measurements for location');
+    console.log('\nOptions:');
+    console.log('  --no-outliers      Keep outliers (default: remove)');
+    console.log('  --source <name>    Set source identifier');
+    process.exit(1);
+  }
+
+  const command = args[0];
+  const options: any = {};
+
+  // Parse options
+  for (let i = 1; i < args.length; i++) {
+    if (args[i] === '--no-outliers') {
+      options.removeOutliers = false;
+    } else if (args[i] === '--source' && i + 1 < args.length) {
+      options.source = args[i + 1];
+    }
+  }
+
+  try {
+    switch (command) {
+      case 'csv':
+        if (args.length < 2) {
+          console.error('Error: CSV file path required');
+          process.exit(1);
+        }
+        await this.ingestFromCSV(args[1], options);
+        break;
+        
+      case 'json':
+        if (args.length < 2) {
+          console.error('Error: JSON file path required');
+          process.exit(1);
+        }
+        await this.ingestFromJSON(args[1], options);
+        break;
+        
+      case 'validate':
+        if (args.length < 2) {
+          console.error('Error: File path required for validation');
+          process.exit(1);
+        }
+        const filePath = args[1];
+        if (filePath.endsWith('.csv')) {
+          await this.ingestFromCSV(filePath, { ...options, validateOnly: true });
+        } else if (filePath.endsWith('.json')) {
+          await this.ingestFromJSON(filePath, { ...options, validateOnly: true });
+        } else {
+          console.error('Error: Unsupported file format for validation');
+          process.exit(1);
+        }
+        break;
+        
+      case 'report':
+        await this.generateQualityReport();
+        break;
+        
+      case 'latest':
+        if (args.length < 3) {
+          console.error('Error: Latitude and longitude required');
+          process.exit(1);
+        }
+        const lat = parseFloat(args[1]);
+        const lon = parseFloat(args[2]);
+        const radius = args.includes('--radius') ? parseFloat(args[args.indexOf('--radius') + 1]) : 10;
+        const measurements = await this.getLatestMeasurements(lat, lon, radius);
+        
+        console.log(`\nLatest ${measurements.length} measurements for ${lat}, ${lon}:`);
+        measurements.forEach((m: any) => {
+          console.log(`${m.measured_at}: ${m.mpsas} SQM (Quality: ${m.quality_score})`);
+        });
+        break;
+        
+      default:
+        console.error(`Unknown command: ${command}`);
+        process.exit(1);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    process.exit(1);
+  }
+}
+
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
+  main();
+}
+
+export { RealTimeDataIngestion, DataQualityController, type LightMeasurement, type VIIRSData };
