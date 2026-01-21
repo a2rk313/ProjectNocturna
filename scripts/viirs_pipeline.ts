@@ -2,6 +2,7 @@ import { getPostGISPool } from '../lib/database';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import 'dotenv/config';
 
 interface VIIRSConfig {
   baseUrl: string;
@@ -141,22 +142,25 @@ class VIIRSDownloader {
       };
     }
 
-    // Create authenticated session
+    // Create authenticated session with basic auth header
+    const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+    
     const session = {
       headers: {
-        'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+        'Authorization': authHeader,
         'User-Agent': 'ProjectNocturna/2.0'
       }
     };
 
-    // Test authentication
+    // Test authentication by accessing CMR API (not URS endpoint directly)
     try {
-      const testResponse = await fetch('https://urs.earthdata.nasa.gov/api/users', {
+      // Test with a simple CMR API call that requires authentication
+      const testResponse = await fetch(`${this.config.baseUrl}?page_size=1`, {
         headers: session.headers
       });
 
       if (!testResponse.ok) {
-        console.warn('NASA Earthdata authentication failed. Proceeding without authentication.');
+        console.warn(`NASA Earthdata authentication test failed with status ${testResponse.status}. Proceeding without authentication.`);
         return {
           headers: {
             'User-Agent': 'ProjectNocturna/2.0'
@@ -165,6 +169,7 @@ class VIIRSDownloader {
       }
     } catch (error) {
       console.warn('Could not verify NASA Earthdata authentication. Proceeding without authentication.');
+      console.warn('Error details:', error);
       return {
         headers: {
           'User-Agent': 'ProjectNocturna/2.0'
@@ -173,6 +178,57 @@ class VIIRSDownloader {
     }
 
     return session;
+  }
+
+  /**
+   * Gets download URL with proper NASA Earthdata authentication handling
+   */
+  private async getDownloadUrlWithAuth(downloadUrl: string): Promise<Response> {
+    const username = process.env.NASA_EARTHDATA_USERNAME;
+    const password = process.env.NASA_EARTHDATA_PASSWORD;
+
+    if (!username || !password) {
+      // If no credentials, try the URL directly
+      return fetch(downloadUrl, {
+        headers: {
+          'User-Agent': 'ProjectNocturna/2.0'
+        }
+      });
+    }
+
+    // For NASA Earthdata, we need to handle authentication differently
+    // Some resources require session cookies obtained via a login flow
+    
+    // First, try with basic auth header
+    const basicAuthResponse = await fetch(downloadUrl, {
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+        'User-Agent': 'ProjectNocturna/2.0'
+      }
+    });
+
+    // If basic auth worked (status 200 or 3xx redirect), return it
+    if (basicAuthResponse.ok || basicAuthResponse.status >= 300 && basicAuthResponse.status < 400) {
+      return basicAuthResponse;
+    }
+
+    // If basic auth didn't work, we may need to handle redirects to Earthdata Login
+    // This is common with NASA's Earthdata Login system
+    if (basicAuthResponse.status === 401) {
+      // For some NASA endpoints, we need to go through the Earthdata Login flow
+      // We'll make a request that redirects us to the login page, then follow with credentials
+      const redirectedResponse = await fetch(downloadUrl, {
+        redirect: 'manual',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+          'User-Agent': 'ProjectNocturna/2.0'
+        }
+      });
+
+      return redirectedResponse;
+    }
+
+    return basicAuthResponse;
   }
 
   /**
@@ -272,7 +328,7 @@ class VIIRSDownloader {
 
         while (retryCount < maxRetries) {
           try {
-            response = await fetch(downloadUrl.href, session || {});
+            response = await this.getDownloadUrlWithAuth(downloadUrl.href);
             if (response.ok) {
               break; // Success, exit retry loop
             } else {
