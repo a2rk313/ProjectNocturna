@@ -1,7 +1,9 @@
 import { getPostGISPool } from '../lib/database';
+import { nasaAuth } from '../lib/nasa_auth';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import 'dotenv/config';
 
 interface VIIRSConfig {
   baseUrl: string;
@@ -116,8 +118,11 @@ class VIIRSDownloader {
   private createPlaceholderGeoTIFF(metadata: VIIRSMetadata): Buffer {
     // This creates a minimal valid GeoTIFF placeholder
     // Real implementation would download actual NASA data
-    const header = Buffer.alloc(1024); // Minimal GeoTIFF header
-    return header;
+    // A valid 1x1 pixel 8-bit GeoTIFF (Black)
+    const minimalTiffHex =
+        "49492a00080000000300000103000100000001000000010103000100000001000000" +
+        "1701030001000000010000002600000000000000";
+    return Buffer.from(minimalTiffHex, "hex");
   }
 
   /**
@@ -170,6 +175,7 @@ class VIIRSDownloader {
       return { headers: { 'User-Agent': 'ProjectNocturna/2.0' } };
     }
   }
+  
 
   /**
    * Gets available VIIRS data from NASA CMR (Common Metadata Repository)
@@ -196,14 +202,11 @@ class VIIRSDownloader {
     const cmrUrl = `${this.config.baseUrl}?${params}`;
     console.log(`Searching CMR: ${cmrUrl}`);
 
-    // Create authenticated session for NASA Earthdata
-    const session = await this.createEarthdataSession();
-
-    const response = await fetch(cmrUrl, {
+    // Use the new NASA authentication utility
+    const response = await nasaAuth.fetchWithAuth(cmrUrl, {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'ProjectNocturna/2.0',
-        ...session?.headers
+        'User-Agent': 'ProjectNocturna/2.0'
       }
     });
 
@@ -239,9 +242,6 @@ class VIIRSDownloader {
 
     console.log(`Found ${granules.length} granules for ${productId} in ${year}${month ? `/${month}` : ''}`);
 
-    // Create authenticated session
-    const session = await this.createEarthdataSession();
-
     for (const granule of granules) {
       const urls = granule.links || [];
       const downloadUrl = urls.find((link: any) =>
@@ -261,16 +261,53 @@ class VIIRSDownloader {
       console.log(`Downloading ${filename}...`);
 
       try {
-        // Add retry logic for downloads
-        let response;
+        // Add retry logic for downloads using the new NASA auth utility
+        let success = false;
         let retryCount = 0;
         const maxRetries = 3;
 
-        while (retryCount < maxRetries) {
+        while (!success && retryCount < maxRetries) {
           try {
-            response = await fetch(downloadUrl.href, session || {});
+            const response = await nasaAuth.fetchWithAuth(downloadUrl.href);
+            
             if (response.ok) {
-              break; // Success, exit retry loop
+              const buffer = await response.arrayBuffer();
+
+              // Validate file integrity after download
+              const expectedSize = parseInt(response.headers.get('content-length') || '0');
+              if (expectedSize > 0 && buffer.byteLength !== expectedSize) {
+                console.warn(`File size mismatch for ${filename}: expected ${expectedSize}, got ${buffer.byteLength}`);
+              }
+
+              fs.writeFileSync(filepath, Buffer.from(buffer));
+
+              // Create metadata
+              const metadata: VIIRSMetadata = {
+                product: productId,
+                year,
+                month,
+                date: granule.time_start ? granule.time_start.substring(0, 10) : undefined,
+                satellite: granule.platform || 'Suomi-NPP',
+                version: granule.version_id || 'v1.1',
+                processing_level: 'L3',
+                units: 'nW/cm²/sr',
+                pixel_size: '500m',
+                coordinate_system: 'EPSG:4326',
+                source_url: downloadUrl.href,
+                download_date: new Date().toISOString(),
+                file_size: buffer.byteLength,
+                checksum: this.calculateChecksum(Buffer.from(buffer))
+              };
+
+              // Write metadata
+              const metadataPath = filepath + '.metadata.json';
+              fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+
+              downloadedFiles.push(filepath);
+              downloadedFiles.push(metadataPath);
+
+              console.log(`Downloaded: ${filename} (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`);
+              success = true;
             } else {
               console.warn(`Download attempt ${retryCount + 1} failed for ${filename}: ${response.status} ${response.statusText}`);
               retryCount++;
@@ -287,7 +324,7 @@ class VIIRSDownloader {
           }
         }
 
-        if (!response || !response.ok) {
+        if (!success) {
           console.error(`Failed to download ${filename} after ${maxRetries} attempts`);
           // Create a placeholder file to track the failure
           const placeholderPath = filepath + '.failed';
@@ -300,43 +337,6 @@ class VIIRSDownloader {
           downloadedFiles.push(placeholderPath);
           continue;
         }
-
-        const buffer = await response.arrayBuffer();
-
-        // Validate file integrity after download
-        const expectedSize = parseInt(response.headers.get('content-length') || '0');
-        if (expectedSize > 0 && buffer.byteLength !== expectedSize) {
-          console.warn(`File size mismatch for ${filename}: expected ${expectedSize}, got ${buffer.byteLength}`);
-        }
-
-        fs.writeFileSync(filepath, Buffer.from(buffer));
-
-        // Create metadata
-        const metadata: VIIRSMetadata = {
-          product: productId,
-          year,
-          month,
-          date: granule.time_start ? granule.time_start.substring(0, 10) : undefined,
-          satellite: granule.platform || 'Suomi-NPP',
-          version: granule.version_id || 'v1.1',
-          processing_level: 'L3',
-          units: 'nW/cm²/sr',
-          pixel_size: '500m',
-          coordinate_system: 'EPSG:4326',
-          source_url: downloadUrl.href,
-          download_date: new Date().toISOString(),
-          file_size: buffer.byteLength,
-          checksum: this.calculateChecksum(Buffer.from(buffer))
-        };
-
-        // Write metadata
-        const metadataPath = filepath + '.metadata.json';
-        fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-
-        downloadedFiles.push(filepath);
-        downloadedFiles.push(metadataPath);
-
-        console.log(`Downloaded: ${filename} (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`);
       } catch (error) {
         console.error(`Error downloading ${filename}:`, error);
         // Create a placeholder file to track the failure
