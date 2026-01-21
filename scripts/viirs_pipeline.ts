@@ -1,4 +1,5 @@
 import { getPostGISPool } from '../lib/database';
+import { nasaAuth } from '../lib/nasa_auth';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
@@ -124,112 +125,7 @@ class VIIRSDownloader {
     return Buffer.from(minimalTiffHex, "hex");
   }
 
-  /**
-   * Creates a proper NASA Earthdata authenticated session
-   */
-  private async createEarthdataSession(): Promise<any> {
-    // NASA Earthdata requires authentication
-    const username = process.env.NASA_EARTHDATA_USERNAME;
-    const password = process.env.NASA_EARTHDATA_PASSWORD;
-
-    if (!username || !password) {
-      console.warn('NASA Earthdata credentials not found. Using public endpoint where available.');
-      // Return a session without auth for public datasets
-      return {
-        headers: {
-          'User-Agent': 'ProjectNocturna/2.0'
-        }
-      };
-    }
-
-    // Create authenticated session with basic auth header
-    const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
-    
-    const session = {
-      headers: {
-        'Authorization': authHeader,
-        'User-Agent': 'ProjectNocturna/2.0'
-      }
-    };
-
-    // Test authentication by accessing CMR API (not URS endpoint directly)
-    try {
-      // Test with a simple CMR API call that requires authentication
-      const testResponse = await fetch(`${this.config.baseUrl}?page_size=1`, {
-        headers: session.headers
-      });
-
-      if (!testResponse.ok) {
-        console.warn(`NASA Earthdata authentication test failed with status ${testResponse.status}. Proceeding without authentication.`);
-        return {
-          headers: {
-            'User-Agent': 'ProjectNocturna/2.0'
-          }
-        };
-      }
-    } catch (error) {
-      console.warn('Could not verify NASA Earthdata authentication. Proceeding without authentication.');
-      console.warn('Error details:', error);
-      return {
-        headers: {
-          'User-Agent': 'ProjectNocturna/2.0'
-        }
-      };
-    }
-
-    return session;
-  }
-
-  /**
-   * Gets download URL with proper NASA Earthdata authentication handling
-   */
-  private async getDownloadUrlWithAuth(downloadUrl: string): Promise<Response> {
-    const username = process.env.NASA_EARTHDATA_USERNAME;
-    const password = process.env.NASA_EARTHDATA_PASSWORD;
-
-    if (!username || !password) {
-      // If no credentials, try the URL directly
-      return fetch(downloadUrl, {
-        headers: {
-          'User-Agent': 'ProjectNocturna/2.0'
-        }
-      });
-    }
-
-    // For NASA Earthdata, we need to handle authentication differently
-    // Some resources require session cookies obtained via a login flow
-    
-    // First, try with basic auth header
-    const basicAuthResponse = await fetch(downloadUrl, {
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
-        'User-Agent': 'ProjectNocturna/2.0'
-      }
-    });
-
-    // If basic auth worked (status 200 or 3xx redirect), return it
-    if (basicAuthResponse.ok || basicAuthResponse.status >= 300 && basicAuthResponse.status < 400) {
-      return basicAuthResponse;
-    }
-
-    // If basic auth didn't work, we may need to handle redirects to Earthdata Login
-    // This is common with NASA's Earthdata Login system
-    if (basicAuthResponse.status === 401) {
-      // For some NASA endpoints, we need to go through the Earthdata Login flow
-      // We'll make a request that redirects us to the login page, then follow with credentials
-      const redirectedResponse = await fetch(downloadUrl, {
-        redirect: 'manual',
-        headers: {
-          'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
-          'User-Agent': 'ProjectNocturna/2.0'
-        }
-      });
-
-      return redirectedResponse;
-    }
-
-    return basicAuthResponse;
-  }
+  
 
   /**
    * Gets available VIIRS data from NASA CMR (Common Metadata Repository)
@@ -256,14 +152,11 @@ class VIIRSDownloader {
     const cmrUrl = `${this.config.baseUrl}?${params}`;
     console.log(`Searching CMR: ${cmrUrl}`);
 
-    // Create authenticated session for NASA Earthdata
-    const session = await this.createEarthdataSession();
-
-    const response = await fetch(cmrUrl, {
+    // Use the new NASA authentication utility
+    const response = await nasaAuth.fetchWithAuth(cmrUrl, {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'ProjectNocturna/2.0',
-        ...session?.headers
+        'User-Agent': 'ProjectNocturna/2.0'
       }
     });
 
@@ -299,9 +192,6 @@ class VIIRSDownloader {
 
     console.log(`Found ${granules.length} granules for ${productId} in ${year}${month ? `/${month}` : ''}`);
 
-    // Create authenticated session
-    const session = await this.createEarthdataSession();
-
     for (const granule of granules) {
       const urls = granule.links || [];
       const downloadUrl = urls.find((link: any) =>
@@ -321,16 +211,53 @@ class VIIRSDownloader {
       console.log(`Downloading ${filename}...`);
 
       try {
-        // Add retry logic for downloads
-        let response;
+        // Add retry logic for downloads using the new NASA auth utility
+        let success = false;
         let retryCount = 0;
         const maxRetries = 3;
 
-        while (retryCount < maxRetries) {
+        while (!success && retryCount < maxRetries) {
           try {
-            response = await this.getDownloadUrlWithAuth(downloadUrl.href);
+            const response = await nasaAuth.fetchWithAuth(downloadUrl.href);
+            
             if (response.ok) {
-              break; // Success, exit retry loop
+              const buffer = await response.arrayBuffer();
+
+              // Validate file integrity after download
+              const expectedSize = parseInt(response.headers.get('content-length') || '0');
+              if (expectedSize > 0 && buffer.byteLength !== expectedSize) {
+                console.warn(`File size mismatch for ${filename}: expected ${expectedSize}, got ${buffer.byteLength}`);
+              }
+
+              fs.writeFileSync(filepath, Buffer.from(buffer));
+
+              // Create metadata
+              const metadata: VIIRSMetadata = {
+                product: productId,
+                year,
+                month,
+                date: granule.time_start ? granule.time_start.substring(0, 10) : undefined,
+                satellite: granule.platform || 'Suomi-NPP',
+                version: granule.version_id || 'v1.1',
+                processing_level: 'L3',
+                units: 'nW/cm²/sr',
+                pixel_size: '500m',
+                coordinate_system: 'EPSG:4326',
+                source_url: downloadUrl.href,
+                download_date: new Date().toISOString(),
+                file_size: buffer.byteLength,
+                checksum: this.calculateChecksum(Buffer.from(buffer))
+              };
+
+              // Write metadata
+              const metadataPath = filepath + '.metadata.json';
+              fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+
+              downloadedFiles.push(filepath);
+              downloadedFiles.push(metadataPath);
+
+              console.log(`Downloaded: ${filename} (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`);
+              success = true;
             } else {
               console.warn(`Download attempt ${retryCount + 1} failed for ${filename}: ${response.status} ${response.statusText}`);
               retryCount++;
@@ -347,7 +274,7 @@ class VIIRSDownloader {
           }
         }
 
-        if (!response || !response.ok) {
+        if (!success) {
           console.error(`Failed to download ${filename} after ${maxRetries} attempts`);
           // Create a placeholder file to track the failure
           const placeholderPath = filepath + '.failed';
@@ -360,43 +287,6 @@ class VIIRSDownloader {
           downloadedFiles.push(placeholderPath);
           continue;
         }
-
-        const buffer = await response.arrayBuffer();
-
-        // Validate file integrity after download
-        const expectedSize = parseInt(response.headers.get('content-length') || '0');
-        if (expectedSize > 0 && buffer.byteLength !== expectedSize) {
-          console.warn(`File size mismatch for ${filename}: expected ${expectedSize}, got ${buffer.byteLength}`);
-        }
-
-        fs.writeFileSync(filepath, Buffer.from(buffer));
-
-        // Create metadata
-        const metadata: VIIRSMetadata = {
-          product: productId,
-          year,
-          month,
-          date: granule.time_start ? granule.time_start.substring(0, 10) : undefined,
-          satellite: granule.platform || 'Suomi-NPP',
-          version: granule.version_id || 'v1.1',
-          processing_level: 'L3',
-          units: 'nW/cm²/sr',
-          pixel_size: '500m',
-          coordinate_system: 'EPSG:4326',
-          source_url: downloadUrl.href,
-          download_date: new Date().toISOString(),
-          file_size: buffer.byteLength,
-          checksum: this.calculateChecksum(Buffer.from(buffer))
-        };
-
-        // Write metadata
-        const metadataPath = filepath + '.metadata.json';
-        fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-
-        downloadedFiles.push(filepath);
-        downloadedFiles.push(metadataPath);
-
-        console.log(`Downloaded: ${filename} (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`);
       } catch (error) {
         console.error(`Error downloading ${filename}:`, error);
         // Create a placeholder file to track the failure
