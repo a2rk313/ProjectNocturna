@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test-nasa-auth": "bun run scripts/test_nasa_auth.ts",
+    "setup-nasa-auth": "bun run scripts/setup_nasa_auth.ts",
+    "viirs-pipeline": "bun run scripts/viirs_pipeline.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
