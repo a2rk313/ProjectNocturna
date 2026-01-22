@@ -257,9 +257,88 @@ class CitizenMode {
         return R * c;
     }
 
-    showMoonPhase() {
-        const content = `<div class="text-center"><h1>🌑</h1><p>Phase: New Moon</p></div>`;
-        window.SystemBus.emit('ui:show_modal', { title: "Moon Phase", content: content });
+
+    async showMoonPhase() {
+        window.SystemBus.emit('system:message', "🌓 Calculating moon phase...");
+        
+        try {
+            // Calculate moon phase based on the current date
+            const today = new Date();
+            const moonData = await this.calculateMoonPhase(today);
+
+            const content = `
+                <div class="text-center">
+                    <h1>${moonData.emoji}</h1>
+                    <p>Phase: ${moonData.phaseName}</p>
+                    <p>Illumination: ${Math.round(moonData.illumination * 100)}%</p>
+                </div>
+            `;
+            window.SystemBus.emit('ui:show_modal', { title: "Moon Phase", content: content });
+        } catch (error) {
+            console.error('Error calculating moon phase:', error);
+            // Fallback to original static content on error
+            const content = `<div class="text-center"><h1>🌑</h1><p>Phase: New Moon</p></div>`;
+            window.SystemBus.emit('ui:show_modal', { title: "Moon Phase", content: content });
+        }
+    }
+
+    // Helper function to calculate moon phase
+    calculateMoonPhase(date) {
+        return new Promise((resolve) => {
+            try {
+                // Calculate days since known new moon (Jan 6, 2000)
+                const knownNewMoon = new Date('2000-01-06T18:14:00Z');
+                const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+                
+                // Synodic month is 29.53058867 days
+                const synodicMonth = 29.53058867;
+                const phase = Math.abs((diffDays % synodicMonth) / synodicMonth);
+                
+                // Calculate illumination (from 0 to 1)
+                const illumination = (1 - Math.cos(phase * 2 * Math.PI)) / 2;
+                
+                // Determine phase name and emoji based on the phase
+                let phaseName, emoji;
+                if (phase < 0.02 || phase > 0.98) {
+                    phaseName = "New Moon";
+                    emoji = "🌑";
+                } else if (phase < 0.23) {
+                    phaseName = "Waxing Crescent";
+                    emoji = "🌒";
+                } else if (phase < 0.27) {
+                    phaseName = "First Quarter";
+                    emoji = "🌓";
+                } else if (phase < 0.48) {
+                    phaseName = "Waxing Gibbous";
+                    emoji = "🌔";
+                } else if (phase < 0.52) {
+                    phaseName = "Full Moon";
+                    emoji = "🌕";
+                } else if (phase < 0.73) {
+                    phaseName = "Waning Gibbous";
+                    emoji = "🌖";
+                } else if (phase < 0.77) {
+                    phaseName = "Last Quarter";
+                    emoji = "🌗";
+                } else {
+                    phaseName = "Waning Crescent";
+                    emoji = "🌘";
+                }
+                
+                resolve({
+                    phaseName: phaseName,
+                    illumination: illumination,
+                    emoji: emoji
+                });
+            } catch (error) {
+                // On error, return new moon as default
+                resolve({
+                    phaseName: "New Moon",
+                    illumination: 0,
+                    emoji: "🌑"
+                });
+            }
+        });
     }
 }
 window.CitizenMode = CitizenMode;

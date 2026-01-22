@@ -109,7 +109,7 @@ class WebGIS {
         });
     }
 
-    updateUIForMode(mode) {
+updateUIForMode(mode) {
         const indicator = document.getElementById('modeIndicator');
         const labels = {
             title: document.getElementById('panelTitle'),
@@ -117,11 +117,22 @@ class WebGIS {
             botName: document.getElementById('assistantName')
         };
 
+        // Reset the dropMarker button to its default function (manual marker placement)
+        const dropBtn = document.getElementById('dropMarker');
+        if (dropBtn) {
+            // Remove existing event listeners by cloning the element
+            const newDropBtn = dropBtn.cloneNode(true);
+            dropBtn.parentNode.replaceChild(newDropBtn, dropBtn);
+            
+            // Rebind to default manual marker function
+            newDropBtn.addEventListener('click', () => this.startTool('marker'));
+        }
+
         if (mode === 'citizen') {
             if(indicator) { indicator.innerText = 'Citizen Mode'; indicator.className = 'badge bg-success ms-2 mode-badge'; }
             if(labels.title) labels.title.innerText = 'Stargazing Tools';
             if(labels.botName) labels.botName.innerText = 'Lumina';
-            if(labels.welcome) labels.welcome.innerText = 'Hello! I\'m Lumina. Ask me to "Find dark sky spots".';
+            if(labels.welcome) labels.welcome.innerText = 'Hello! I\'m Lumina. Ask me to "Find dark sky spots".'; 
             
             // UI Visibility - Show/hide separate toolbars
             document.getElementById('citizenToolbar').style.display = 'block';
@@ -136,6 +147,18 @@ class WebGIS {
             }
 
             new window.CitizenMode(this).initialize();
+        } else {
+            if(indicator) { indicator.innerText = 'Scientific Mode'; indicator.className = 'badge bg-warning ms-2 mode-badge'; }
+            if(labels.title) labels.title.innerText = 'Scientific Analysis';
+            if(labels.botName) labels.botName.innerText = 'Lumina Pro';
+            if(labels.welcome) labels.welcome.innerText = 'Scientific Mode active. Use draw tools to analyze areas.';
+
+            document.getElementById('citizenToolbar').style.display = 'none';
+            document.getElementById('scientificToolbar').style.display = 'block';
+
+            new window.ScientificMode(this).initialize();
+        }
+    }
         } else {
             if(indicator) { indicator.innerText = 'Scientific Mode'; indicator.className = 'badge bg-warning ms-2 mode-badge'; }
             if(labels.title) labels.title.innerText = 'Scientific Analysis';
@@ -173,6 +196,10 @@ class WebGIS {
             this.uiMarkers.clearLayers();
             window.SystemBus.emit('system:message', "🗑️ Selection cleared.");
         });
+        
+        // Plan Route functionality
+        const routeBtn = document.getElementById('planRoute');
+        if (routeBtn) routeBtn.addEventListener('click', () => this.planRoute());
         
         // Basemap switching functionality
         const basemapSwitcher = document.getElementById('basemapSwitcher');

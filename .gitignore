@@ -1,1 +1,3 @@
-Nothing should be ignored based on the provided file changes, as they only include markdown documentation files (.md) and a JavaScript source file (.js), which are all source/config files without any build artifacts, dependencies, or temporary files.
+```
+*.bak
+```
