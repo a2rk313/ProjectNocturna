@@ -64,7 +64,8 @@
         <div class="panel-header"><h6 id="panelTitle">Tools</h6></div>
         
         <div class="panel-body p-3">
-            <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 1: Define Target</h6>
+            <!-- Common Tools Section -->
+            <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Map Controls</h6>
             <div class="d-grid gap-2 mb-3">
                 <button class="btn btn-cosmic-info" id="drawPolygon">
                     <i class="fas fa-draw-polygon me-2"></i>Select Region
@@ -79,21 +80,27 @@
 
             <div class="panel-divider my-3"></div>
 
-            <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Step 2: Run Analysis</h6>
-            
-            <div id="citizenTools" class="d-grid gap-2">
-                <button class="btn btn-cosmic-success" id="astroForecast"><i class="fas fa-meteor me-2"></i>Astro Forecast</button>
-                <button class="btn btn-cosmic-primary" id="findObservatories"><i class="fas fa-landmark me-2"></i>Find Observatories</button>
-                <button class="btn btn-cosmic-primary" id="findDarkSky"><i class="fas fa-star me-2"></i>Dark Sky Parks</button>
-                <button class="btn btn-cosmic-info" id="moonPhase"><i class="fas fa-moon me-2"></i>Moon Phase</button>
-                <button class="btn btn-cosmic-info" id="weatherCheck"><i class="fas fa-cloud me-2"></i>Weather Check</button>
+            <!-- Citizen Mode Toolbar -->
+            <div id="citizenToolbar" class="mode-toolbar">
+                <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Citizen Tools</h6>
+                <div id="citizenTools" class="d-grid gap-2">
+                    <button class="btn btn-cosmic-success" id="astroForecast"><i class="fas fa-meteor me-2"></i>Astro Forecast</button>
+                    <button class="btn btn-cosmic-primary" id="findObservatories"><i class="fas fa-landmark me-2"></i>Find Observatories</button>
+                    <button class="btn btn-cosmic-primary" id="findDarkSky"><i class="fas fa-star me-2"></i>Dark Sky Parks</button>
+                    <button class="btn btn-cosmic-info" id="moonPhase"><i class="fas fa-moon me-2"></i>Moon Phase</button>
+                    <button class="btn btn-cosmic-info" id="weatherCheck"><i class="fas fa-cloud me-2"></i>Weather Check</button>
+                </div>
             </div>
             
-            <div id="scientificTools" class="d-grid gap-2" style="display: none;">
-                <button class="btn btn-cosmic-danger" id="energyCalc"><i class="fas fa-solar-panel me-2"></i>Energy Estimator</button>
-                <button class="btn btn-cosmic-warning" id="timeSeries"><i class="fas fa-chart-line me-2"></i>Time Series</button>
-                <button class="btn btn-cosmic-warning" id="statisticalAnalysis"><i class="fas fa-calculator me-2"></i>Stats</button>
-                <button class="btn btn-cosmic-info" id="dataExport"><i class="fas fa-file-export me-2"></i>Export</button>
+            <!-- Scientific Mode Toolbar -->
+            <div id="scientificToolbar" class="mode-toolbar" style="display: none;">
+                <h6 class="text-light opacity-50 mb-2" style="font-size: 0.75rem; text-transform: uppercase;">Scientific Tools</h6>
+                <div id="scientificTools" class="d-grid gap-2">
+                    <button class="btn btn-cosmic-danger" id="energyCalc"><i class="fas fa-solar-panel me-2"></i>Energy Estimator</button>
+                    <button class="btn btn-cosmic-warning" id="timeSeries"><i class="fas fa-chart-line me-2"></i>Time Series</button>
+                    <button class="btn btn-cosmic-warning" id="statisticalAnalysis"><i class="fas fa-calculator me-2"></i>Stats</button>
+                    <button class="btn btn-cosmic-info" id="dataExport"><i class="fas fa-file-export me-2"></i>Export</button>
+                </div>
             </div>
             
             <div class="panel-divider my-3"></div>
