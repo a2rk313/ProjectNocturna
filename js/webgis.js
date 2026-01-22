@@ -5,13 +5,13 @@ class WebGIS {
         this.currentMode = 'citizen'; 
         this.drawnItems = new L.FeatureGroup();
         this.uiMarkers = L.layerGroup();
-        this.stationsLayer = L.layerGroup();
-        this.viirsLayer = null;  // Added VIIRS layer
+        
+        // Layers
+        this.stationsLayer = L.markerClusterGroup({ disableClusteringAtZoom: 16 }); // Keep for detailed interaction
+        this.geoServerLayer = null; // New WMS Layer
+        this.viirsLayer = null;
+        
         this.drawControl = null;
-
-        if (typeof L.markerClusterGroup === 'function') {
-            this.stationsLayer = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
-        }
 
         this.initMap();
         this.initUIListeners(); 
@@ -24,11 +24,21 @@ class WebGIS {
 
         this.baseLayers = {
             osm: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap, CARTO' }),
-            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' })
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/ {z}/{y}/{x}', { attribution: '© Esri' })
         };
         this.baseLayers.osm.addTo(this.map);
 
-        // Add VIIRS layer initially
+        // --- STRATEGY FIX: Initialize GeoServer WMS Layer ---
+        // This consumes the data stored in PostGIS via GeoServer
+        this.geoServerLayer = L.tileLayer.wms(this.dataManager.getGeoServerURL(), {
+            layers: 'nocturna:measurements', // Ensure this layer is published in GeoServer
+            format: 'image/png',
+            transparent: true,
+            version: '1.1.0',
+            attribution: 'Local PostGIS/GeoServer'
+        });
+
+        // Add VIIRS layer (NASA)
         this.viirsLayer = L.tileLayer(this.dataManager.getVIIRSTileUrl(), {
             attribution: 'NASA Earth Observatory',
             opacity: 0.7,
@@ -38,7 +48,9 @@ class WebGIS {
 
         this.map.addLayer(this.drawnItems);
         this.map.addLayer(this.uiMarkers);
-        this.map.addLayer(this.stationsLayer);
+        
+        // Add GeoServer layer by default to prove connectivity
+        this.map.addLayer(this.geoServerLayer);
 
         this.map.on(L.Draw.Event.CREATED, (e) => {
             this.drawnItems.clearLayers(); 
@@ -48,8 +60,8 @@ class WebGIS {
             window.SystemBus.emit('system:message', `✅ ${type} selected.`);
         });
 
-        this.initStationsLayer();
-        this.initDataLayersControls();  // Initialize data layer controls
+        this.initStationsLayer(); // Fetches interactive markers for top-layer
+        this.initDataLayersControls(); 
     }
 
     getSelection() {
@@ -145,7 +157,7 @@ class WebGIS {
 
         const dataBtn = document.getElementById('dataSources');
         if (dataBtn) dataBtn.addEventListener('click', () => {
-             const content = `<div class="text-start"><h6>Data Sources</h6><ul><li>GaN2024 Database</li><li>NASA VIIRS (2012)</li><li>Open-Meteo API</li></ul></div>`;
+             const content = `<div class="text-start"><h6>Data Sources</h6><ul><li>GaN2024 Database (PostGIS)</li><li>NASA VIIRS (2012)</li><li>Open-Meteo API</li></ul></div>`;
             window.SystemBus.emit('ui:show_modal', { title: "📚 Data Sources", content: content });
         });
 
@@ -217,81 +229,60 @@ class WebGIS {
     }
 
     async initStationsLayer() {
+        // Keep fetching JSON for interaction (Popups), but use GeoServer for visual density
         try {
             const stations = await this.dataManager.fetchStations();
-            const markers = stations.map(s => L.circleMarker([s.lat, s.lng], { radius: 5, fillColor: '#00ff00', color: '#fff', weight: 1, fillOpacity: 0.8 }).bindPopup(`<b>SQM:</b> ${s.sqm}`));
+            // We can make these markers invisible or smaller since GeoServer handles the main view
+            const markers = stations.map(s => L.circleMarker([s.lat, s.lng], { radius: 4, fillColor: '#00ff00', color: '#fff', weight: 1, fillOpacity: 0.0 }).bindPopup(`<b>SQM:</b> ${s.sqm}`));
             this.stationsLayer.addLayers(markers);
         } catch(e) {}
     }
     
     initDataLayersControls() {
-        // Handle VIIRS layer checkbox
         const viirsCheckbox = document.getElementById('viirsLayer');
         if (viirsCheckbox) {
-            viirsCheckbox.checked = true;  // Default to visible
+            viirsCheckbox.checked = true;
             viirsCheckbox.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    this.map.addLayer(this.viirsLayer);
-                } else {
-                    this.map.removeLayer(this.viirsLayer);
-                }
+                if (e.target.checked) this.map.addLayer(this.viirsLayer);
+                else this.map.removeLayer(this.viirsLayer);
             });
         }
         
-        // Handle ground measurements layer checkbox
+        // --- STRATEGY FIX: Controls toggle GeoServer WMS now ---
         const groundCheckbox = document.getElementById('groundMeasurements');
         if (groundCheckbox) {
-            groundCheckbox.checked = true;  // Default to visible
+            groundCheckbox.checked = true;
             groundCheckbox.addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    this.map.addLayer(this.stationsLayer);
+                    this.map.addLayer(this.geoServerLayer); // Add WMS
+                    this.map.addLayer(this.stationsLayer);  // Add Interactive Overlay
                 } else {
+                    this.map.removeLayer(this.geoServerLayer);
                     this.map.removeLayer(this.stationsLayer);
                 }
             });
         }
         
-        // Handle dark sky parks layer checkbox
         const darkSkyCheckbox = document.getElementById('darkSkyParks');
         if (darkSkyCheckbox) {
-            darkSkyCheckbox.checked = true;  // Default to visible
+            darkSkyCheckbox.checked = true;
             darkSkyCheckbox.addEventListener('change', async (e) => {
                 if (e.target.checked) {
-                    // Load dark sky parks data and display on map
                     try {
                         const response = await fetch('./data/dark-sky-parks.json');
                         const data = await response.json();
+                        if (!this.darkSkyLayer) this.darkSkyLayer = L.layerGroup();
                         
-                        // Create a layer for dark sky parks
-                        if (!this.darkSkyLayer) {
-                            this.darkSkyLayer = L.layerGroup();
-                        }
-                        
-                        // Add each park as a circle marker
                         data.parks.forEach(park => {
                             const marker = L.circleMarker([park.lat, park.lng], {
-                                radius: 8,
-                                fillColor: '#FFD700',
-                                color: '#FFA500',
-                                weight: 2,
-                                opacity: 1,
-                                fillOpacity: 0.7
+                                radius: 8, fillColor: '#FFD700', color: '#FFA500', weight: 2, opacity: 1, fillOpacity: 0.7
                             }).bindPopup(`<b>${park.name}</b><br>${park.type}<br>${park.country}`);
-                            
                             this.darkSkyLayer.addLayer(marker);
                         });
-                        
                         this.map.addLayer(this.darkSkyLayer);
-                        console.log('Dark sky parks layer enabled');
-                    } catch (error) {
-                        console.error('Error loading dark sky parks:', error);
-                    }
+                    } catch (error) { console.error('Error loading dark sky parks:', error); }
                 } else {
-                    // Remove the dark sky parks layer
-                    if (this.darkSkyLayer) {
-                        this.map.removeLayer(this.darkSkyLayer);
-                        console.log('Dark sky parks layer disabled');
-                    }
+                    if (this.darkSkyLayer) this.map.removeLayer(this.darkSkyLayer);
                 }
             });
         }
