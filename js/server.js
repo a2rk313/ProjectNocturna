@@ -7,6 +7,7 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const path = require('path');
 const axios = require('axios');
+const { processVIIRSData } = require('./viirs-processor');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,7 +17,7 @@ const corsOptions = {
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
         const allowedOrigins = [process.env.ALLOWED_ORIGIN || 'http://localhost:8081', 'http://localhost:3000', 'http://127.0.0.1:3000'];
-        if (allowedOrigins.indexOf(origin) !== -1 || true) { 
+        if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -50,7 +51,8 @@ function getMoonIllumination(date) {
     const synodic = 29.53058867; 
     const knownNewMoon = new Date('2000-01-06T18:14:00Z');
     const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
-    const phase = Math.abs((diffDays % synodic) / synodic);
+    // Ensure positive modulo for correct phase calculation
+    const phase = ((diffDays % synodic) + synodic) % synodic / synodic;
     const angle = phase * 2 * Math.PI;
     return (1 - Math.cos(angle)) / 2;
 }
@@ -60,8 +62,8 @@ function parseCloudCover(text) {
     const t = text.toLowerCase();
     if (t.includes('clear')) return 0;
     if (t.includes('1/4')) return 25;
-    if (t.includes('1/2')) return 50;
     if (t.includes('over 1/2')) return 75;
+    if (t.includes('1/2')) return 50;
     return 10; 
 }
 
@@ -208,56 +210,7 @@ app.get('/api/proxy/weather', async (req, res) => {
 // --- VIIRS DATA PROCESSING ---
 
 // Function to fetch VIIRS data from NASA Earthdata API or local files
-async function loadVIIRSData() {
-    console.log("🌌 Loading VIIRS Nighttime Lights Data...");
-    try {
-        // Check if VIIRS data already exists
-        const count = await pool.query('SELECT COUNT(*) FROM viirs_data');
-        if (parseInt(count.rows[0].count) > 0) {
-            console.log("✅ VIIRS data already loaded. Skipping.");
-            return;
-        }
-
-        console.log("🔄 Downloading VIIRS data...");
-        
-        // In a real implementation, we would download from NASA Earthdata API
-        // For now, we'll create some sample data to demonstrate the functionality
-        // In a production environment, you would want to download actual VIIRS tiles
-        
-        // Sample data generation for demonstration purposes
-        const sampleAreas = [
-            { lat: 40.7128, lng: -74.0060, radiance: 50.0 },  // NYC
-            { lat: 34.0522, lng: -118.2437, radiance: 45.0 }, // LA
-            { lat: 41.8781, lng: -87.6298, radiance: 40.0 }, // Chicago
-            { lat: 29.7604, lng: -95.3698, radiance: 35.0 }, // Houston
-            { lat: 39.9526, lng: -75.1652, radiance: 30.0 }, // Philadelphia
-            { lat: 38.9072, lng: -77.0369, radiance: 35.0 }, // Washington DC
-            { lat: 36.1699, lng: -115.1398, radiance: 55.0 }, // Las Vegas
-            { lat: 25.7617, lng: -80.1918, radiance: 25.0 }, // Miami
-            { lat: 47.6062, lng: -122.3321, radiance: 20.0 }, // Seattle
-            { lat: 37.7749, lng: -122.4194, radiance: 25.0 }  // San Francisco
-        ];
-
-        for (const area of sampleAreas) {
-            // Create a small polygon around each point (0.1 degree = ~11km square)
-            const lat = area.lat;
-            const lng = area.lng;
-            const delta = 0.05; // Half the size of the square
-            
-            const polygonWKT = `POLYGON((${lng-delta} ${lat-delta}, ${lng+delta} ${lat-delta}, ${lng+delta} ${lat+delta}, ${lng-delta} ${lat+delta}, ${lng-delta} ${lat-delta}))`;
-            
-            await pool.query(
-                `INSERT INTO viirs_data (geom, radiance_avg, acquisition_date, source_file) 
-                 VALUES (ST_GeomFromText($1, 4326), $2, $3, $4)`,
-                [polygonWKT, area.radiance, '2023-01-01', 'sample_vnir_tiles']
-            );
-        }
-        
-        console.log(`✅ Loaded ${sampleAreas.length} VIIRS sample areas.`);
-    } catch (e) {
-        console.error("❌ VIIRS loading failed:", e);
-    }
-}
+// Now handled by viirs-processor.js
 
 // API endpoint to get VIIRS data for a specific area
 app.get('/api/viirs-data', async (req, res) => {
@@ -371,8 +324,12 @@ async function seedDatabase() {
 
 app.post('/api/seed-db', async (req, res) => { await seedDatabase(); res.json({status: 'done'}); });
 
-app.listen(port, () => {
-    console.log(`🚀 Server running on port ${port}`);
-    seedDatabase();
-    loadVIIRSData();  // Load VIIRS data after seeding
-});
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`🚀 Server running on port ${port}`);
+        seedDatabase();
+        processVIIRSData();  // Load VIIRS data after seeding
+    });
+}
+
+module.exports = { seedDatabase, getMoonIllumination, parseCloudCover, app };

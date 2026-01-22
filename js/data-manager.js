@@ -27,14 +27,16 @@ class DataManager {
 
     /**
      * Constructs the GeoServer WMS URL dynamically based on the current host.
-     * Assumes GeoServer is running on port 8080.
+     * Uses configuration from API_CONFIG or defaults to port 8080.
      */
     getGeoServerURL() {
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
+        const conf = (window.API_CONFIG && window.API_CONFIG.GEOSERVER) ? window.API_CONFIG.GEOSERVER : { port: 8080, path: '/geoserver/nocturna/wms' };
+
         // If behind a reverse proxy (like Nginx), this might need adjustment to just '/geoserver/...'
         // For this Docker setup, direct port access is used:
-        return `${protocol}//${hostname}:8080/geoserver/nocturna/wms`;
+        return `${protocol}//${hostname}:${conf.port}${conf.path}`;
     }
 
     /**

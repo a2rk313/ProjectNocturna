@@ -25,6 +25,12 @@ const API_CONFIG = {
     GROUND_MEASUREMENTS: {
         jsonUrl: './data/ground-measurements.json',
         mockData: false // <--- Enabled real data
+    },
+
+    // GeoServer Configuration
+    GEOSERVER: {
+        port: 8080,
+        path: '/geoserver/nocturna/wms'
     }
 };
 
