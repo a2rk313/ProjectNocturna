@@ -111,9 +111,9 @@ class WebGIS {
             if(labels.botName) labels.botName.innerText = 'Lumina';
             if(labels.welcome) labels.welcome.innerText = 'Hello! I\'m Lumina. Ask me to "Find dark sky spots".';
             
-            // UI Visibility
-            document.getElementById('citizenTools').style.display = 'grid';
-            document.getElementById('scientificTools').style.display = 'none';
+            // UI Visibility - Show/hide separate toolbars
+            document.getElementById('citizenToolbar').style.display = 'block';
+            document.getElementById('scientificToolbar').style.display = 'none';
             
             // --- CLEANUP: Remove Research Toggle when leaving Scientific Mode ---
             const toggle = document.getElementById('researchToggle');
@@ -130,8 +130,8 @@ class WebGIS {
             if(labels.botName) labels.botName.innerText = 'Lumina Pro';
             if(labels.welcome) labels.welcome.innerText = 'Scientific Mode active. Use draw tools to analyze areas.';
 
-            document.getElementById('citizenTools').style.display = 'none';
-            document.getElementById('scientificTools').style.display = 'grid';
+            document.getElementById('citizenToolbar').style.display = 'none';
+            document.getElementById('scientificToolbar').style.display = 'block';
 
             new window.ScientificMode(this).initialize();
         }
