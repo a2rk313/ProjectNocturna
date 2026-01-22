@@ -177,18 +177,6 @@
     <script src="./js/scientific-mode.js"></script>
     <script src="./js/webgis.js"></script>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const basemapDropdown = document.getElementById('basemapDropdown');
-            const basemapSwitcher = document.getElementById('basemapSwitcher');
-            
-            document.addEventListener('click', function(e) {
-                // Only hide the dropdown if the click is outside both the switcher and the dropdown
-                if (basemapDropdown && !basemapSwitcher.contains(e.target) && !basemapDropdown.contains(e.target)) {
-                    basemapDropdown.classList.remove('show');
-                }
-            });
-        });
-    </script>
+
 </body>
 </html>
