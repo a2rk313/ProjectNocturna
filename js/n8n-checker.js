@@ -1,20 +1,13 @@
 // js/n8n-checker.js
 class N8NChecker {
     static async checkServer() {
+        // Use the server-side proxy instead of direct client connection
         try {
-            const response = await fetch('http://localhost:5678/healthz');
-            return response.ok;
+            const response = await fetch('/api/system/n8n-status');
+            const data = await response.json();
+            return data.online;
         } catch {
-            try {
-                const response = await fetch('http://localhost:5678/webhook/test', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ test: true })
-                });
-                return response.ok;
-            } catch {
-                return false;
-            }
+            return false;
         }
     }
     

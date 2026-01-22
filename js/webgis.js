@@ -28,6 +28,15 @@ class WebGIS {
         };
         this.baseLayers.osm.addTo(this.map);
 
+        // Initialize GeoServer WMS Layer
+        this.geoServerLayer = L.tileLayer.wms(this.dataManager.getGeoServerURL(), {
+            layers: 'nocturna:measurements',
+            format: 'image/png',
+            transparent: true,
+            version: '1.1.0',
+            attribution: 'Local PostGIS/GeoServer'
+        });
+
         // Add VIIRS layer initially
         this.viirsLayer = L.tileLayer(this.dataManager.getVIIRSTileUrl(), {
             attribution: 'NASA Earth Observatory',
@@ -38,6 +47,10 @@ class WebGIS {
 
         this.map.addLayer(this.drawnItems);
         this.map.addLayer(this.uiMarkers);
+
+        // Add GeoServer layer by default
+        this.map.addLayer(this.geoServerLayer);
+        // We still keep stationsLayer available for interaction if needed, but visually GeoServer takes over for density
         this.map.addLayer(this.stationsLayer);
 
         this.map.on(L.Draw.Event.CREATED, (e) => {
@@ -162,6 +175,22 @@ class WebGIS {
             window.SystemBus.emit('system:message', "🗑️ Selection cleared.");
         });
         
+        // Fix: Connect Route Planning
+        const routeBtn = document.getElementById('planRoute');
+        if(routeBtn) routeBtn.addEventListener('click', () => {
+             // For now, use a simple prompt-based approach as Leaflet Routing Machine
+             // integration requires more complex UI. Or just alert not implemented.
+             // Given the constraints, let's wire it to a modal input.
+             const content = `
+                <div class="p-2">
+                    <input type="text" id="routeStart" class="form-control mb-2" placeholder="Start (e.g. New York)">
+                    <input type="text" id="routeEnd" class="form-control mb-2" placeholder="End (e.g. Boston)">
+                    <button class="btn btn-primary w-100" onclick="webGIS.calculateRoute()">Go</button>
+                </div>
+             `;
+             window.SystemBus.emit('ui:show_modal', { title: "Plan Route", content: content });
+        });
+
         // Basemap switching functionality
         const basemapSwitcher = document.getElementById('basemapSwitcher');
         const basemapDropdown = document.getElementById('basemapDropdown');
@@ -219,7 +248,9 @@ class WebGIS {
     async initStationsLayer() {
         try {
             const stations = await this.dataManager.fetchStations();
-            const markers = stations.map(s => L.circleMarker([s.lat, s.lng], { radius: 5, fillColor: '#00ff00', color: '#fff', weight: 1, fillOpacity: 0.8 }).bindPopup(`<b>SQM:</b> ${s.sqm}`));
+            // Make markers invisible/small as GeoServer handles main visualization
+            // They are kept for popup interaction
+            const markers = stations.map(s => L.circleMarker([s.lat, s.lng], { radius: 4, fillColor: '#00ff00', color: '#fff', weight: 1, fillOpacity: 0.0 }).bindPopup(`<b>SQM:</b> ${s.sqm}`));
             this.stationsLayer.addLayers(markers);
         } catch(e) {}
     }
@@ -238,14 +269,16 @@ class WebGIS {
             });
         }
         
-        // Handle ground measurements layer checkbox
+        // Handle ground measurements layer checkbox (Toggles both WMS and Interactive layer)
         const groundCheckbox = document.getElementById('groundMeasurements');
         if (groundCheckbox) {
             groundCheckbox.checked = true;  // Default to visible
             groundCheckbox.addEventListener('change', (e) => {
                 if (e.target.checked) {
+                    if (this.geoServerLayer) this.map.addLayer(this.geoServerLayer);
                     this.map.addLayer(this.stationsLayer);
                 } else {
+                    if (this.geoServerLayer) this.map.removeLayer(this.geoServerLayer);
                     this.map.removeLayer(this.stationsLayer);
                 }
             });
@@ -406,23 +439,47 @@ class WebGIS {
      * Simple geocoding function to convert location names to coordinates
      */
     async geocodeLocation(locationName) {
-        // In a real implementation, this would call a geocoding service
-        // For now, we'll use a few hardcoded locations for demo purposes
+        try {
+            const query = encodeURIComponent(locationName);
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                return {
+                    lat: parseFloat(data[0].lat),
+                    lng: parseFloat(data[0].lon)
+                };
+            }
+        } catch (e) {
+            console.error("Geocoding failed:", e);
+        }
+
+        // Fallback for hardcoded locations if API fails
         const locations = {
             'new york': { lat: 40.7128, lng: -74.0060 },
             'london': { lat: 51.5074, lng: -0.1278 },
-            'tokyo': { lat: 35.6762, lng: 139.6503 },
-            'sydney': { lat: -33.8688, lng: 151.2093 },
-            'paris': { lat: 48.8566, lng: 2.3522 },
-            'berlin': { lat: 52.5200, lng: 13.4050 },
-            'rome': { lat: 41.9028, lng: 12.4964 },
-            'madrid': { lat: 40.4168, lng: -3.7038 },
-            'amsterdam': { lat: 52.3676, lng: 4.9041 },
-            'vienna': { lat: 48.2082, lng: 16.3738 }
+            'tokyo': { lat: 35.6762, lng: 139.6503 }
         };
-        
         const normalized = locationName.toLowerCase().trim();
-        return locations[normalized] || { lat: 0, lng: 0 }; // Default to 0,0 if not found
+        return locations[normalized] || { lat: 0, lng: 0 };
+    }
+
+    // Helper for simple routing
+    async calculateRoute() {
+        const start = document.getElementById('routeStart').value;
+        const end = document.getElementById('routeEnd').value;
+        if (!start || !end) return;
+
+        const s = await this.geocodeLocation(start);
+        const e = await this.geocodeLocation(end);
+
+        if (s.lat && e.lat) {
+             const polyline = L.polyline([[s.lat, s.lng], [e.lat, e.lng]], {color: 'red'}).addTo(this.map);
+             this.map.fitBounds(polyline.getBounds());
+             window.SystemBus.emit('system:message', "✅ Route planned (Straight Line).");
+        } else {
+             window.SystemBus.emit('system:message', "❌ Could not find locations.");
+        }
     }
 
     initEventBusListeners() {

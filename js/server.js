@@ -32,6 +32,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 // --- DATABASE CONNECTION ---
+if (!process.env.DB_PASSWORD && process.env.NODE_ENV === 'production') {
+    console.error("❌ Fatal Error: DB_PASSWORD is not set in production environment.");
+    process.exit(1);
+}
+
 const pool = new Pool({
     user: process.env.DB_USER || 'postgres',
     host: process.env.DB_HOST || 'localhost',
@@ -150,7 +155,9 @@ app.get('/api/history', async (req, res) => {
 app.post('/api/analyze-energy', async (req, res) => {
     try {
         const { geometry } = req.body;
-        if (!geometry) return res.status(400).json({ error: "Missing geometry" });
+        if (!geometry || !geometry.type || !geometry.coordinates) {
+             return res.status(400).json({ error: "Invalid geometry" });
+        }
         
         // Get average brightness and real area size
         const query = `
@@ -162,8 +169,20 @@ app.post('/api/analyze-energy', async (req, res) => {
         `;
         const result = await safeQuery(query, [JSON.stringify(geometry)]);
         
-        const avgSQM = result.rows[0].avg_sqm || 20.0;
-        const areaM2 = result.rows[0].area_sqm || 1000000; // Default 1 sq km if empty
+        // If no data found, return null or appropriate message instead of misleading default
+        if (result.rows.length === 0 || result.rows[0].avg_sqm === null) {
+             return res.json({
+                sqm: "N/A",
+                luminance: 0,
+                annual_kwh: 0,
+                annual_cost: 0,
+                area_km2: (result.rows[0]?.area_sqm || 0) / 1000000,
+                message: "No measurement data available for this region."
+             });
+        }
+
+        const avgSQM = result.rows[0].avg_sqm;
+        const areaM2 = result.rows[0].area_sqm || 0;
 
         // PHYSICS FORMULA: SQM (mag/arcsec²) -> Luminance (cd/m²)
         // L = 10.8e4 * 10^(-0.4 * SQM)
@@ -193,9 +212,23 @@ app.post('/api/analyze-energy', async (req, res) => {
 // Proxy Endpoints
 app.post('/api/proxy/overpass', async (req, res) => {
     try {
-        const response = await axios.post('https://overpass-api.de/api/interpreter', `data=${req.body.query}`);
+        const query = req.body.query;
+        if (!query || typeof query !== 'string' || !query.includes('[out:json]')) {
+            return res.status(400).json({ error: "Invalid Overpass query" });
+        }
+        const response = await axios.post('https://overpass-api.de/api/interpreter', `data=${query}`);
         res.json(response.data);
     } catch (e) { res.status(500).json({ error: "Overpass failed" }); }
+});
+
+app.get('/api/system/n8n-status', async (req, res) => {
+    try {
+        const n8nUrl = process.env.N8N_URL || 'http://localhost:5678';
+        const response = await axios.get(`${n8nUrl}/healthz`, { timeout: 2000 });
+        res.json({ online: response.status === 200 });
+    } catch (e) {
+        res.json({ online: false });
+    }
 });
 
 app.get('/api/proxy/weather', async (req, res) => {

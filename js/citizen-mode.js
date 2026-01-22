@@ -25,15 +25,14 @@ class CitizenMode {
         bind('moonPhase', () => this.showMoonPhase());
         bind('weatherCheck', () => this.astroForecast());
         
-        // This initiates GPS, which now creates a valid "Selection"
-        bind('dropMarker', () => {
-             // We can trigger the Manual Marker tool OR GPS here. 
-             // Based on your UI, "Pick Location" usually implies manual.
-             // I will leave 'Pick Location' to WebGIS manual tool (handled in WebGIS)
-             // and make this button trigger GPS if you prefer, OR add a dedicated GPS button.
-             // For now, let's map it to GPS as requested previously.
-             this.locateUser();
-        });
+        // Fix: Do NOT override 'dropMarker' (Pick Location) with GPS.
+        // Let WebGIS handle manual marker placement.
+        // We will add a dedicated GPS button if needed, or rely on user action.
+
+        // If we want to add a specific GPS button in the future, we can do it here.
+        // For now, we restore the default behavior for 'dropMarker' by NOT rebinding it here,
+        // or by explicitly binding it back to the tool start if we wanted to be sure.
+        // But since we use replaceChild in 'bind', we just skip it to avoid the conflict.
     }
 
     async locateUser() {
@@ -251,7 +250,26 @@ class CitizenMode {
     }
 
     showMoonPhase() {
-        const content = `<div class="text-center"><h1>🌑</h1><p>Phase: New Moon</p></div>`;
+        // Simple calculation or use fixed for now, but acknowledge it's dynamic
+        const now = new Date();
+        const synodic = 29.53058867;
+        const knownNewMoon = new Date('2000-01-06T18:14:00Z');
+        const diffDays = (now - knownNewMoon) / (1000 * 60 * 60 * 24);
+        const age = ((diffDays % synodic) + synodic) % synodic;
+
+        let phaseName = "New Moon";
+        let icon = "🌑";
+
+        if (age < 1.84566) { phaseName = "New Moon"; icon = "🌑"; }
+        else if (age < 5.53699) { phaseName = "Waxing Crescent"; icon = "🌒"; }
+        else if (age < 9.22831) { phaseName = "First Quarter"; icon = "🌓"; }
+        else if (age < 12.91963) { phaseName = "Waxing Gibbous"; icon = "🌔"; }
+        else if (age < 16.61096) { phaseName = "Full Moon"; icon = "🌕"; }
+        else if (age < 20.30228) { phaseName = "Waning Gibbous"; icon = "🌖"; }
+        else if (age < 23.99361) { phaseName = "Last Quarter"; icon = "🌗"; }
+        else { phaseName = "Waning Crescent"; icon = "🌘"; }
+
+        const content = `<div class="text-center"><h1>${icon}</h1><p>Phase: ${phaseName}</p><small>Age: ${age.toFixed(1)} days</small></div>`;
         window.SystemBus.emit('ui:show_modal', { title: "Moon Phase", content: content });
     }
 }
