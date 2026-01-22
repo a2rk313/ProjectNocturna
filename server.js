@@ -35,7 +35,7 @@ const pool = new Pool({
     user: process.env.DB_USER || 'postgres',
     host: process.env.DB_HOST || 'localhost',
     database: process.env.DB_NAME || 'nocturna',
-    password: process.env.DB_PASSWORD || 'password',
+    password: process.env.DB_PASSWORD || process.exit(console.error('ERROR: DB_PASSWORD environment variable not set. Please configure your database credentials securely.')),
     port: process.env.DB_PORT || 5432,
 });
 
@@ -174,13 +174,28 @@ app.post('/api/analyze-energy', async (req, res) => {
         const query = `
             SELECT 
                 AVG(sqm) as avg_sqm,
-                ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)::geography) as area_sqm
+                ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)::geography) as area_sqm,
+                COUNT(*) as data_points
             FROM measurements
             WHERE ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326), geom)
         `;
         const result = await safeQuery(query, [JSON.stringify(geometry)]);
         
-        const avgSQM = result.rows[0].avg_sqm || 20.0;
+        const avgSQM = result.rows[0].avg_sqm;
+        const dataPoints = result.rows[0].data_points;
+        
+        // If no data points exist in the selected area, return a meaningful response
+        if (!avgSQM || dataPoints === 0) {
+            return res.json({
+                sqm: "N/A",
+                luminance: "N/A",
+                annual_kwh: 0,
+                annual_cost: 0,
+                area_km2: (result.rows[0].area_sqm / 1000000).toFixed(2),
+                message: "No measurement data available in selected area"
+            });
+        }
+        
         const areaM2 = result.rows[0].area_sqm || 1000000; // Default 1 sq km if empty
 
         // PHYSICS FORMULA: SQM (mag/arcsec²) -> Luminance (cd/m²)
@@ -208,12 +223,60 @@ app.post('/api/analyze-energy', async (req, res) => {
     }
 });
 
+// Health check endpoint for internal services
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// System status endpoint to check various services
+app.get('/api/system/status', async (req, res) => {
+    try {
+        // Check database connection
+        await pool.query('SELECT 1');
+        
+        res.json({ 
+            db_status: 'connected',
+            api_status: 'running',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            db_status: 'disconnected',
+            api_status: 'error',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 // Proxy Endpoints
 app.post('/api/proxy/overpass', async (req, res) => {
     try {
-        const response = await axios.post('https://overpass-api.de/api/interpreter', `data=${req.body.query}`);
+        // Sanitize and validate the query to prevent abuse
+        const query = req.body.query;
+        if (!query || typeof query !== 'string' || query.length > 2000) {
+            return res.status(400).json({ error: "Invalid query: query must be a string under 2000 characters" });
+        }
+        
+        // Basic validation to prevent potentially dangerous queries
+        const forbiddenPatterns = [
+            /out\s+json;/i,      // Prevent arbitrary output formats
+            /kill/i,             // Prevent kill commands
+            /user/i              // Prevent user enumeration
+        ];
+        
+        for (const pattern of forbiddenPatterns) {
+            if (pattern.test(query)) {
+                return res.status(400).json({ error: "Query contains forbidden patterns" });
+            }
+        }
+        
+        const response = await axios.post('https://overpass-api.de/api/interpreter', `data=${encodeURIComponent(query)}`);
         res.json(response.data);
-    } catch (e) { res.status(500).json({ error: "Overpass failed" }); }
+    } catch (e) {
+        console.error('Overpass API error:', e.message);
+        res.status(500).json({ error: "Overpass API request failed" });
+    }
 });
 
 app.get('/api/proxy/weather', async (req, res) => {
