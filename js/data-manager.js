@@ -109,6 +109,44 @@ class DataManager {
     getVIIRSTileUrl() {
         return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
     }
+    
+    /**
+     * Fetches VIIRS nighttime lights data for a specific point.
+     * @param {number} lat 
+     * @param {number} lng 
+     * @param {number} radius in km (default: 50)
+     */
+    async fetchVIIRSData(lat, lng, radius = 50) {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/viirs-data?lat=${lat}&lng=${lng}&radius=${radius}`);
+            if (!response.ok) throw new Error('VIIRS data fetch failed');
+            return await response.json();
+        } catch (error) {
+            console.error("❌ Error fetching VIIRS data:", error);
+            return [];
+        }
+    }
+    
+    /**
+     * Fetches aggregated VIIRS statistics for a polygon area.
+     * @param {Object} geometry - GeoJSON geometry object
+     */
+    async fetchVIIRSStats(geometry) {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/viirs-stats`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ geometry })
+            });
+            if (!response.ok) throw new Error('VIIRS stats fetch failed');
+            return await response.json();
+        } catch (error) {
+            console.error("❌ Error fetching VIIRS stats:", error);
+            return {};
+        }
+    }
 }
 
 // Make available globally

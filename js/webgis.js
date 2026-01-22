@@ -6,6 +6,7 @@ class WebGIS {
         this.drawnItems = new L.FeatureGroup();
         this.uiMarkers = L.layerGroup();
         this.stationsLayer = L.layerGroup();
+        this.viirsLayer = null;  // Added VIIRS layer
         this.drawControl = null;
 
         if (typeof L.markerClusterGroup === 'function') {
@@ -27,6 +28,14 @@ class WebGIS {
         };
         this.baseLayers.osm.addTo(this.map);
 
+        // Add VIIRS layer initially
+        this.viirsLayer = L.tileLayer(this.dataManager.getVIIRSTileUrl(), {
+            attribution: 'NASA Earth Observatory',
+            opacity: 0.7,
+            zIndex: 1
+        });
+        this.viirsLayer.addTo(this.map);
+
         this.map.addLayer(this.drawnItems);
         this.map.addLayer(this.uiMarkers);
         this.map.addLayer(this.stationsLayer);
@@ -40,6 +49,7 @@ class WebGIS {
         });
 
         this.initStationsLayer();
+        this.initDataLayersControls();  // Initialize data layer controls
     }
 
     getSelection() {
@@ -172,6 +182,45 @@ class WebGIS {
             const markers = stations.map(s => L.circleMarker([s.lat, s.lng], { radius: 5, fillColor: '#00ff00', color: '#fff', weight: 1, fillOpacity: 0.8 }).bindPopup(`<b>SQM:</b> ${s.sqm}`));
             this.stationsLayer.addLayers(markers);
         } catch(e) {}
+    }
+    
+    initDataLayersControls() {
+        // Handle VIIRS layer checkbox
+        const viirsCheckbox = document.getElementById('viirsLayer');
+        if (viirsCheckbox) {
+            viirsCheckbox.checked = true;  // Default to visible
+            viirsCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.map.addLayer(this.viirsLayer);
+                } else {
+                    this.map.removeLayer(this.viirsLayer);
+                }
+            });
+        }
+        
+        // Handle ground measurements layer checkbox
+        const groundCheckbox = document.getElementById('groundMeasurements');
+        if (groundCheckbox) {
+            groundCheckbox.checked = true;  // Default to visible
+            groundCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.map.addLayer(this.stationsLayer);
+                } else {
+                    this.map.removeLayer(this.stationsLayer);
+                }
+            });
+        }
+        
+        // Handle dark sky parks layer checkbox
+        const darkSkyCheckbox = document.getElementById('darkSkyParks');
+        if (darkSkyCheckbox) {
+            darkSkyCheckbox.checked = true;  // Default to visible
+            darkSkyCheckbox.addEventListener('change', (e) => {
+                // In a real implementation, this would control a WMS layer
+                // For now, we'll just log the action
+                console.log(`Dark sky parks layer ${e.target.checked ? 'enabled' : 'disabled'}`);
+            });
+        }
     }
 
     initEventBusListeners() {

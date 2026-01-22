@@ -191,6 +191,7 @@ class ScientificMode {
         window.SystemBus.emit('system:message', `🔄 Calculating stats...`);
 
         try {
+            // Fetch regular stats
             const response = await fetch('/api/stats', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -199,10 +200,27 @@ class ScientificMode {
             
             const stats = await response.json();
             
+            // Also fetch VIIRS stats
+            const viirsStats = await this.webGIS.dataManager.fetchVIIRSStats(geometry);
+            
+            let viirsContent = '';
+            if (viirsStats && viirsStats.avg_radiance !== undefined) {
+                viirsContent = `
+                    <div class="mt-3 pt-3 border-top">
+                        <h6 class="text-warning">VIIRS Nighttime Lights Data</h6>
+                        <table class="table table-sm table-dark table-bordered">
+                            <tr><td>Avg Radiance:</td><td><strong>${viirsStats.avg_radiance ? viirsStats.avg_radiance.toFixed(2) : 'N/A'}</strong></td></tr>
+                            <tr><td>Tiles Count:</td><td>${viirsStats.tile_count || 0}</td></tr>
+                            <tr><td>Date Range:</td><td>${viirsStats.min_date || 'N/A'} to ${viirsStats.max_date || 'N/A'}</td></tr>
+                        </table>
+                    </div>
+                `;
+            }
+            
             const content = `
                 <div class="text-center">
                     <h6>${researchMode ? 'Research Grade' : 'Standard'} Analysis</h6>
-                    <div class="alert ${researchMode ? 'alert-info' : 'alert-secondary'} py-1 mb-2">
+                    <div class="${researchMode ? 'alert alert-info' : 'alert alert-secondary'} py-1 mb-2">
                         <small>${researchMode ? 'Filtered for High Quality Data' : 'All Data Sources Included'}</small>
                     </div>
                     <table class="table table-sm table-dark table-bordered">
@@ -210,6 +228,7 @@ class ScientificMode {
                         <tr><td>Avg Data Quality:</td><td><span class="text-${stats.avg_quality > 80 ? 'success' : 'warning'}">${stats.avg_quality || 0}/100</span></td></tr>
                         <tr><td>Sample Size:</td><td>${stats.sample_size} stations</td></tr>
                     </table>
+                    ${viirsContent}
                 </div>
             `;
             window.SystemBus.emit('ui:show_modal', { title: "📊 Statistics", content: content });

@@ -12,7 +12,8 @@
     "podman:build": "podman build -t project-nocturna -f Containerfile .",
     "podman:run": "podman run -p 3000:3000 -e DB_HOST=host.containers.internal -e DB_PORT=5432 -e DB_USER=postgres -e DB_PASSWORD=your_secure_password_here -e DB_NAME=nocturna project-nocturna",
     "seed": "node -e 'require(\"./js/server.js\").seedDatabase()'",
-    "seed:force": "curl -X POST http://localhost:3000/api/seed-db"
+    "seed:force": "curl -X POST http://localhost:3000/api/seed-db",
+    "viirs:process": "node js/viirs-processor.js"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",
