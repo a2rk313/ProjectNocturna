@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, useMap, LayersControl, LayerGroup } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap, LayersControl, LayerGroup, Circle, Tooltip } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 import GeoServerWMSLayer from './GeoServerWMSLayer';
 import Chatbot from '../chatbot/Chatbot';
@@ -64,9 +64,20 @@ export default function MapView({
   viirsStyle = 'viirs_radiance' // Default style
 }: MapViewProps) {
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-  const { setSelectedPoint, setSelectedArea, selectionMode, setSelectionMode } = useSelection();
+  const { setSelectedPoint, setSelectedArea, selectionMode, setSelectionMode, mapCommand } = useSelection();
   const [params, setParams] = useSearchParams();
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  // Simulation State
+  const [simulatedSources, setSimulatedSources] = useState<Array<{ lat: number; lon: number; intensity: number; type: string }>>([]);
+
+  useEffect(() => {
+    if (mapCommand?.type === 'simulateLight') {
+      setSimulatedSources(prev => [...prev, mapCommand.source]);
+    } else if (mapCommand?.type === 'clearSimulation') {
+      setSimulatedSources([]);
+    }
+  }, [mapCommand]);
 
   // Custom Basemap State
   const [activeBasemap, setActiveBasemap] = useState('dark');
@@ -136,6 +147,32 @@ export default function MapView({
               transparent={true}
               opacity={0.6}
             />
+          </LayersControl.Overlay>
+
+          <LayersControl.Overlay checked name="Simulation Overlay">
+            <LayerGroup>
+              {simulatedSources.map((source, i) => (
+                <Circle
+                  key={i}
+                  center={[source.lat, source.lon]}
+                  radius={Math.sqrt(source.intensity) * 5} // Approximate falloff radius
+                  pathOptions={{
+                    color: '#fbbf24',
+                    fillColor: '#fcd34d',
+                    fillOpacity: 0.3,
+                    weight: 1,
+                    dashArray: '5, 5'
+                  }}
+                >
+                  <Tooltip>
+                    <div className="text-xs">
+                      <strong>{source.type}</strong><br/>
+                      {source.intensity} lumens
+                    </div>
+                  </Tooltip>
+                </Circle>
+              ))}
+            </LayerGroup>
           </LayersControl.Overlay>
         </LayersControl>
 

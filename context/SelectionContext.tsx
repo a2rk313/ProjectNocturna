@@ -4,7 +4,9 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type MapCommand =
   | { type: 'flyTo'; center: [number, number]; zoom?: number }
-  | { type: 'setLayer'; layer: string; visible: boolean };
+  | { type: 'setLayer'; layer: string; visible: boolean }
+  | { type: 'simulateLight'; source: { lat: number; lon: number; intensity: number; type: string } }
+  | { type: 'clearSimulation' };
 
 interface SelectionContextType {
     selectedPoint: [number, number] | null;

@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Compass, MapPin, Telescope, CloudMoon } from 'lucide-react';
+import { Compass, MapPin, Telescope, CloudMoon, CalendarDays } from 'lucide-react';
 import DarkSkyDiscovery from '@/components/citizen/DarkSkyDiscovery';
 import ObservationPlanner from '@/components/citizen/ObservationPlanner';
 import ParksDirectory from '@/components/citizen/ParksDirectory';
+import AstroForecast from '@/components/citizen/AstroForecast';
 
 export default function CitizenPanel() {
-  const [activeTab, setActiveTab] = useState<'discovery' | 'planning' | 'parks' | 'realtime'>('discovery');
+  const [activeTab, setActiveTab] = useState<'discovery' | 'planning' | 'forecast' | 'parks' | 'realtime'>('discovery');
   const [geo, setGeo] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
@@ -34,9 +35,12 @@ export default function CitizenPanel() {
           </div>
         </div>
 
-        <div className="flex gap-1 p-2 border-b border-nocturna-accent/15 flex-shrink-0">
+        <div className="flex gap-1 p-2 border-b border-nocturna-accent/15 flex-shrink-0 overflow-x-auto custom-scrollbar">
           <TabButton icon={<Compass className="w-4 h-4" />} active={activeTab === 'discovery'} onClick={() => setActiveTab('discovery')}>
             Discovery
+          </TabButton>
+          <TabButton icon={<CalendarDays className="w-4 h-4" />} active={activeTab === 'forecast'} onClick={() => setActiveTab('forecast')}>
+            Forecast
           </TabButton>
           <TabButton icon={<CloudMoon className="w-4 h-4" />} active={activeTab === 'planning'} onClick={() => setActiveTab('planning')}>
             Planning
@@ -51,6 +55,8 @@ export default function CitizenPanel() {
 
         <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
           {activeTab === 'discovery' && <DarkSkyDiscovery />}
+
+          {activeTab === 'forecast' && <AstroForecast />}
 
           {activeTab === 'planning' && <ObservationPlanner />}
 

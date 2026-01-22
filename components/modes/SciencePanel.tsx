@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { FlaskConical, TrendingUp, Leaf, Zap, Thermometer, Shield, BarChart3 } from 'lucide-react';
+import { FlaskConical, TrendingUp, Leaf, Zap, Thermometer, Shield, BarChart3, Lightbulb } from 'lucide-react';
 import VIIRSControls from '@/components/science/VIIRSControls';
 import TrendAnalysis from '@/components/science/TrendAnalysis';
 import ImpactAssessment from '@/components/science/ImpactAssessment';
 import PredictiveAnalytics from '@/components/science/PredictiveAnalytics';
+import ImpactSimulator from '@/components/science/ImpactSimulator';
 
 interface SciencePanelProps {
   viirsVisible: boolean;
@@ -22,7 +23,7 @@ export default function SciencePanel({
   onChangeOpacity,
   onStyleChange // Add the new prop
 }: SciencePanelProps) {
-  const [activeTab, setActiveTab] = useState<'viirs' | 'trends' | 'ecology' | 'energy' | 'spectral' | 'policy' | 'predictive'>('viirs');
+  const [activeTab, setActiveTab] = useState<'viirs' | 'trends' | 'simulator' | 'ecology' | 'energy' | 'spectral' | 'policy' | 'predictive'>('viirs');
 
   return (
     <aside className="absolute top-20 left-4 z-[1050] w-[520px] max-w-[calc(100vw-2rem)]">
@@ -40,6 +41,9 @@ export default function SciencePanel({
         <div className="flex gap-1 p-2 border-b border-nocturna-accent/15 overflow-x-auto flex-shrink-0 custom-scrollbar">
           <Tab icon={<FlaskConical className="w-4 h-4" />} active={activeTab === 'viirs'} onClick={() => setActiveTab('viirs')}>
             VIIRS
+          </Tab>
+          <Tab icon={<Lightbulb className="w-4 h-4" />} active={activeTab === 'simulator'} onClick={() => setActiveTab('simulator')}>
+            Simulator
           </Tab>
           <Tab icon={<TrendingUp className="w-4 h-4" />} active={activeTab === 'trends'} onClick={() => setActiveTab('trends')}>
             Trends
@@ -73,6 +77,8 @@ export default function SciencePanel({
           )}
 
           {activeTab === 'trends' && <TrendAnalysis />}
+
+          {activeTab === 'simulator' && <ImpactSimulator />}
 
           {activeTab === 'predictive' && <PredictiveAnalytics />}
 

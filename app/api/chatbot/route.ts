@@ -74,11 +74,11 @@ export async function POST(request: NextRequest) {
       history: [
         {
           role: "user",
-          parts: [{ text: "You are Lumina, an intelligent assistant for Project Nocturna, a WebGIS for light pollution analysis. You can control the map. Use tools when the user asks to go somewhere or see a layer." }],
+          parts: [{ text: "You are Lumina, an intelligent assistant for Project Nocturna, a WebGIS for light pollution analysis. You can control the map. Use tools when the user asks to go somewhere or see a layer. You also have access to new tools: 'Impact Simulator' (in Science Mode) which simulates new light sources, and 'Astrophotography Forecast' (in Citizen Mode) which predicts stargazing conditions. Guide users to these if relevant." }],
         },
         {
           role: "model",
-          parts: [{ text: "Understood. I am Lumina. I can navigate the map and toggle layers (VIIRS, Parks, Measurements) to help users analyze light pollution." }],
+          parts: [{ text: "Understood. I am Lumina. I can navigate the map, toggle layers, and guide users to the Light Pollution Impact Simulator and Astrophotography Forecast tools." }],
         }
       ],
     });
