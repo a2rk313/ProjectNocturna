@@ -125,7 +125,7 @@ export default function MapView({
         <LocationSelectionControls
           onSelectionChange={(selection) => {
             if (selection.type === 'gps' && selection.coordinates) {
-              setSelectedPoint(selection.coordinates);
+              setSelectedPoint(selection.coordinates as [number, number]);
             } else if (selection.type === 'marker' && selection.coordinates) {
               setSelectedPoint(selection.coordinates as [number, number]);
             } else if (selection.type === 'polygon') {

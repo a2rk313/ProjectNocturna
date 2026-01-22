@@ -5,10 +5,35 @@ import { useSelection } from '@/context/SelectionContext';
 import { useState, useEffect } from 'react';
 
 interface AssessmentResult {
+    // Ecology (Root level)
     impactLevel?: string;
     nearbyHotspots?: Array<{ name: string; distance_km?: number }>
     affectedSpecies?: string[];
     threats?: string[];
+
+    // Others (Wrapped in metrics)
+    metrics?: {
+        // Energy
+        totalWaste?: string;
+        cost?: string;
+        co2?: string;
+        potentialSavings?: string;
+
+        // Policy
+        policy?: string;
+        predictedReduction?: string;
+        complianceCost?: string;
+        timeToROI?: string;
+        currentRadiance?: string;
+        simulatedRadiance?: string;
+
+        // Spectral
+        cctRange?: string;
+        blueLightIndex?: number;
+        biologicalDisruption?: string;
+        typeClassification?: string;
+        radianceRef?: string;
+    };
     [key: string]: any;
 }
 
@@ -26,12 +51,14 @@ export default function ImpactAssessment({ type }: { type: 'ecology' | 'energy' 
         } else {
             setAssessment(null); // Clear assessment if no location is selected
         }
-    }, [location]); // Depend on location, which changes when selectedPoint changes
+    }, [location, type]);
 
     async function runAssessment() {
         if (!location) return;
         setLoading(true);
         setError(null);
+        setAssessment(null);
+
         try {
             let url = '';
             let method = 'GET';
@@ -65,7 +92,6 @@ export default function ImpactAssessment({ type }: { type: 'ecology' | 'energy' 
             const result = await res.json();
             if (result.error) throw new Error(result.error);
 
-            // The API returns the assessment object directly, not wrapped in .metrics
             setAssessment(result);
 
         } catch (e: any) {
@@ -89,7 +115,58 @@ export default function ImpactAssessment({ type }: { type: 'ecology' | 'energy' 
             </div>
         );
 
-        // Defensive destructuring in case API response is partial or malformed
+        // Render based on type/metrics
+        if (type === 'energy' && assessment.metrics) {
+            const m = assessment.metrics;
+            return (
+                <div className="space-y-3 p-1">
+                    <div className="grid grid-cols-2 gap-2">
+                        <MetricBox label="Annual Waste" value={m.totalWaste} />
+                        <MetricBox label="Est. Cost" value={m.cost} />
+                        <MetricBox label="CO2 Emissions" value={m.co2} />
+                        <MetricBox label="Potential Savings" value={m.potentialSavings + (m.potentialSavings?.includes('%') ? '' : '%')} highlight />
+                    </div>
+                </div>
+            );
+        }
+
+        if (type === 'policy' && assessment.metrics) {
+            const m = assessment.metrics;
+            return (
+                <div className="space-y-3 p-1">
+                     <div className="bg-nocturna-dark/40 rounded p-2 border border-nocturna-accent/10 mb-2">
+                        <div className="text-xs text-nocturna-light/60 uppercase">Applied Policy</div>
+                        <div className="text-sm font-medium text-nocturna-light">{m.policy}</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <MetricBox label="Reduction" value={m.predictedReduction} highlight />
+                        <MetricBox label="Compliance Cost" value={m.complianceCost} />
+                        <MetricBox label="ROI Time" value={m.timeToROI} />
+                        <MetricBox label="Sim. Radiance" value={m.simulatedRadiance} />
+                    </div>
+                </div>
+            );
+        }
+
+        if (type === 'spectral' && assessment.metrics) {
+            const m = assessment.metrics;
+            return (
+                <div className="space-y-3 p-1">
+                    <div className="bg-nocturna-dark/40 rounded p-2 border border-nocturna-accent/10 mb-2">
+                        <div className="text-xs text-nocturna-light/60 uppercase">Light Source Class</div>
+                        <div className="text-sm font-medium text-nocturna-light">{m.typeClassification}</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <MetricBox label="CCT Range" value={m.cctRange} />
+                        <MetricBox label="Blue Light Idx" value={m.blueLightIndex} />
+                        <MetricBox label="Bio-Disruption" value={m.biologicalDisruption} highlight={m.biologicalDisruption === 'Critical'} />
+                        <MetricBox label="Radiance" value={m.radianceRef} />
+                    </div>
+                </div>
+            );
+        }
+
+        // Default: Ecology
         const {
             impactLevel = 'LOW',
             nearbyHotspots = [],
@@ -149,5 +226,14 @@ export default function ImpactAssessment({ type }: { type: 'ecology' | 'energy' 
                 {renderContent()}
             </div>
         </section>
+    );
+}
+
+function MetricBox({ label, value, highlight }: { label: string, value?: string | number, highlight?: boolean }) {
+    return (
+        <div className={`bg-nocturna-dark/40 rounded p-2 border ${highlight ? 'border-nocturna-accent/40 bg-nocturna-accent/5' : 'border-nocturna-accent/10'}`}>
+            <div className="text-[10px] text-nocturna-light/60 uppercase truncate" title={label}>{label}</div>
+            <div className={`text-sm font-medium ${highlight ? 'text-nocturna-accent' : 'text-nocturna-light'}`}>{value || 'N/A'}</div>
+        </div>
     );
 }

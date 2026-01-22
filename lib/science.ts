@@ -1,5 +1,4 @@
 import { getPostGISPool } from './database';
-import { PredictiveEngine } from './predictive';
 import cacheManager from './cache';
 
 // Types corresponding to our new schema
@@ -15,6 +14,13 @@ export interface ImpactAssessment {
     affectedSpecies: string[];
     threats: string[];
     nearbyHotspots: { name: string; distance_km: number }[];
+}
+
+export interface EnergyWasteEstimate {
+    waste_kwh: number;
+    cost: number;
+    co2: number;
+    potentialSavings: number;
 }
 
 export class ScienceEngine {
@@ -102,36 +108,46 @@ export class ScienceEngine {
             ORDER BY dist_km ASC
         `;
 
-        const res = await pool.query(query, [lon, lat]);
+        try {
+            const res = await pool.query(query, [lon, lat]);
 
-        let impactLevel: ImpactAssessment['impactLevel'] = 'LOW';
-        const affectedSpecies: string[] = [];
-        const threats: string[] = [];
-        const nearbyHotspots: { name: string; distance_km: number }[] = [];
+            let impactLevel: ImpactAssessment['impactLevel'] = 'LOW';
+            const affectedSpecies: string[] = [];
+            const threats: string[] = [];
+            const nearbyHotspots: { name: string; distance_km: number }[] = [];
 
-        for (const row of res.rows) {
-            nearbyHotspots.push({ name: row.name, distance_km: row.dist_km });
-            if (row.species_list) affectedSpecies.push(...row.species_list);
+            for (const row of res.rows) {
+                nearbyHotspots.push({ name: row.name, distance_km: row.dist_km });
+                if (row.species_list) affectedSpecies.push(...row.species_list);
 
-            // Logic: Closer + Higher Threat = Higher Impact
-            if (row.dist_km < 1 && (row.threat_level === 'Critically Endangered')) {
-                impactLevel = 'CRITICAL';
-                threats.push(`Critical habitat for ${row.name} within 1km`);
-            } else if (row.dist_km < 5 && impactLevel !== 'CRITICAL') {
-                impactLevel = 'HIGH';
-                threats.push(`Proximity to ${row.name}`);
+                // Logic: Closer + Higher Threat = Higher Impact
+                if (row.dist_km < 1 && (row.threat_level === 'Critically Endangered')) {
+                    impactLevel = 'CRITICAL';
+                    threats.push(`Critical habitat for ${row.name} within 1km`);
+                } else if (row.dist_km < 5 && impactLevel !== 'CRITICAL') {
+                    impactLevel = 'HIGH';
+                    threats.push(`Proximity to ${row.name}`);
+                }
             }
+
+            // Deduplicate species
+            const uniqueSpecies = Array.from(new Set(affectedSpecies));
+
+            const result = { impactLevel, affectedSpecies: uniqueSpecies, threats, nearbyHotspots };
+
+            // Cache for 2 hours
+            await cacheManager.set(cacheKey, result, 7200);
+
+            return result;
+        } catch (e) {
+            console.error('Ecological impact query failed:', e);
+            return {
+                impactLevel: 'LOW',
+                affectedSpecies: [],
+                threats: ['Data unavailable'],
+                nearbyHotspots: []
+            };
         }
-
-        // Deduplicate species
-        const uniqueSpecies = Array.from(new Set(affectedSpecies));
-
-        const result = { impactLevel, affectedSpecies: uniqueSpecies, threats, nearbyHotspots };
-
-        // Cache for 2 hours
-        await cacheManager.set(cacheKey, result, 7200);
-
-        return result;
     }
 
     /**
@@ -168,10 +184,14 @@ export class ScienceEngine {
         if (cachedStats) {
             historicalVals = cachedStats;
         } else {
-            const statsRes = await pool.query(statsQuery, [lon, lat]);
-            historicalVals = statsRes.rows.map((r: { mean_radiance: number | null }) => r.mean_radiance).filter((v: number | null) => v !== null) as number[];
-            // Cache for 6 hours
-            await cacheManager.set(statsCacheKey, historicalVals, 21600);
+            try {
+                const statsRes = await pool.query(statsQuery, [lon, lat]);
+                historicalVals = statsRes.rows.map((r: { mean_radiance: number | null }) => r.mean_radiance).filter((v: number | null) => v !== null) as number[];
+                // Cache for 6 hours
+                await cacheManager.set(statsCacheKey, historicalVals, 21600);
+            } catch (e) {
+                console.warn('Historical stats query failed', e);
+            }
         }
 
         let isAnomaly = false;
@@ -204,13 +224,17 @@ export class ScienceEngine {
         const fireCacheKey = `fire_check:${lat.toFixed(4)}:${lon.toFixed(4)}`;
         const cachedFireData = await cacheManager.get<any[]>(fireCacheKey);
 
-        let fireRes: any;
+        let fireRes: any = { rows: [] };
         if (cachedFireData) {
             fireRes = { rows: cachedFireData };
         } else {
-            fireRes = await pool.query(fireQuery, [lon, lat]);
-            // Cache for 15 minutes
-            await cacheManager.set(fireCacheKey, fireRes.rows, 900);
+            try {
+                fireRes = await pool.query(fireQuery, [lon, lat]);
+                // Cache for 15 minutes
+                await cacheManager.set(fireCacheKey, fireRes.rows, 900);
+            } catch (e) {
+                console.warn('Fire query failed', e);
+            }
         }
 
         const activeFire = fireRes.rows.length > 0;
@@ -250,11 +274,11 @@ export class ScienceEngine {
 
         const pool = getPostGISPool();
         // Extract value from the latest raster.
-        // Note: 'viirs_latest_raster' must exist in PostGIS (created via raster2pgsql or similar)
+        // Note: 'viirs_rasters' must exist in PostGIS (created via raster2pgsql or similar)
         const query = `
-            SELECT ST_Value(rast, ST_SetSRID(ST_Point($1, $2), 4326)) as rad
-            FROM viirs_latest_raster
-            WHERE ST_Intersects(rast, ST_SetSRID(ST_Point($1, $2), 4326))
+            SELECT ST_Value(raster, ST_SetSRID(ST_Point($1, $2), 4326)) as rad
+            FROM viirs_rasters
+            WHERE ST_Intersects(raster, ST_SetSRID(ST_Point($1, $2), 4326))
             LIMIT 1
         `;
         try {
@@ -266,7 +290,8 @@ export class ScienceEngine {
                 return value;
             }
         } catch (e) {
-            console.error('Raster query failed:', e);
+            // console.error('Raster query failed:', e);
+            // Squelch error for now as raster table might not exist in all envs
         }
 
         // Fallback for demo or regions with missing raster coverage
@@ -291,25 +316,16 @@ export class ScienceEngine {
      * Estimates energy waste from light pollution
      */
     static async estimateEnergyWaste(lat: number, lon: number): Promise<EnergyWasteEstimate> {
-      const pool = getPostGISPool();
-
-      // Get average radiance in the area
-      const radianceQuery = `
-        SELECT AVG(radiance) as avg_radiance
-        FROM viirs_rasters
-        WHERE ST_Intersects(raster, ST_SetSRID(ST_Point($1, $2), 4326))
-        LIMIT 1
-      `;
 
       try {
-        const radianceRes = await pool.query(radianceQuery, [lon, lat]);
-        const avgRadiance = parseFloat(radianceRes.rows[0]?.avg_radiance) || 0;
+        const avgRadiance = await this.getLatestViirsPixel(lat, lon);
 
         // Convert radiance to estimated energy waste (simplified model)
         // Higher radiance correlates with more light pollution and energy waste
-        const waste_kwh = avgRadiance * 500; // Simplified conversion factor
-        const cost = waste_kwh * 0.12; // Assuming $0.12 per kWh
-        const co2 = waste_kwh * 0.475; // kg CO2 per kWh (US average)
+        // Adjust formula: 1 nW/cm2/sr ~ X kWh/yr waste (heuristic)
+        const waste_kwh = (avgRadiance + 0.1) * 2500; // Heuristic
+        const cost = waste_kwh * 0.14; // Assuming $0.14 per kWh
+        const co2 = waste_kwh * 0.42; // kg CO2 per kWh
 
         return {
           waste_kwh,
@@ -328,11 +344,4 @@ export class ScienceEngine {
         };
       }
     }
-  }
-
-  interface EnergyWasteEstimate {
-    waste_kwh: number;
-    cost: number;
-    co2: number;
-    potentialSavings: number;
   }
