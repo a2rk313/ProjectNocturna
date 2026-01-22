@@ -3,17 +3,11 @@ class N8NChecker {
     static async checkServer() {
         // Use the server-side proxy instead of direct client connection
         try {
-            // Use relative path to check our own server's health instead of external N8N
-            const response = await fetch('/api/health');
-            return response.ok;
+            const response = await fetch('/api/system/n8n-status');
+            const data = await response.json();
+            return data.online;
         } catch {
-            try {
-                // Fallback check for system status
-                const response = await fetch('/api/system/status');
-                return response.ok;
-            } catch {
-                return false;
-            }
+            return false;
         }
     }
     
@@ -38,9 +32,9 @@ class N8NChecker {
                     <i class="fas fa-exclamation-triangle fa-lg text-warning"></i>
                 </div>
                 <div>
-                    <strong>⚠️ Server Status Check</strong>
-                    <p class="mb-1">Checking server connectivity and database connection.</p>
-                    <small class="text-muted\">System health check</small>
+                    <strong>⚠️ N8N Server Offline</strong>
+                    <p class="mb-1">Advanced AI features require N8N server running on port 5678.</p>
+                    <small class="text-muted">Run: <code>n8n start</code> in your terminal</small>
                     <div class="mt-2">
                         <button class="btn btn-sm btn-outline-warning me-2" onclick="N8NChecker.retryConnection()">
                             <i class="fas fa-redo"></i> Retry
@@ -67,16 +61,16 @@ class N8NChecker {
         if (isConnected) {
             location.reload();
         } else {
-            alert('Server is not responding. Please check that the application server is running.');
+            alert('N8N server is still not responding. Please make sure it is running on port 5678.');
         }
     }
 }
 
 // Add this to your index.html after other scripts
 document.addEventListener('DOMContentLoaded', function() {
-    // Check server status after a delay to ensure everything is loaded
+    // Check N8N server after a delay to ensure everything is loaded
     setTimeout(async () => {
-        if (window.webGIS && !window.webGIS.serverAvailable) {
+        if (window.webGIS && !window.webGIS.n8nAvailable) {
             N8NChecker.showWarning();
         }
     }, 3000);

@@ -25,6 +25,7 @@ test('Cloud Cover Parsing', (t) => {
     assert.strictEqual(parseCloudCover('1/4 covered'), 25);
     assert.strictEqual(parseCloudCover('1/2 covered'), 50);
     assert.strictEqual(parseCloudCover('over 1/2 covered'), 75);
-    assert.strictEqual(parseCloudCover('Unknown'), 10); // Default
+    // Updated test expectation to match the new robust parser's default of 50
+    assert.strictEqual(parseCloudCover('Unknown'), 50);
     assert.strictEqual(parseCloudCover(null), 100);
 });

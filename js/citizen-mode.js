@@ -25,14 +25,14 @@ class CitizenMode {
         bind('moonPhase', () => this.showMoonPhase());
         bind('weatherCheck', () => this.astroForecast());
         
-        // Restore manual marker placement for 'dropMarker' button
-        // GPS functionality moved to a dedicated button
-        bind('dropMarker', () => {
-            // Let WebGIS handle manual marker placement through its startTool method
-            if (this.webGIS) {
-                this.webGIS.startTool('marker');
-            }
-        });
+        // Fix: Do NOT override 'dropMarker' (Pick Location) with GPS.
+        // Let WebGIS handle manual marker placement.
+        // We will add a dedicated GPS button if needed, or rely on user action.
+
+        // If we want to add a specific GPS button in the future, we can do it here.
+        // For now, we restore the default behavior for 'dropMarker' by NOT rebinding it here,
+        // or by explicitly binding it back to the tool start if we wanted to be sure.
+        // But since we use replaceChild in 'bind', we just skip it to avoid the conflict.
     }
 
     async locateUser() {
@@ -249,88 +249,28 @@ class CitizenMode {
         return R * c;
     }
 
+    showMoonPhase() {
+        // Simple calculation or use fixed for now, but acknowledge it's dynamic
+        const now = new Date();
+        const synodic = 29.53058867;
+        const knownNewMoon = new Date('2000-01-06T18:14:00Z');
+        const diffDays = (now - knownNewMoon) / (1000 * 60 * 60 * 24);
+        const age = ((diffDays % synodic) + synodic) % synodic;
 
-    async showMoonPhase() {
-        window.SystemBus.emit('system:message', "🌓 Calculating moon phase...");
-        
-        try {
-            // Calculate moon phase based on the current date
-            const today = new Date();
-            const moonData = await this.calculateMoonPhase(today);
+        let phaseName = "New Moon";
+        let icon = "🌑";
 
-            const content = `
-                <div class="text-center">
-                    <h1>${moonData.emoji}</h1>
-                    <p>Phase: ${moonData.phaseName}</p>
-                    <p>Illumination: ${Math.round(moonData.illumination * 100)}%</p>
-                </div>
-            `;
-            window.SystemBus.emit('ui:show_modal', { title: "Moon Phase", content: content });
-        } catch (error) {
-            console.error('Error calculating moon phase:', error);
-            // Fallback to original static content on error
-            const content = `<div class="text-center"><h1>🌑</h1><p>Phase: New Moon</p></div>`;
-            window.SystemBus.emit('ui:show_modal', { title: "Moon Phase", content: content });
-        }
-    }
+        if (age < 1.84566) { phaseName = "New Moon"; icon = "🌑"; }
+        else if (age < 5.53699) { phaseName = "Waxing Crescent"; icon = "🌒"; }
+        else if (age < 9.22831) { phaseName = "First Quarter"; icon = "🌓"; }
+        else if (age < 12.91963) { phaseName = "Waxing Gibbous"; icon = "🌔"; }
+        else if (age < 16.61096) { phaseName = "Full Moon"; icon = "🌕"; }
+        else if (age < 20.30228) { phaseName = "Waning Gibbous"; icon = "🌖"; }
+        else if (age < 23.99361) { phaseName = "Last Quarter"; icon = "🌗"; }
+        else { phaseName = "Waning Crescent"; icon = "🌘"; }
 
-    // Helper function to calculate moon phase
-    calculateMoonPhase(date) {
-        return new Promise((resolve) => {
-            try {
-                // Calculate days since known new moon (Jan 6, 2000)
-                const knownNewMoon = new Date('2000-01-06T18:14:00Z');
-                const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
-                
-                // Synodic month is 29.53058867 days
-                const synodicMonth = 29.53058867;
-                const phase = Math.abs((diffDays % synodicMonth) / synodicMonth);
-                
-                // Calculate illumination (from 0 to 1)
-                const illumination = (1 - Math.cos(phase * 2 * Math.PI)) / 2;
-                
-                // Determine phase name and emoji based on the phase
-                let phaseName, emoji;
-                if (phase < 0.02 || phase > 0.98) {
-                    phaseName = "New Moon";
-                    emoji = "🌑";
-                } else if (phase < 0.23) {
-                    phaseName = "Waxing Crescent";
-                    emoji = "🌒";
-                } else if (phase < 0.27) {
-                    phaseName = "First Quarter";
-                    emoji = "🌓";
-                } else if (phase < 0.48) {
-                    phaseName = "Waxing Gibbous";
-                    emoji = "🌔";
-                } else if (phase < 0.52) {
-                    phaseName = "Full Moon";
-                    emoji = "🌕";
-                } else if (phase < 0.73) {
-                    phaseName = "Waning Gibbous";
-                    emoji = "🌖";
-                } else if (phase < 0.77) {
-                    phaseName = "Last Quarter";
-                    emoji = "🌗";
-                } else {
-                    phaseName = "Waning Crescent";
-                    emoji = "🌘";
-                }
-                
-                resolve({
-                    phaseName: phaseName,
-                    illumination: illumination,
-                    emoji: emoji
-                });
-            } catch (error) {
-                // On error, return new moon as default
-                resolve({
-                    phaseName: "New Moon",
-                    illumination: 0,
-                    emoji: "🌑"
-                });
-            }
-        });
+        const content = `<div class="text-center"><h1>${icon}</h1><p>Phase: ${phaseName}</p><small>Age: ${age.toFixed(1)} days</small></div>`;
+        window.SystemBus.emit('ui:show_modal', { title: "Moon Phase", content: content });
     }
 }
 window.CitizenMode = CitizenMode;

@@ -64,12 +64,37 @@ function getMoonIllumination(date) {
 
 function parseCloudCover(text) {
     if (!text) return 100; 
-    const t = text.toLowerCase();
-    if (t.includes('clear')) return 0;
+    const t = text.toLowerCase().trim();
+
+    // Handle percentage values
+    const percentMatch = t.match(/(\d+)%/);
+    if (percentMatch) {
+        return parseInt(percentMatch[1]);
+    }
+
+    // Handle fraction values
+    if (t.includes('clear') || t.includes('sunny') || t.includes('0/8') || t.includes('0 oktas')) return 0;
+    if (t.includes('few') || t.includes('1/8') || t.includes('1 okta') || t.includes('1-2 oktas')) return 12;
+    if (t.includes('scattered') || t.includes('3/8') || t.includes('3-4 oktas')) return 37;
+    if (t.includes('broken') || t.includes('5/8') || t.includes('5-7 oktas')) return 75;
+    if (t.includes('overcast') || t.includes('8/8') || t.includes('8 oktas') || t.includes('100%')) return 100;
+    if (t.includes('mostly cloudy') || t.includes('7/8')) return 87;
+    if (t.includes('partly cloudy') || t.includes('partly sunny') || t.includes('2/8') || t.includes('4/8')) return 25;
+
+    // Handle numeric ranges
+    const rangeMatch = t.match(/(\d+)\s*-\s*(\d+)/);
+    if (rangeMatch) {
+        const avg = (parseInt(rangeMatch[1]) + parseInt(rangeMatch[2])) / 2;
+        return Math.min(100, Math.max(0, avg));
+    }
+
+    // Original basic checks as fallback (preserved order from fix)
     if (t.includes('1/4')) return 25;
     if (t.includes('over 1/2')) return 75;
     if (t.includes('1/2')) return 50;
-    return 10; 
+
+    // Default fallback
+    return 50;
 }
 
 // --- API ENDPOINTS ---
@@ -308,50 +333,49 @@ async function seedDatabase() {
             return;
         }
 
-        const results = [];
-        fs.createReadStream(path.join(__dirname, '../data/GaN2024.csv'))
-            .pipe(csv())
-            .on('data', (data) => results.push(data))
-            .on('end', async () => {
-                let inserted = 0;
-                let skipped = 0;
+        let inserted = 0;
+        let skipped = 0;
 
-                for (const row of results) {
-                    const lat = parseFloat(row.Latitude);
-                    const lng = parseFloat(row.Longitude);
-                    const sqm = parseFloat(row.SQMReading);
+        // Use async iterator to process stream line-by-line without buffering entirely
+        const stream = fs.createReadStream(path.join(__dirname, '../data/GaN2024.csv'))
+            .pipe(csv());
 
-                    if (isNaN(lat) || isNaN(lng) || isNaN(sqm) || sqm < 14 || sqm > 24) {
-                        skipped++; continue;
-                    }
+        for await (const row of stream) {
+            const lat = parseFloat(row.Latitude);
+            const lng = parseFloat(row.Longitude);
+            const sqm = parseFloat(row.SQMReading);
 
-                    let dateStr = row.UTDate;
-                    if(row.UTTime) dateStr += 'T' + row.UTTime;
-                    const date = new Date(dateStr);
-                    if (isNaN(date.getTime())) { skipped++; continue; }
+            if (isNaN(lat) || isNaN(lng) || isNaN(sqm) || sqm < 14 || sqm > 24) {
+                skipped++; continue;
+            }
 
-                    const moonIllum = getMoonIllumination(date);
-                    const cloudPct = parseCloudCover(row.CloudCover);
-                    const isResearchGrade = (cloudPct <= 25 && moonIllum < 0.20 && sqm > 16.0);
+            let dateStr = row.UTDate;
+            if(row.UTTime) dateStr += 'T' + row.UTTime;
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) { skipped++; continue; }
 
-                    let score = 100;
-                    if (cloudPct > 0) score -= cloudPct;
-                    if (moonIllum > 0.1) score -= (moonIllum * 50);
-                    if (!row.SQMSerial) score -= 10;
-                    if (score < 0) score = 0;
+            const moonIllum = getMoonIllumination(date);
+            const cloudPct = parseCloudCover(row.CloudCover);
+            const isResearchGrade = (cloudPct <= 25 && moonIllum < 0.20 && sqm > 16.0);
 
-                    try {
-                        await pool.query(
-                            `INSERT INTO measurements 
-                            (lat, lng, elevation, date_observed, sqm, mag, constellation, comment, cloud_cover_pct, moon_illumination, is_research_grade, quality_score, geom)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ST_SetSRID(ST_MakePoint($2, $1), 4326))`,
-                            [lat, lng, row['Elevation(m)'], date, sqm, row.LimitingMag, row.Constellation, row.SkyComment, cloudPct, moonIllum, isResearchGrade, score]
-                        );
-                        inserted++;
-                    } catch (e) { skipped++; }
-                }
-                console.log(`✅ Ingestion Complete. Inserted: ${inserted}, Skipped: ${skipped}`);
-            });
+            let score = 100;
+            if (cloudPct > 0) score -= cloudPct;
+            if (moonIllum > 0.1) score -= (moonIllum * 50);
+            if (!row.SQMSerial) score -= 10;
+            if (score < 0) score = 0;
+
+            try {
+                // In a production environment, we would batch these inserts
+                await pool.query(
+                    `INSERT INTO measurements
+                    (lat, lng, elevation, date_observed, sqm, mag, constellation, comment, cloud_cover_pct, moon_illumination, is_research_grade, quality_score, geom)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ST_SetSRID(ST_MakePoint($2, $1), 4326))`,
+                    [lat, lng, row['Elevation(m)'], date, sqm, row.LimitingMag, row.Constellation, row.SkyComment, cloudPct, moonIllum, isResearchGrade, score]
+                );
+                inserted++;
+            } catch (e) { skipped++; }
+        }
+        console.log(`✅ Ingestion Complete. Inserted: ${inserted}, Skipped: ${skipped}`);
     } catch (e) { console.error("Seeding failed:", e); }
 }
 
