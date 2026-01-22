@@ -1,6 +1,9 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 (public/css/glass-morphism-enhancements.css', 'public/css/mode-selection.css']
 =======
+=======
+>>>>>>> parent of d444d3c (**Title:** Migrate from n8n to robust chatbot, replace mock data with real scientific datasets, and enhance hybrid deployment)
 ```
 # Dependencies
 node_modules/
@@ -27,5 +30,9 @@ build/
 
 # Package manager
 package-lock.json
+<<<<<<< HEAD
+```
+>>>>>>> parent of d444d3c (**Title:** Migrate from n8n to robust chatbot, replace mock data with real scientific datasets, and enhance hybrid deployment)
+=======
 ```
 >>>>>>> parent of d444d3c (**Title:** Migrate from n8n to robust chatbot, replace mock data with real scientific datasets, and enhance hybrid deployment)
