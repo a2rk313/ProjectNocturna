@@ -18,11 +18,6 @@ venv/
 .env.local
 .env.*
 
-# Build directories
-dist/
-build/
-target/
-
 # Logs and temp files
 *.log
 *.tmp
@@ -41,6 +36,12 @@ Thumbs.db
 coverage/
 htmlcov/
 .coverage
+
+# Build directories
+dist/
+build/
+target/
+.gradle/
 
 # Python specific
 .mypy_cache/
