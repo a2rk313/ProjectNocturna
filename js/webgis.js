@@ -37,13 +37,15 @@ class WebGIS {
             attribution: 'Local PostGIS/GeoServer'
         });
 
-        // Add VIIRS layer initially
-        this.viirsLayer = L.tileLayer(this.dataManager.getVIIRSTileUrl(), {
-            attribution: 'NASA Earth Observatory',
-            opacity: 0.7,
-            zIndex: 1
+        // Add VIIRS layer initially (Async load from GEE)
+        this.dataManager.fetchVIIRSTileUrl().then(url => {
+            this.viirsLayer = L.tileLayer(url, {
+                attribution: 'Google Earth Engine | NASA Earth Observatory',
+                opacity: 0.7,
+                zIndex: 1
+            });
+            this.viirsLayer.addTo(this.map);
         });
-        this.viirsLayer.addTo(this.map);
 
         this.map.addLayer(this.drawnItems);
         this.map.addLayer(this.uiMarkers);
@@ -261,6 +263,7 @@ class WebGIS {
         if (viirsCheckbox) {
             viirsCheckbox.checked = true;  // Default to visible
             viirsCheckbox.addEventListener('change', (e) => {
+                if (!this.viirsLayer) return;
                 if (e.target.checked) {
                     this.map.addLayer(this.viirsLayer);
                 } else {

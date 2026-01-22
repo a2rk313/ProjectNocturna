@@ -112,6 +112,7 @@ body {
 .cosmic-check .form-check-input:checked { background-color: var(--cosmic-primary); border-color: var(--cosmic-primary); }
 .cosmic-check .form-check-label { font-size: 0.8rem; }
 
+.basemap-wrapper { position: relative; }
 .basemap-dropdown { position: absolute; bottom: 100%; left: 0; width: 100%; background: rgba(10, 15, 28, 0.95); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 8px; padding: 8px; display: none; z-index: 1001; }
 .basemap-dropdown.show { display: block; }
 .basemap-option { padding: 6px 10px; border-radius: 6px; cursor: pointer; color: rgba(255, 255, 255, 0.9); display: flex; align-items: center; font-size: 0.8rem; }

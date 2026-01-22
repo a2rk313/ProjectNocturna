@@ -1,6 +1,11 @@
 // js/api-config.js
 const API_CONFIG = {
-    // NASA VIIRS Data
+    // Google Earth Engine (Replaces NASA VIIRS)
+    GEE: {
+        mapIdEndpoint: '/api/gee/mapid',
+        statsEndpoint: '/api/gee/stats'
+    },
+    // NASA VIIRS Data (Deprecated)
     NASA_VIIRS: {
         tileUrl: 'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg',
         apiBase: 'https://api.nasa.gov'
