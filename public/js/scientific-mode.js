@@ -23,6 +23,64 @@ class ScientificMode {
         // Additional initialization if needed
     }
 
+    displayAnalysisReport(report) {
+        if (!report) {
+            window.SystemBus.emit('system:message', '⚠️ Analysis returned no report.');
+            return;
+        }
+
+        const { trend, history } = report;
+
+        const content = `
+            <div class="expert-modal">
+                <h5 class="text-center mb-4"><i class="fas fa-chart-line text-info"></i> Trend Analysis Report</h5>
+                
+                <div class="research-paper mb-4">
+                    <h6>Analysis Summary</h6>
+                    <p><strong>Direction:</strong> ${trend.direction}</p>
+                    <p><strong>Confidence:</strong> ${trend.confidence_score}%</p>
+                    <p><strong>Annual Change Rate:</strong> ${trend.annual_change_rate}</p>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6><i class="fas fa-history"></i> Time Series Data</h6>
+                        <div class="bg-dark p-3 rounded" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-dark table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Average Radiance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${history.map(h => `
+                                        <tr>
+                                            <td>${h.month}</td>
+                                            <td>${h.avg_radiance.toFixed(4)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-lightbulb"></i> Research Insights</h6>
+                    <p class="small mb-0">
+                        This analysis uses the Theil-Sen estimator, a robust method for trend analysis that is less sensitive to outliers than simple linear regression.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        window.SystemBus.emit('ui:show_modal', {
+            title: "Trend Analysis Report",
+            content: content
+        });
+    }
+
     /**
      * Show World Atlas Research Layer with real data
      */

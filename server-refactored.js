@@ -29,6 +29,7 @@ const config = require('./config/app');
 const apiRoutes = require('./routes/index');
 const authRoutes = require('./routes/auth');
 const measurementRoutes = require('./routes/measurements');
+const analysisRoutes = require('./routes/analysis');
 
 // Create Express app
 const app = express();
@@ -161,6 +162,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/measurements', measurementRoutes);
+app.use('/api/analysis', analysisRoutes);
 app.use('/api', apiRoutes);
 
 // Serve HTML files for non-API routes (SPA support)

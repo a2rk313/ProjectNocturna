@@ -1215,10 +1215,70 @@ class WebGIS {
         console.log(`Comparing ${year1} vs ${year2}`);
     }
     
-    performTrendAnalysis() {
-        // Placeholder for trend analysis
-        window.SystemBus.emit('system:message', "Performing trend analysis...");
+    async performTrendAnalysis() {
+        window.SystemBus.emit('system:message', "🔬 Kicking off new trend analysis...");
         console.log("Performing trend analysis");
+
+        const selection = this.getSelection();
+        if (!selection) {
+            window.SystemBus.emit('system:message', "⚠️ Please select an area on the map first.");
+            return;
+        }
+
+        let bounds;
+        if (selection.layer.getBounds) {
+            bounds = selection.layer.getBounds();
+        } else if (selection.layer.getLatLng) {
+            // For a marker, create a small bounding box around it
+            const center = selection.layer.getLatLng();
+            const radius = 0.1; // ~10km
+            bounds = L.latLngBounds(
+                [center.lat - radius, center.lng - radius],
+                [center.lat + radius, center.lng + radius]
+            );
+        }
+
+        if (!bounds) {
+            window.SystemBus.emit('system:message', "⚠️ Could not determine the bounds of the selected area.");
+            return;
+        }
+
+        const aoi = [
+            bounds.getSouth(),
+            bounds.getWest(),
+            bounds.getNorth(),
+            bounds.getEast()
+        ];
+
+        window.SystemBus.emit('system:message', `⏳ Analysis started for AOI: ${aoi.map(c => c.toFixed(4)).join(', ')}`);
+
+        try {
+            const response = await fetch('/api/analysis/trends', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ aoi })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Analysis request failed');
+            }
+
+            const result = await response.json();
+            window.SystemBus.emit('system:message', `✅ Analysis complete: ${result.message}`);
+            console.log("Trend analysis report:", result.report);
+
+            // Optionally, display the results on the map or in a panel
+            if (this.scientificMode) {
+                this.scientificMode.displayAnalysisReport(result.report);
+            }
+
+        } catch (error) {
+            window.SystemBus.emit('system:message', `❌ Analysis failed: ${error.message}`);
+            console.error("Trend analysis error:", error);
+        }
     }
 
     setupPanelCollapse() {

@@ -14,7 +14,6 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT) || 5432,
 });
 
-const AOI_BOUNDS = [-90, -180, 90, 180]; 
 const ANALYSIS_MONTHS = 12;
 
 // --- ROBUST ALGORITHM: Theil-Sen Estimator ---
@@ -59,7 +58,7 @@ function calculateRobustTrend(timeSeriesData) {
 }
 
 // --- Helper: Backfill Historical Data ---
-async function ensureHistoricalData(client, earthdata, processor) {
+async function ensureHistoricalData(client, earthdata, processor, aoiBounds) {
     console.log('🕰️  Checking historical coverage...');
     const today = new Date();
     
@@ -75,7 +74,7 @@ async function ensureHistoricalData(client, earthdata, processor) {
             const searchEnd = new Date(targetDate); searchEnd.setDate(searchEnd.getDate() + 2);
             
             try {
-                const granules = await earthdata.searchVIIRSGranules(AOI_BOUNDS, searchStart.toISOString().split('T')[0], searchEnd.toISOString().split('T')[0]);
+                const granules = await earthdata.searchVIIRSGranules(aoiBounds, searchStart.toISOString().split('T')[0], searchEnd.toISOString().split('T')[0]);
                 if (granules.length > 0) {
                     const best = granules.sort((a, b) => a.cloud_cover - b.cloud_cover)[0];
                     if (best.cloud_cover < 40) {
@@ -84,7 +83,7 @@ async function ensureHistoricalData(client, earthdata, processor) {
                         if (!fs.existsSync(localPath)) await earthdata.downloadVIIRSData(dlUrl, localPath);
                         
                         const processed = await processor.processVIIRSFile(localPath);
-                        const geoData = processor.toGeoJSON(processed, AOI_BOUNDS, { sampleRate: 20 }); 
+                        const geoData = processor.toGeoJSON(processed, aoiBounds, { sampleRate: 20 }); 
                         
                         for (const f of geoData.features) {
                              await client.query(`INSERT INTO satellite_light_data (location, latitude, longitude, radiance_value, acquisition_date, satellite_source) VALUES (ST_SetSRID(ST_MakePoint($1, $2), 4326), $2, $1, $3, $4, 'VIIRS_NPP')`, [f.geometry.coordinates[0], f.geometry.coordinates[1], f.properties.radiance, f.properties.timestamp]);
@@ -106,7 +105,7 @@ async function generateChangeLayer(client, history) {
 
     const res = await client.query(`
         WITH baseline AS (SELECT ST_SnapToGrid(location, 0.005) as grid, AVG(radiance_value) as val FROM satellite_light_data WHERE to_char(acquisition_date, 'YYYY-MM') = ANY($1) GROUP BY 1),
-             current AS (SELECT ST_SnapToGrid(location, 0.005) as grid, AVG(radiance_value) as val FROM satellite_light_data WHERE to_char(acquisition_date, 'YYYY-MM') = ANY($2) GROUP BY 1)
+             current AS (SELECT ST_SnapToGrid(location, 0.005) as grid, AVG( radiance_value) as val FROM satellite_light_data WHERE to_char(acquisition_date, 'YYYY-MM') = ANY($2) GROUP BY 1)
         SELECT ST_X(COALESCE(b.grid, c.grid)) as lng, ST_Y(COALESCE(b.grid, c.grid)) as lat, (c.val - b.val) as change FROM baseline b FULL OUTER JOIN current c ON b.grid = c.grid WHERE ABS(c.val - b.val) > 2.0
     `, [startM, endM]);
 
@@ -121,19 +120,22 @@ async function generateChangeLayer(client, history) {
 }
 
 // --- Main Workflow ---
-async function runTrendAnalysis() {
+async function runTrendAnalysis(aoiBounds) {
     const earthdata = new EarthdataAPI();
     const processor = new HDF5Processor();
     const client = await pool.connect();
 
     try {
         console.log(`🚀 Starting Robust Analysis [Theil-Sen]...`);
-        await ensureHistoricalData(client, earthdata, processor);
+        await ensureHistoricalData(client, earthdata, processor, aoiBounds);
 
-        const tsRes = await client.query(`SELECT to_char(acquisition_date, 'YYYY-MM') as month, AVG(radiance_value) as avg_radiance FROM satellite_light_data WHERE latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4 GROUP BY 1 ORDER BY 1 ASC`, [AOI_BOUNDS[0], AOI_BOUNDS[2], AOI_BOUNDS[1], AOI_BOUNDS[3]]);
+        const tsRes = await client.query(`SELECT to_char(acquisition_date, 'YYYY-MM') as month, AVG(radiance_value) as avg_radiance FROM satellite_light_data WHERE latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4 GROUP BY 1 ORDER BY 1 ASC`, [aoiBounds[0], aoiBounds[2], aoiBounds[1], aoiBounds[3]]);
         const history = tsRes.rows.map(r => ({ month: r.month, avg_radiance: parseFloat(r.avg_radiance) }));
 
-        if (history.length < 2) return console.log('⚠️ Insufficient data.');
+        if (history.length < 2) {
+            console.log('⚠️ Insufficient data.');
+            return { message: 'Insufficient data to generate a trend analysis.' };
+        }
 
         const trendStats = calculateRobustTrend(history);
         const changeLayer = await generateChangeLayer(client, history);
@@ -149,9 +151,25 @@ async function runTrendAnalysis() {
         await client.query('COMMIT');
         
         console.log(`✅ Report Saved. Direction: ${trendStats.direction}, Confidence: ${trendStats.confidence_score}%`);
+        return {
+            message: 'Trend analysis completed successfully.',
+            report: {
+                trend: trendStats,
+                history: history,
+                changeLayer: changeLayer
+            }
+        };
 
-    } catch (e) { await client.query('ROLLBACK'); console.error(e); } 
-    finally { client.release(); await pool.end(); }
+    } catch (e) { 
+        await client.query('ROLLBACK'); 
+        console.error(e); 
+        throw new Error('Failed to run trend analysis.');
+    } 
+    finally { 
+        client.release(); 
+    }
 }
 
-if (require.main === module) runTrendAnalysis();
+module.exports = {
+    runTrendAnalysis
+};

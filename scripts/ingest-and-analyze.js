@@ -14,29 +14,43 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT) || 5432,
 });
 
-const AOI_BOUNDS = [40.5, -74.3, 40.9, -73.7]; 
+async function ingestAndAnalyze(aoiBounds, options = {}) {
+  const { 
+    timeRangeDays = 2, 
+    sampleRate = 10 
+  } = options;
 
-async function ingestAndAnalyze() {
   const earthdata = new EarthdataAPI();
   const processor = new HDF5Processor();
-  const client = await pool.connect();
-
+  let client;
   try {
+    const clientResponse = await pool.connect();
+    client = clientResponse;
     console.log('🚀 Starting VIIRS Ingestion & Analysis Workflow...');
     const endDate = new Date().toISOString().split('T')[0];
-    const startDate = new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - 86400000 * timeRangeDays).toISOString().split('T')[0];
     
-    const granules = await earthdata.searchVIIRSGranules(AOI_BOUNDS, startDate, endDate);
-    if (granules.length === 0) return console.log('⚠️ No granules found.');
+    const granules = await earthdata.searchVIIRSGranules(aoiBounds, startDate, endDate);
+    if (granules.length === 0) {
+      console.log('⚠️ No granules found.');
+      return { message: 'No granules found for the specified area and time range.' };
+    }
 
     const bestGranule = granules.sort((a, b) => a.cloud_cover - b.cloud_cover)[0];
     const downloadUrl = bestGranule.links.find(l => l.href.endsWith('.h5'))?.href;
+
+    if (!downloadUrl) {
+      throw new Error('No H5 download link found for the best granule.');
+    }
+
     const localPath = path.join(__dirname, '../data/downloads', `${bestGranule.id}.h5`);
     
-    if (!fs.existsSync(localPath)) await earthdata.downloadVIIRSData(downloadUrl, localPath);
+    if (!fs.existsSync(localPath)) {
+      await earthdata.downloadVIIRSData(downloadUrl, localPath);
+    }
 
     const processed = await processor.processVIIRSFile(localPath);
-    const geoData = processor.toGeoJSON(processed, AOI_BOUNDS, { sampleRate: 10 });
+    const geoData = processor.toGeoJSON(processed, aoiBounds, { sampleRate });
 
     await client.query('BEGIN');
     let totalRadiance = 0, maxRadiance = 0, bortleDist = {}, hotspots = [];
@@ -64,28 +78,40 @@ async function ingestAndAnalyze() {
     
     // Insert Report
     const userRes = await client.query('SELECT uuid FROM users LIMIT 1');
-    await client.query(`
-      INSERT INTO analysis_reports 
-      (title, report_type, author_user_id, parameters_used, methodology, summary_statistics, is_public)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      `VIIRS Ingestion: ${bestGranule.id}`, 'ingestion_analysis', userRes.rows[0]?.uuid,
-      JSON.stringify({ bounds: AOI_BOUNDS, granule: bestGranule.id }),
-      'Automated VIIRS HDF5 Processing',
-      JSON.stringify({ mean: avgRadiance, max: maxRadiance, bortle: bortleDist }),
-      true
-    ]);
+    const userId = userRes.rows[0]?.uuid;
+    if (!userId) {
+      console.warn("No user found to associate with the report. The report will not be created.");
+    } else {
+      await client.query(`
+        INSERT INTO analysis_reports 
+        (title, report_type, author_user_id, parameters_used, methodology, summary_statistics, is_public)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
+        `VIIRS Ingestion: ${bestGranule.id}`, 'ingestion_analysis', userId,
+        JSON.stringify({ bounds: aoiBounds, granule: bestGranule.id }),
+        'Automated VIIRS HDF5 Processing',
+        JSON.stringify({ mean: avgRadiance, max: maxRadiance, bortle: bortleDist }),
+        true
+      ]);
+    }
 
     await client.query('COMMIT');
     console.log('✅ Ingestion Complete!');
+    return { message: 'Ingestion completed successfully.' };
 
   } catch (error) {
+    if (client) {
     await client.query('ROLLBACK');
+  }
     console.error('❌ Error:', error);
+    throw new Error('Failed to ingest and analyze data.');
   } finally {
-    client.release();
-    await pool.end();
+    if (client) {
+      client.release();
+}
   }
 }
 
-if (require.main === module) ingestAndAnalyze();
+module.exports = {
+    ingestAndAnalyze
+};

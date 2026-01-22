@@ -1,3 +1,5 @@
+SET search_path TO public;
+
 -- Project Nocturna - Light Pollution Monitoring Database Schema
 -- Designed for PostGIS with spatial capabilities
 
@@ -21,7 +23,7 @@ CREATE TABLE light_measurements (
     observation_notes TEXT,
     image_url VARCHAR(255), -- URL to uploaded image
     measurement_quality_score DECIMAL(3, 2), -- Quality score (0-1)
-    submitted_by_user_id UUID,
+    submitted_by_user_id UUID REFERENCES users(uuid),
     validation_status VARCHAR(20) DEFAULT 'pending', -- pending, validated, rejected
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

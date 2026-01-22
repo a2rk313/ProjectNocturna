@@ -1,11 +1,5 @@
 // scripts/import-real-data.js
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const { query, logger } = require('../config/db');
 
 async function importVIIRSData() {
   console.log('🌍 Importing NASA VIIRS data...');
