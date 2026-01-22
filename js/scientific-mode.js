@@ -71,7 +71,7 @@ class ScientificMode {
         const selection = this.webGIS.getSelection();
         if (!selection) {
              window.SystemBus.emit('system:message', "⚠️ Select a location first.");
-             alert("Please draw a region or select a location on the map first.");
+             alert("Please draw a region on the map first using the draw tools.");
              return;
         }
 
@@ -144,7 +144,7 @@ class ScientificMode {
         const geometry = this.getAnalysisGeometry();
         if (!geometry) {
              window.SystemBus.emit('system:message', "⚠️ Select a region first.");
-             alert("Please draw a region on the map first to analyze energy.");
+             alert("Please draw a region on the map first using the draw tools.");
              return;
         }
         
@@ -186,7 +186,7 @@ class ScientificMode {
         const geometry = this.getAnalysisGeometry();
         if (!geometry) {
              window.SystemBus.emit('system:message', "⚠️ Select a region first.");
-             alert("Please draw a region on the map first to analyze statistics.");
+             alert("Please draw a region on the map first using the draw tools.");
              return;
         }
 

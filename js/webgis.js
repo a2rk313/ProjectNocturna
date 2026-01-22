@@ -5,13 +5,13 @@ class WebGIS {
         this.currentMode = 'citizen'; 
         this.drawnItems = new L.FeatureGroup();
         this.uiMarkers = L.layerGroup();
-        this.stationsLayer = L.layerGroup();
-        this.viirsLayer = null;  // Added VIIRS layer
+        
+        // Layers
+        this.stationsLayer = L.markerClusterGroup({ disableClusteringAtZoom: 16 }); // Keep for detailed interaction
+        this.geoServerLayer = null; // New WMS Layer
+        this.viirsLayer = null;
+        
         this.drawControl = null;
-
-        if (typeof L.markerClusterGroup === 'function') {
-            this.stationsLayer = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
-        }
 
         this.initMap();
         this.initUIListeners(); 
@@ -24,20 +24,21 @@ class WebGIS {
 
         this.baseLayers = {
             osm: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap, CARTO' }),
-            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' })
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/ {z}/{y}/{x}', { attribution: '© Esri' })
         };
         this.baseLayers.osm.addTo(this.map);
 
-        // Initialize GeoServer WMS Layer
+        // --- STRATEGY FIX: Initialize GeoServer WMS Layer ---
+        // This consumes the data stored in PostGIS via GeoServer
         this.geoServerLayer = L.tileLayer.wms(this.dataManager.getGeoServerURL(), {
-            layers: 'nocturna:measurements',
+            layers: 'nocturna:measurements', // Ensure this layer is published in GeoServer
             format: 'image/png',
             transparent: true,
             version: '1.1.0',
             attribution: 'Local PostGIS/GeoServer'
         });
 
-        // Add VIIRS layer initially
+        // Add VIIRS layer (NASA)
         this.viirsLayer = L.tileLayer(this.dataManager.getVIIRSTileUrl(), {
             attribution: 'NASA Earth Observatory',
             opacity: 0.7,
@@ -47,11 +48,9 @@ class WebGIS {
 
         this.map.addLayer(this.drawnItems);
         this.map.addLayer(this.uiMarkers);
-
-        // Add GeoServer layer by default
+        
+        // Add GeoServer layer by default to prove connectivity
         this.map.addLayer(this.geoServerLayer);
-        // We still keep stationsLayer available for interaction if needed, but visually GeoServer takes over for density
-        this.map.addLayer(this.stationsLayer);
 
         this.map.on(L.Draw.Event.CREATED, (e) => {
             this.drawnItems.clearLayers(); 
@@ -61,8 +60,8 @@ class WebGIS {
             window.SystemBus.emit('system:message', `✅ ${type} selected.`);
         });
 
-        this.initStationsLayer();
-        this.initDataLayersControls();  // Initialize data layer controls
+        this.initStationsLayer(); // Fetches interactive markers for top-layer
+        this.initDataLayersControls(); 
     }
 
     getSelection() {
@@ -110,7 +109,7 @@ class WebGIS {
         });
     }
 
-    updateUIForMode(mode) {
+updateUIForMode(mode) {
         const indicator = document.getElementById('modeIndicator');
         const labels = {
             title: document.getElementById('panelTitle'),
@@ -118,11 +117,22 @@ class WebGIS {
             botName: document.getElementById('assistantName')
         };
 
+        // Reset the dropMarker button to its default function (manual marker placement)
+        const dropBtn = document.getElementById('dropMarker');
+        if (dropBtn) {
+            // Remove existing event listeners by cloning the element
+            const newDropBtn = dropBtn.cloneNode(true);
+            dropBtn.parentNode.replaceChild(newDropBtn, dropBtn);
+            
+            // Rebind to default manual marker function
+            newDropBtn.addEventListener('click', () => this.startTool('marker'));
+        }
+
         if (mode === 'citizen') {
             if(indicator) { indicator.innerText = 'Citizen Mode'; indicator.className = 'badge bg-success ms-2 mode-badge'; }
             if(labels.title) labels.title.innerText = 'Stargazing Tools';
             if(labels.botName) labels.botName.innerText = 'Lumina';
-            if(labels.welcome) labels.welcome.innerText = 'Hello! I\'m Lumina. Ask me to "Find dark sky spots".';
+            if(labels.welcome) labels.welcome.innerText = 'Hello! I\'m Lumina. Ask me to "Find dark sky spots".'; 
             
             // UI Visibility - Show/hide separate toolbars
             document.getElementById('citizenToolbar').style.display = 'block';
@@ -158,7 +168,7 @@ class WebGIS {
 
         const dataBtn = document.getElementById('dataSources');
         if (dataBtn) dataBtn.addEventListener('click', () => {
-             const content = `<div class="text-start"><h6>Data Sources</h6><ul><li>GaN2024 Database</li><li>NASA VIIRS (2012)</li><li>Open-Meteo API</li></ul></div>`;
+             const content = `<div class="text-start"><h6>Data Sources</h6><ul><li>GaN2024 Database (PostGIS)</li><li>NASA VIIRS (2012)</li><li>Open-Meteo API</li></ul></div>`;
             window.SystemBus.emit('ui:show_modal', { title: "📚 Data Sources", content: content });
         });
 
@@ -175,22 +185,14 @@ class WebGIS {
             window.SystemBus.emit('system:message', "🗑️ Selection cleared.");
         });
         
-        // Fix: Connect Route Planning
+        // Plan Route functionality
         const routeBtn = document.getElementById('planRoute');
-        if(routeBtn) routeBtn.addEventListener('click', () => {
-             // For now, use a simple prompt-based approach as Leaflet Routing Machine
-             // integration requires more complex UI. Or just alert not implemented.
-             // Given the constraints, let's wire it to a modal input.
-             const content = `
-                <div class="p-2">
-                    <input type="text" id="routeStart" class="form-control mb-2" placeholder="Start (e.g. New York)">
-                    <input type="text" id="routeEnd" class="form-control mb-2" placeholder="End (e.g. Boston)">
-                    <button class="btn btn-primary w-100" onclick="webGIS.calculateRoute()">Go</button>
-                </div>
-             `;
-             window.SystemBus.emit('ui:show_modal', { title: "Plan Route", content: content });
-        });
-
+        if (routeBtn) routeBtn.addEventListener('click', () => this.planRoute());
+        
+        // Compare Locations functionality
+        const compareBtn = document.getElementById('compareLocations');
+        if (compareBtn) compareBtn.addEventListener('click', () => this.enableCompareMode());
+        
         // Basemap switching functionality
         const basemapSwitcher = document.getElementById('basemapSwitcher');
         const basemapDropdown = document.getElementById('basemapDropdown');
@@ -246,85 +248,60 @@ class WebGIS {
     }
 
     async initStationsLayer() {
+        // Keep fetching JSON for interaction (Popups), but use GeoServer for visual density
         try {
             const stations = await this.dataManager.fetchStations();
-            // Make markers invisible/small as GeoServer handles main visualization
-            // They are kept for popup interaction
+            // We can make these markers invisible or smaller since GeoServer handles the main view
             const markers = stations.map(s => L.circleMarker([s.lat, s.lng], { radius: 4, fillColor: '#00ff00', color: '#fff', weight: 1, fillOpacity: 0.0 }).bindPopup(`<b>SQM:</b> ${s.sqm}`));
             this.stationsLayer.addLayers(markers);
         } catch(e) {}
     }
     
     initDataLayersControls() {
-        // Handle VIIRS layer checkbox
         const viirsCheckbox = document.getElementById('viirsLayer');
         if (viirsCheckbox) {
-            viirsCheckbox.checked = true;  // Default to visible
+            viirsCheckbox.checked = true;
             viirsCheckbox.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    this.map.addLayer(this.viirsLayer);
-                } else {
-                    this.map.removeLayer(this.viirsLayer);
-                }
+                if (e.target.checked) this.map.addLayer(this.viirsLayer);
+                else this.map.removeLayer(this.viirsLayer);
             });
         }
         
-        // Handle ground measurements layer checkbox (Toggles both WMS and Interactive layer)
+        // --- STRATEGY FIX: Controls toggle GeoServer WMS now ---
         const groundCheckbox = document.getElementById('groundMeasurements');
         if (groundCheckbox) {
-            groundCheckbox.checked = true;  // Default to visible
+            groundCheckbox.checked = true;
             groundCheckbox.addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    if (this.geoServerLayer) this.map.addLayer(this.geoServerLayer);
-                    this.map.addLayer(this.stationsLayer);
+                    this.map.addLayer(this.geoServerLayer); // Add WMS
+                    this.map.addLayer(this.stationsLayer);  // Add Interactive Overlay
                 } else {
-                    if (this.geoServerLayer) this.map.removeLayer(this.geoServerLayer);
+                    this.map.removeLayer(this.geoServerLayer);
                     this.map.removeLayer(this.stationsLayer);
                 }
             });
         }
         
-        // Handle dark sky parks layer checkbox
         const darkSkyCheckbox = document.getElementById('darkSkyParks');
         if (darkSkyCheckbox) {
-            darkSkyCheckbox.checked = true;  // Default to visible
+            darkSkyCheckbox.checked = true;
             darkSkyCheckbox.addEventListener('change', async (e) => {
                 if (e.target.checked) {
-                    // Load dark sky parks data and display on map
                     try {
                         const response = await fetch('./data/dark-sky-parks.json');
                         const data = await response.json();
+                        if (!this.darkSkyLayer) this.darkSkyLayer = L.layerGroup();
                         
-                        // Create a layer for dark sky parks
-                        if (!this.darkSkyLayer) {
-                            this.darkSkyLayer = L.layerGroup();
-                        }
-                        
-                        // Add each park as a circle marker
                         data.parks.forEach(park => {
                             const marker = L.circleMarker([park.lat, park.lng], {
-                                radius: 8,
-                                fillColor: '#FFD700',
-                                color: '#FFA500',
-                                weight: 2,
-                                opacity: 1,
-                                fillOpacity: 0.7
+                                radius: 8, fillColor: '#FFD700', color: '#FFA500', weight: 2, opacity: 1, fillOpacity: 0.7
                             }).bindPopup(`<b>${park.name}</b><br>${park.type}<br>${park.country}`);
-                            
                             this.darkSkyLayer.addLayer(marker);
                         });
-                        
                         this.map.addLayer(this.darkSkyLayer);
-                        console.log('Dark sky parks layer enabled');
-                    } catch (error) {
-                        console.error('Error loading dark sky parks:', error);
-                    }
+                    } catch (error) { console.error('Error loading dark sky parks:', error); }
                 } else {
-                    // Remove the dark sky parks layer
-                    if (this.darkSkyLayer) {
-                        this.map.removeLayer(this.darkSkyLayer);
-                        console.log('Dark sky parks layer disabled');
-                    }
+                    if (this.darkSkyLayer) this.map.removeLayer(this.darkSkyLayer);
                 }
             });
         }
@@ -353,22 +330,28 @@ class WebGIS {
         // Show modal with comparison interface
         window.SystemBus.emit('ui:show_modal', { title: "Location Comparison", content: content });
         
-        // Set up event listener for comparison
-        setTimeout(() => {
-            const compareBtn = document.getElementById('compareSubmit');
-            if (compareBtn) {
-                compareBtn.addEventListener('click', () => {
-                    const firstLoc = document.getElementById('firstLocation').value;
-                    const secondLoc = document.getElementById('secondLocation').value;
-                    
-                    if (firstLoc && secondLoc) {
-                        this.performLocationComparison(firstLoc, secondLoc);
-                    } else {
-                        alert('Please enter both locations');
-                    }
-                });
-            }
-        }, 100);
+        // Use event delegation to handle the submit button click
+        // This ensures the event handler works even if the element is created dynamically
+        const modalContainer = document.querySelector('#analysisContent') || document.body;
+        
+        // Remove any existing compareSubmit listeners to avoid duplicates
+        const existingListener = modalContainer.querySelector('#compareSubmit');
+        if (existingListener) {
+            // Clone the element to remove old event listeners
+            const newElement = existingListener.cloneNode(true);
+            existingListener.parentNode.replaceChild(newElement, existingListener);
+            
+            newElement.addEventListener('click', () => {
+                const firstLoc = document.getElementById('firstLocation')?.value;
+                const secondLoc = document.getElementById('secondLocation')?.value;
+                
+                if (firstLoc && secondLoc) {
+                    this.performLocationComparison(firstLoc, secondLoc);
+                } else {
+                    alert('Please enter both locations');
+                }
+            });
+        }
     }
     
     /**
@@ -438,23 +421,172 @@ class WebGIS {
     /**
      * Simple geocoding function to convert location names to coordinates
      */
-    async geocodeLocation(locationName) {
+    /**
+     * Plan a route between two locations
+     */
+    planRoute() {
+        // Show a modal for planning a route
+        const content = `
+            <div class="container-fluid">
+                <h5>Plan a Route</h5>
+                <div class="mb-3">
+                    <label class="form-label">Start Location</label>
+                    <input type="text" id="routeStart" class="form-control" placeholder="Enter starting point">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">End Location</label>
+                    <input type="text" id="routeEnd" class="form-control" placeholder="Enter destination">
+                </div>
+                <button id="routeSubmit" class="btn btn-primary w-100">Get Directions</button>
+            </div>
+        `;
+        
+        // Show modal with route planning interface
+        window.SystemBus.emit('ui:show_modal', { title: "Route Planner", content: content });
+        
+        // Use event delegation to handle the submit button click
+        // This ensures the event handler works even if the element is created dynamically
+        const modalContainer = document.querySelector('#analysisContent') || document.body;
+        
+        // Remove any existing routeSubmit listeners to avoid duplicates
+        const existingListener = modalContainer.querySelector('#routeSubmit');
+        if (existingListener) {
+            // Clone the element to remove old event listeners
+            const newElement = existingListener.cloneNode(true);
+            existingListener.parentNode.replaceChild(newElement, existingListener);
+            
+            newElement.addEventListener('click', () => {
+                const startLoc = document.getElementById('routeStart')?.value;
+                const endLoc = document.getElementById('routeEnd')?.value;
+                
+                if (startLoc && endLoc) {
+                    this.calculateRoute(startLoc, endLoc);
+                } else {
+                    alert('Please enter both start and end locations');
+                }
+            });
+        }
+    }
+    
+    /**
+     * Calculate and display route between two locations
+     */
+    async calculateRoute(start, end) {
         try {
-            const query = encodeURIComponent(locationName);
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
-            const data = await response.json();
+            // Parse coordinates if they're in lat,lng format
+            let startCoords, endCoords;
+            
+            if (start.includes(',')) {
+                const [lat, lng] = start.split(',').map(Number);
+                startCoords = { lat, lng };
+            } else {
+                // Geocode location name to coordinates
+                startCoords = await this.geocodeLocation(start);
+            }
+            
+            if (end.includes(',')) {
+                const [lat, lng] = end.split(',').map(Number);
+                endCoords = { lat, lng };
+            } else {
+                // Geocode location name to coordinates
+                endCoords = await this.geocodeLocation(end);
+            }
+            
+            if (!startCoords || !endCoords || startCoords.lat === 0 || endCoords.lat === 0) {
+                throw new Error('Could not geocode one or both locations');
+            }
 
+            // Create a simple line between the two points (since we don't have a real routing service)
+            // In a real implementation, this would use a routing service like OSRM or Google Maps
+            
+            // Clear any existing routing layer
+            if (this.routingLayer) {
+                this.map.removeLayer(this.routingLayer);
+            }
+            
+            // Create a simple line between the two points
+            const routeLine = L.polyline([
+                [startCoords.lat, startCoords.lng],
+                [endCoords.lat, endCoords.lng]
+            ], {
+                color: '#00ffff',
+                weight: 4,
+                opacity: 0.8
+            }).addTo(this.map);
+            
+            this.routingLayer = routeLine;
+            
+            // Fit the map to show both points
+            const group = L.featureGroup([routeLine]);
+            this.map.fitBounds(group.getBounds().pad(0.1));
+            
+            // Show route information
+            const distance = this.calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+            
+            const routeContent = `
+                <div class="container-fluid">
+                    <h6>Route Information</h6>
+                    <p><strong>From:</strong> ${start}</p>
+                    <p><strong>To:</strong> ${end}</p>
+                    <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
+                    <p><strong>Note:</strong> This is a straight-line path. Real navigation may vary.</p>
+                    <div class="mt-3">
+                        <button class="btn btn-secondary" onclick="webGIS.map.setView([${startCoords.lat}, ${startCoords.lng}], 10)">Go to Start</button>
+                        <button class="btn btn-secondary ms-2" onclick="webGIS.map.setView([${endCoords.lat}, ${endCoords.lng}], 10)">Go to End</button>
+                    </div>
+                </div>
+            `;
+            
+            window.SystemBus.emit('ui:show_modal', { title: "Route Details", content: routeContent });
+
+        } catch (error) {
+            console.error('Route calculation error:', error);
+            alert('Error calculating route: ' + error.message);
+        }
+    }
+    
+    /**
+     * Calculate distance between two points using Haversine formula
+     */
+    calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // Earth radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+    
+    async geocodeLocation(locationName) {
+        // First, try to parse as lat,lng format
+        if (locationName.includes(',')) {
+            const [lat, lng] = locationName.split(',').map(Number);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                return { lat, lng };
+            }
+        }
+        
+        // Use Nominatim OpenStreetMap geocoding service
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}&limit=1`
+            );
+            const data = await response.json();
+            
             if (data && data.length > 0) {
                 return {
                     lat: parseFloat(data[0].lat),
                     lng: parseFloat(data[0].lon)
                 };
             }
-        } catch (e) {
-            console.error("Geocoding failed:", e);
+        } catch (error) {
+            console.warn('Geocoding failed, trying hardcoded locations:', error);
         }
-
-        // Fallback for hardcoded locations if API fails
+        
+        // Fallback to hardcoded locations if geocoding fails
         const locations = {
             'new york': { lat: 40.7128, lng: -74.0060 },
             'london': { lat: 51.5074, lng: -0.1278 },
