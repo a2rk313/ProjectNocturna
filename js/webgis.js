@@ -330,22 +330,28 @@ updateUIForMode(mode) {
         // Show modal with comparison interface
         window.SystemBus.emit('ui:show_modal', { title: "Location Comparison", content: content });
         
-        // Set up event listener for comparison
-        setTimeout(() => {
-            const compareBtn = document.getElementById('compareSubmit');
-            if (compareBtn) {
-                compareBtn.addEventListener('click', () => {
-                    const firstLoc = document.getElementById('firstLocation').value;
-                    const secondLoc = document.getElementById('secondLocation').value;
-                    
-                    if (firstLoc && secondLoc) {
-                        this.performLocationComparison(firstLoc, secondLoc);
-                    } else {
-                        alert('Please enter both locations');
-                    }
-                });
-            }
-        }, 100);
+        // Use event delegation to handle the submit button click
+        // This ensures the event handler works even if the element is created dynamically
+        const modalContainer = document.querySelector('#analysisContent') || document.body;
+        
+        // Remove any existing compareSubmit listeners to avoid duplicates
+        const existingListener = modalContainer.querySelector('#compareSubmit');
+        if (existingListener) {
+            // Clone the element to remove old event listeners
+            const newElement = existingListener.cloneNode(true);
+            existingListener.parentNode.replaceChild(newElement, existingListener);
+            
+            newElement.addEventListener('click', () => {
+                const firstLoc = document.getElementById('firstLocation')?.value;
+                const secondLoc = document.getElementById('secondLocation')?.value;
+                
+                if (firstLoc && secondLoc) {
+                    this.performLocationComparison(firstLoc, secondLoc);
+                } else {
+                    alert('Please enter both locations');
+                }
+            });
+        }
     }
     
     /**
@@ -438,22 +444,28 @@ updateUIForMode(mode) {
         // Show modal with route planning interface
         window.SystemBus.emit('ui:show_modal', { title: "Route Planner", content: content });
         
-        // Set up event listener for route planning
-        setTimeout(() => {
-            const routeBtn = document.getElementById('routeSubmit');
-            if (routeBtn) {
-                routeBtn.addEventListener('click', () => {
-                    const startLoc = document.getElementById('routeStart').value;
-                    const endLoc = document.getElementById('routeEnd').value;
-                    
-                    if (startLoc && endLoc) {
-                        this.calculateRoute(startLoc, endLoc);
-                    } else {
-                        alert('Please enter both start and end locations');
-                    }
-                });
-            }
-        }, 100);
+        // Use event delegation to handle the submit button click
+        // This ensures the event handler works even if the element is created dynamically
+        const modalContainer = document.querySelector('#analysisContent') || document.body;
+        
+        // Remove any existing routeSubmit listeners to avoid duplicates
+        const existingListener = modalContainer.querySelector('#routeSubmit');
+        if (existingListener) {
+            // Clone the element to remove old event listeners
+            const newElement = existingListener.cloneNode(true);
+            existingListener.parentNode.replaceChild(newElement, existingListener);
+            
+            newElement.addEventListener('click', () => {
+                const startLoc = document.getElementById('routeStart')?.value;
+                const endLoc = document.getElementById('routeEnd')?.value;
+                
+                if (startLoc && endLoc) {
+                    this.calculateRoute(startLoc, endLoc);
+                } else {
+                    alert('Please enter both start and end locations');
+                }
+            });
+        }
     }
     
     /**
@@ -549,8 +561,32 @@ updateUIForMode(mode) {
     }
     
     async geocodeLocation(locationName) {
-        // In a real implementation, this would call a geocoding service
-        // For now, we'll use a few hardcoded locations for demo purposes
+        // First, try to parse as lat,lng format
+        if (locationName.includes(',')) {
+            const [lat, lng] = locationName.split(',').map(Number);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                return { lat, lng };
+            }
+        }
+        
+        // Use Nominatim OpenStreetMap geocoding service
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}&limit=1`
+            );
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                return {
+                    lat: parseFloat(data[0].lat),
+                    lng: parseFloat(data[0].lon)
+                };
+            }
+        } catch (error) {
+            console.warn('Geocoding failed, trying hardcoded locations:', error);
+        }
+        
+        // Fallback to hardcoded locations if geocoding fails
         const locations = {
             'new york': { lat: 40.7128, lng: -74.0060 },
             'london': { lat: 51.5074, lng: -0.1278 },

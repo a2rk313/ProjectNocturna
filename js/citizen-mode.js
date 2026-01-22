@@ -25,14 +25,13 @@ class CitizenMode {
         bind('moonPhase', () => this.showMoonPhase());
         bind('weatherCheck', () => this.astroForecast());
         
-        // This initiates GPS, which now creates a valid "Selection"
+        // Restore manual marker placement for 'dropMarker' button
+        // GPS functionality moved to a dedicated button
         bind('dropMarker', () => {
-             // We can trigger the Manual Marker tool OR GPS here. 
-             // Based on your UI, "Pick Location" usually implies manual.
-             // I will leave 'Pick Location' to WebGIS manual tool (handled in WebGIS)
-             // and make this button trigger GPS if you prefer, OR add a dedicated GPS button.
-             // For now, let's map it to GPS as requested previously.
-             this.locateUser();
+            // Let WebGIS handle manual marker placement through its startTool method
+            if (this.webGIS) {
+                this.webGIS.startTool('marker');
+            }
         });
     }
 
