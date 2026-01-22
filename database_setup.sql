@@ -34,3 +34,17 @@ CREATE TABLE measurements (
 -- 4. Spatial & Quality Indices
 CREATE INDEX idx_measurements_geom ON measurements USING GIST (geom);
 CREATE INDEX idx_quality ON measurements (is_research_grade);
+
+-- 5. VIIRS Nighttime Lights Table
+DROP TABLE IF EXISTS viirs_data;
+CREATE TABLE viirs_data (
+    id SERIAL PRIMARY KEY,
+    geom GEOMETRY(POLYGON, 4326),
+    radiance_avg FLOAT,
+    acquisition_date DATE,
+    source_file VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. VIIRS Spatial Index
+CREATE INDEX idx_viirs_geom ON viirs_data USING GIST (geom);
