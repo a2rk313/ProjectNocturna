@@ -161,6 +161,46 @@ class WebGIS {
             this.uiMarkers.clearLayers();
             window.SystemBus.emit('system:message', "🗑️ Selection cleared.");
         });
+        
+        // Basemap switching functionality
+        const basemapSwitcher = document.getElementById('basemapSwitcher');
+        const basemapDropdown = document.getElementById('basemapDropdown');
+        if (basemapSwitcher && basemapDropdown) {
+            basemapSwitcher.addEventListener('click', (e) => {
+                e.stopPropagation();
+                basemapDropdown.classList.toggle('show');
+            });
+            
+            // Handle basemap option clicks
+            const basemapOptions = basemapDropdown.querySelectorAll('.basemap-option');
+            basemapOptions.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    const basemapType = e.currentTarget.getAttribute('data-basemap');
+                    this.switchBasemap(basemapType);
+                    
+                    // Update active class
+                    basemapOptions.forEach(opt => opt.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    
+                    // Hide dropdown after selection
+                    basemapDropdown.classList.remove('show');
+                });
+            });
+        }
+    }
+    
+    switchBasemap(type) {
+        // Remove all base layers from map
+        Object.values(this.baseLayers).forEach(layer => {
+            if (this.map.hasLayer(layer)) {
+                this.map.removeLayer(layer);
+            }
+        });
+        
+        // Add the selected base layer
+        if (this.baseLayers[type]) {
+            this.baseLayers[type].addTo(this.map);
+        }
     }
 
     startTool(type) {
