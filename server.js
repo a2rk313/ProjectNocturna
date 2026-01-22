@@ -57,12 +57,32 @@ function getMoonIllumination(date) {
 
 function parseCloudCover(text) {
     if (!text) return 100; 
-    const t = text.toLowerCase();
-    if (t.includes('clear')) return 0;
-    if (t.includes('1/4')) return 25;
-    if (t.includes('1/2')) return 50;
-    if (t.includes('over 1/2')) return 75;
-    return 10; 
+    const t = text.toLowerCase().trim();
+    
+    // Handle percentage values
+    const percentMatch = t.match(/(\d+)%/);
+    if (percentMatch) {
+        return parseInt(percentMatch[1]);
+    }
+    
+    // Handle fraction values
+    if (t.includes('clear') || t.includes('sunny') || t.includes('0/8') || t.includes('0 oktas')) return 0;
+    if (t.includes('few') || t.includes('1/8') || t.includes('1 okta') || t.includes('1-2 oktas')) return 12;
+    if (t.includes('scattered') || t.includes('3/8') || t.includes('3-4 oktas')) return 37;
+    if (t.includes('broken') || t.includes('5/8') || t.includes('5-7 oktas')) return 75;
+    if (t.includes('overcast') || t.includes('8/8') || t.includes('8 oktas') || t.includes('100%')) return 100;
+    if (t.includes('mostly cloudy') || t.includes('7/8')) return 87;
+    if (t.includes('partly cloudy') || t.includes('partly sunny') || t.includes('2/8') || t.includes('4/8')) return 25;
+    
+    // Handle numeric ranges
+    const rangeMatch = t.match(/(\d+)\s*-\s*(\d+)/);
+    if (rangeMatch) {
+        const avg = (parseInt(rangeMatch[1]) + parseInt(rangeMatch[2])) / 2;
+        return Math.min(100, Math.max(0, avg));
+    }
+    
+    // Default fallback
+    return 50; 
 }
 
 // --- API ENDPOINTS ---
