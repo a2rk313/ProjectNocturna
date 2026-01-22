@@ -107,7 +107,8 @@ class DataManager {
 
     // Helper to get external tile layers (Configuration only)
     getVIIRSTileUrl() {
-        return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/2012-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
+        // Updated to use more recent VIIRS Black Marble data instead of 2012
+        return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2020-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
     }
     
     /**

@@ -255,12 +255,174 @@ class WebGIS {
         const darkSkyCheckbox = document.getElementById('darkSkyParks');
         if (darkSkyCheckbox) {
             darkSkyCheckbox.checked = true;  // Default to visible
-            darkSkyCheckbox.addEventListener('change', (e) => {
-                // In a real implementation, this would control a WMS layer
-                // For now, we'll just log the action
-                console.log(`Dark sky parks layer ${e.target.checked ? 'enabled' : 'disabled'}`);
+            darkSkyCheckbox.addEventListener('change', async (e) => {
+                if (e.target.checked) {
+                    // Load dark sky parks data and display on map
+                    try {
+                        const response = await fetch('./data/dark-sky-parks.json');
+                        const data = await response.json();
+                        
+                        // Create a layer for dark sky parks
+                        if (!this.darkSkyLayer) {
+                            this.darkSkyLayer = L.layerGroup();
+                        }
+                        
+                        // Add each park as a circle marker
+                        data.parks.forEach(park => {
+                            const marker = L.circleMarker([park.lat, park.lng], {
+                                radius: 8,
+                                fillColor: '#FFD700',
+                                color: '#FFA500',
+                                weight: 2,
+                                opacity: 1,
+                                fillOpacity: 0.7
+                            }).bindPopup(`<b>${park.name}</b><br>${park.type}<br>${park.country}`);
+                            
+                            this.darkSkyLayer.addLayer(marker);
+                        });
+                        
+                        this.map.addLayer(this.darkSkyLayer);
+                        console.log('Dark sky parks layer enabled');
+                    } catch (error) {
+                        console.error('Error loading dark sky parks:', error);
+                    }
+                } else {
+                    // Remove the dark sky parks layer
+                    if (this.darkSkyLayer) {
+                        this.map.removeLayer(this.darkSkyLayer);
+                        console.log('Dark sky parks layer disabled');
+                    }
+                }
             });
         }
+    }
+    
+    /**
+     * Enable compare mode for side-by-side location comparison
+     */
+    enableCompareMode() {
+        // Show a modal for comparing two locations
+        const content = `
+            <div class="container-fluid">
+                <h5>Compare Two Locations</h5>
+                <div class="mb-3">
+                    <label class="form-label">First Location</label>
+                    <input type="text" id="firstLocation" class="form-control" placeholder="Enter coordinates or address">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Second Location</label>
+                    <input type="text" id="secondLocation" class="form-control" placeholder="Enter coordinates or address">
+                </div>
+                <button id="compareSubmit" class="btn btn-primary w-100">Compare</button>
+            </div>
+        `;
+        
+        // Show modal with comparison interface
+        window.SystemBus.emit('ui:show_modal', { title: "Location Comparison", content: content });
+        
+        // Set up event listener for comparison
+        setTimeout(() => {
+            const compareBtn = document.getElementById('compareSubmit');
+            if (compareBtn) {
+                compareBtn.addEventListener('click', () => {
+                    const firstLoc = document.getElementById('firstLocation').value;
+                    const secondLoc = document.getElementById('secondLocation').value;
+                    
+                    if (firstLoc && secondLoc) {
+                        this.performLocationComparison(firstLoc, secondLoc);
+                    } else {
+                        alert('Please enter both locations');
+                    }
+                });
+            }
+        }, 100);
+    }
+    
+    /**
+     * Perform actual comparison between two locations
+     */
+    async performLocationComparison(loc1, loc2) {
+        try {
+            // Parse coordinates if they're in lat,lng format
+            let coords1, coords2;
+            
+            if (loc1.includes(',')) {
+                const [lat, lng] = loc1.split(',').map(Number);
+                coords1 = { lat, lng };
+            } else {
+                // Geocode location name to coordinates (simplified)
+                coords1 = await this.geocodeLocation(loc1);
+            }
+            
+            if (loc2.includes(',')) {
+                const [lat, lng] = loc2.split(',').map(Number);
+                coords2 = { lat, lng };
+            } else {
+                // Geocode location name to coordinates (simplified)
+                coords2 = await this.geocodeLocation(loc2);
+            }
+            
+            if (!coords1 || !coords2) {
+                throw new Error('Could not geocode one or both locations');
+            }
+            
+            // Get data for both locations
+            const data1 = await this.dataManager.getDataAtPoint(coords1.lat, coords1.lng);
+            const data2 = await this.dataManager.getDataAtPoint(coords2.lat, coords2.lng);
+            
+            // Show comparison results
+            const comparisonContent = `
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Location 1: ${loc1}</h6>
+                            <p><strong>SQM:</strong> ${data1.light_pollution?.sqm || 'N/A'}</p>
+                            <p><strong>Bortle:</strong> ${data1.light_pollution?.bortle || 'N/A'}</p>
+                            <p><strong>Elevation:</strong> ${data1.location?.elevation || 'N/A'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Location 2: ${loc2}</h6>
+                            <p><strong>SQM:</strong> ${data2.light_pollution?.sqm || 'N/A'}</p>
+                            <p><strong>Bortle:</strong> ${data2.light_pollution?.bortle || 'N/A'}</p>
+                            <p><strong>Elevation:</strong> ${data2.location?.elevation || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-secondary" onclick="webGIS.map.setView([${coords1.lat}, ${coords1.lng}], 10)">Go to Location 1</button>
+                        <button class="btn btn-secondary ms-2" onclick="webGIS.map.setView([${coords2.lat}, ${coords2.lng}], 10)">Go to Location 2</button>
+                    </div>
+                </div>
+            `;
+            
+            window.SystemBus.emit('ui:show_modal', { title: "Comparison Results", content: comparisonContent });
+            
+        } catch (error) {
+            console.error('Comparison error:', error);
+            alert('Error performing comparison: ' + error.message);
+        }
+    }
+    
+    /**
+     * Simple geocoding function to convert location names to coordinates
+     */
+    async geocodeLocation(locationName) {
+        // In a real implementation, this would call a geocoding service
+        // For now, we'll use a few hardcoded locations for demo purposes
+        const locations = {
+            'new york': { lat: 40.7128, lng: -74.0060 },
+            'london': { lat: 51.5074, lng: -0.1278 },
+            'tokyo': { lat: 35.6762, lng: 139.6503 },
+            'sydney': { lat: -33.8688, lng: 151.2093 },
+            'paris': { lat: 48.8566, lng: 2.3522 },
+            'berlin': { lat: 52.5200, lng: 13.4050 },
+            'rome': { lat: 41.9028, lng: 12.4964 },
+            'madrid': { lat: 40.4168, lng: -3.7038 },
+            'amsterdam': { lat: 52.3676, lng: 4.9041 },
+            'vienna': { lat: 48.2082, lng: 16.3738 }
+        };
+        
+        const normalized = locationName.toLowerCase().trim();
+        return locations[normalized] || { lat: 0, lng: 0 }; // Default to 0,0 if not found
     }
 
     initEventBusListeners() {

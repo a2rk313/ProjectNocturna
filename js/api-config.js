@@ -28,14 +28,18 @@ const API_CONFIG = {
     }
 };
 
-const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
+const CORS_PROXY = ''; // Removed public proxy for security - use backend proxy instead
 
 async function safeFetch(url, options = {}) {
     try {
+        // First try direct fetch
         let response = await fetch(url, options);
         if (!response.ok || response.type === 'opaque') {
-            const proxyUrl = `${CORS_PROXY}${url}`;
-            response = await fetch(proxyUrl, options);
+            // If direct fetch fails and we have a proxy URL, try with proxy
+            if (CORS_PROXY) {
+                const proxyUrl = `${CORS_PROXY}${url}`;
+                response = await fetch(proxyUrl, options);
+            }
         }
         return response;
     } catch (error) {

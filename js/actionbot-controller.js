@@ -383,7 +383,40 @@
         }
 
         downloadExtractedData() {
-            this.webGIS.showMessage('📥 Downloading dataset...');
+            // Get the current analysis results from the panel
+            const analysisContent = document.getElementById('analysisContent');
+            if (!analysisContent) {
+                this.webGIS.showMessage('❌ No data to download.');
+                return;
+            }
+            
+            // Create a data object with the analysis information
+            const dataToDownload = {
+                timestamp: new Date().toISOString(),
+                sessionId: this.sessionId,
+                analysis: analysisContent.innerHTML,
+                location: this.webGIS.map.getCenter(),
+                zoom: this.webGIS.map.getZoom()
+            };
+            
+            // Convert to JSON string
+            const jsonString = JSON.stringify(dataToDownload, null, 2);
+            
+            // Create blob and download
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `nocturna-analysis-${Date.now()}.json`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+            
+            this.webGIS.showMessage('✅ Dataset downloaded successfully!');
         }
     }
 
