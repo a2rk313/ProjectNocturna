@@ -9,7 +9,7 @@ interface MapActionControlsProps {
 
 export default function MapActionControls({ drawMode, setDrawMode }: MapActionControlsProps) {
     return (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-nocturna-navy/90 backdrop-blur border border-nocturna-accent/20 rounded-full px-2 py-1 flex gap-1 shadow-xl">
+        <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-[1000] bg-nocturna-navy/90 backdrop-blur border border-nocturna-accent/20 rounded-full px-2 py-1 flex gap-1 shadow-xl">
             <ControlBtn
                 active={drawMode === 'none'}
                 onClick={() => setDrawMode('none')}

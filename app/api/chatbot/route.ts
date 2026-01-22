@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const ChatbotSchema = z.object({
   message: z.string().min(1).max(1000),
@@ -20,8 +21,40 @@ export async function POST(request: NextRequest) {
     const validatedData = ChatbotSchema.parse(body);
     const { message, bounds, context } = validatedData;
 
-    // Generate context-aware response
-    const response = generateAIResponse(message, bounds, context);
+    let response: string;
+
+    if (process.env.GOOGLE_GEMINI_API_KEY) {
+        try {
+            const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+            let prompt = `You are Lumina, the cosmic guide for Project Nocturna, a professional light pollution WebGIS platform.
+Your goal is to help users discover dark skies, analyze light pollution data (VIIRS satellite data), and understand the impact of artificial light at night.
+
+Context:
+- User Mode: ${context?.mode ? context.mode : 'General'}
+- User Location: ${context?.lat && context?.lon ? `${context.lat.toFixed(4)}, ${context.lon.toFixed(4)}` : 'Unknown'}
+${bounds ? `- Map View Area: approx ${calculateArea(bounds).toFixed(0)} km²` : ''}
+
+Tools available in the platform:
+- Science Mode: VIIRS Radiance Map, Trend Analysis, Ecological Impact Simulator, Energy Waste Estimation.
+- Citizen Mode: Dark Sky Parks Directory, Observation Planner (Astro Forecast), Real-time Light Pollution Map.
+
+User Message: "${message}"
+
+Respond directly to the user. Be helpful, scientific yet accessible, and professional. Keep responses concise (under 3 sentences unless detailed explanation is requested).
+If the user asks about a specific tool, guide them to the appropriate mode.
+`;
+
+            const result = await model.generateContent(prompt);
+            response = result.response.text();
+        } catch (geminiError) {
+            console.error("Gemini API Error:", geminiError);
+            response = generateRuleBasedResponse(message, bounds, context);
+        }
+    } else {
+        response = generateRuleBasedResponse(message, bounds, context);
+    }
 
     return NextResponse.json({ 
       success: true,
@@ -46,16 +79,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateAIResponse(message: string, bounds?: any, context?: any): string {
+function generateRuleBasedResponse(message: string, bounds?: any, context?: any): string {
   const lowerMessage = message.toLowerCase();
   
   // Location-aware responses
   if (context?.lat && context?.lon) {
     if (lowerMessage.includes('light pollution') || lowerMessage.includes('radiance')) {
-      return `Based on your location at ${context.lat.toFixed(4)}, ${context.lon.toFixed(4)}, I can analyze the current light pollution levels. Would you like me to run a detailed assessment?`;
+      return `Based on your location at ${context.lat.toFixed(4)}, ${context.lon.toFixed(4)}, I can analyze the current light pollution levels. Check the Science Mode for details.`;
     }
     if (lowerMessage.includes('dark sky') || lowerMessage.includes('stargazing')) {
-      return `I can help you find the best dark sky sites near ${context.lat.toFixed(4)}, ${context.lon.toFixed(4)}. Let me search for nearby parks and low-light areas.`;
+      return `I can help you find the best dark sky sites near ${context.lat.toFixed(4)}, ${context.lon.toFixed(4)}. Try the Citizen Mode Parks Directory.`;
     }
   }
   
@@ -63,43 +96,25 @@ function generateAIResponse(message: string, bounds?: any, context?: any): strin
   if (bounds) {
     const area = calculateArea(bounds);
     if (area > 10000) {
-      return `You're looking at a large area (${area.toFixed(0)} km²). For detailed analysis, try zooming in to a specific region.`;
+      return `You're looking at a large area (${area.toFixed(0)} km²). For detailed analysis, try zooming in.`;
     }
   }
   
-  // Enhanced rule-based responses
   if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-    return "Greetings, stargazer! I'm Lumina, your cosmic guide. How can I assist you with your night sky journey today?";
-  } else if (lowerMessage.includes('site') || lowerMessage.includes('park') || lowerMessage.includes('where')) {
-    return context?.lat && context?.lon 
-      ? "Let me find the nearest Dark Sky Parks and stargazing locations for your area."
-      : "You can find certified Dark Sky Parks in 'Citizen Mode' via the Parks tab, or search nearby locations in Discovery mode.";
+    return "Greetings, stargazer! I'm Lumina, your cosmic guide. How can I assist you with your night sky journey today? (Gemini AI not configured, using fallback)";
+  } else if (lowerMessage.includes('site') || lowerMessage.includes('park')) {
+    return "You can find certified Dark Sky Parks in 'Citizen Mode' via the Parks tab.";
   } else if (lowerMessage.includes('pollution') || lowerMessage.includes('light')) {
-    if (bounds) {
-      return "For the current map area, I can analyze light pollution levels using VIIRS satellite data. Check the Scientific Mode for detailed radiance analysis.";
-    } else {
-      return "Light pollution affects 80% of the world's population. I can help you analyze current conditions and trends using satellite data.";
-    }
-  } else if (lowerMessage.includes('bortle')) {
-    return "The Bortle Scale measures night sky brightness from Class 1 (excellent dark skies) to Class 9 (inner-city). I can determine the Bortle class for your location using satellite data.";
-  } else if (lowerMessage.includes('viirs')) {
-    return "VIIRS provides high-quality nighttime light data from space. I use this to measure current radiance levels and analyze light pollution trends over time.";
-  } else if (lowerMessage.includes('weather') || lowerMessage.includes('cloud')) {
-    return "You can check cloud cover and moon phase in the Observation Planner (Citizen Mode) to find the best nights for stargazing.";
-  } else if (lowerMessage.includes('trend') || lowerMessage.includes('energy')) {
-    return "Switch to Scientific Mode to run comprehensive trend analysis and energy waste assessments using historical satellite data.";
-  } else if (lowerMessage.includes('help')) {
-    return "I can help you with: finding dark sky sites, analyzing light pollution, understanding the Bortle scale, VIIRS data analysis, energy waste assessments, and observation planning. What interests you most?";
+      return "Light pollution affects 80% of the world's population. Use Science Mode to analyze it.";
   }
   
-  return "Hello! I'm Lumina, your cosmic guide for Project Nocturna. I can help you discover dark skies, analyze light pollution, and plan observations. What would you like to explore?";
+  return "Hello! I'm Lumina. I can help you discover dark skies and analyze light pollution. What would you like to explore?";
 }
 
 function calculateArea(bounds: any): number {
-  // Simple rectangular area calculation in km² (rough approximation)
+  if (!bounds || !bounds._northEast || !bounds._southWest) return 0;
   const latDiff = bounds._northEast.lat - bounds._southWest.lat;
   const lngDiff = bounds._northEast.lng - bounds._southWest.lng;
-  // Convert degrees to approximate km (111 km per degree latitude, varies by longitude)
   const avgLat = (bounds._northEast.lat + bounds._southWest.lat) / 2;
   const kmPerDegLng = 111 * Math.cos(avgLat * Math.PI / 180);
   return Math.abs(latDiff * 111 * lngDiff * kmPerDegLng);

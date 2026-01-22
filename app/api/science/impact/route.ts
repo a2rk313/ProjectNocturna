@@ -2,19 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ScienceEngine } from '@/lib/science';
 
 export async function POST(request: NextRequest) {
-    try {
-        const { lat, lon } = await request.json();
+  try {
+    const body = await request.json();
+    const { lat, lon } = body;
 
-        if (!lat || !lon) {
-            return NextResponse.json({ error: 'Missing lat/lon' }, { status: 400 });
-        }
+    if (!lat || !lon) return NextResponse.json({ error: 'Missing lat/lon' }, { status: 400 });
 
-        const assessment = await ScienceEngine.assessEcologicalImpact(lat, lon);
+    const assessment = await ScienceEngine.assessEcologicalImpact(lat, lon);
 
-        return NextResponse.json(assessment);
-
-    } catch (e) {
-        console.error(e);
-        return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
-    }
+    return NextResponse.json(assessment);
+  } catch (error) {
+    console.error('Impact assessment error:', error);
+    return NextResponse.json({ error: 'Failed to assess impact' }, { status: 500 });
+  }
 }
