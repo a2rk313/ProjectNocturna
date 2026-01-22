@@ -159,18 +159,6 @@ updateUIForMode(mode) {
             new window.ScientificMode(this).initialize();
         }
     }
-        } else {
-            if(indicator) { indicator.innerText = 'Scientific Mode'; indicator.className = 'badge bg-warning ms-2 mode-badge'; }
-            if(labels.title) labels.title.innerText = 'Scientific Analysis';
-            if(labels.botName) labels.botName.innerText = 'Lumina Pro';
-            if(labels.welcome) labels.welcome.innerText = 'Scientific Mode active. Use draw tools to analyze areas.';
-
-            document.getElementById('citizenToolbar').style.display = 'none';
-            document.getElementById('scientificToolbar').style.display = 'block';
-
-            new window.ScientificMode(this).initialize();
-        }
-    }
 
     initUIListeners() {
         const switchBtn = document.getElementById('switchMode');
