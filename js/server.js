@@ -8,6 +8,7 @@ const csv = require('csv-parser');
 const path = require('path');
 const axios = require('axios');
 const { processVIIRSData } = require('./viirs-processor');
+const geeService = require('./gee-service');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -176,7 +177,7 @@ app.get('/api/history', async (req, res) => {
     }
 });
 
-// 3. NEW: PHYSICS-BASED ENERGY ANALYSIS
+// 3. NEW: PHYSICS-BASED ENERGY ANALYSIS (Enhanced with GEE)
 app.post('/api/analyze-energy', async (req, res) => {
     try {
         const { geometry, costPerKwh, uloRatio } = req.body;
@@ -184,41 +185,66 @@ app.post('/api/analyze-energy', async (req, res) => {
              return res.status(400).json({ error: "Invalid geometry" });
         }
         
-        // Get average brightness and real area size
-        const query = `
-            SELECT 
-                AVG(sqm) as avg_sqm,
-                ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)::geography) as area_sqm
-            FROM measurements
-            WHERE ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326), geom)
-        `;
-        const result = await safeQuery(query, [JSON.stringify(geometry)]);
-        
-        // If no data found, return null or appropriate message instead of misleading default
-        if (result.rows.length === 0 || result.rows[0].avg_sqm === null) {
+        // Try GEE first for accurate radiance
+        let luminance = null;
+        let avgSQM = null;
+        let areaM2 = 0;
+        let dataSource = 'PostGIS';
+
+        // 1. Get Area from PostGIS
+        const areaQuery = `SELECT ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)::geography) as area_sqm`;
+        const areaResult = await safeQuery(areaQuery, [JSON.stringify(geometry)]);
+        areaM2 = areaResult.rows[0]?.area_sqm || 0;
+
+        // 2. Try GEE Stats
+        try {
+            const geeStats = await geeService.getRegionStats(geometry);
+            if (geeStats && geeStats.avg_radiance) {
+                const rad = geeStats.avg_radiance;
+                if (rad > 0) {
+                     // Approximate conversion or use index
+                     avgSQM = 12.6 - 2.5 * Math.log10(rad);
+                     luminance = rad * 0.002; // Approximation
+                     dataSource = 'Google Earth Engine';
+                }
+            }
+        } catch (e) { console.warn("GEE Stats failed, falling back to local DB"); }
+
+        // 3. Fallback to Local DB if GEE didn't work
+        if (avgSQM === null) {
+            const query = `
+                SELECT AVG(sqm) as avg_sqm
+                FROM measurements
+                WHERE ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326), geom)
+            `;
+            const result = await safeQuery(query, [JSON.stringify(geometry)]);
+            if (result.rows.length > 0 && result.rows[0].avg_sqm !== null) {
+                avgSQM = result.rows[0].avg_sqm;
+                // L = 10.8e4 * 10^(-0.4 * SQM)
+                luminance = 10.8 * 10000 * Math.pow(10, -0.4 * avgSQM);
+                dataSource = 'PostGIS (Local Measurements)';
+            }
+        }
+
+        // If still no data
+        if (avgSQM === null) {
              return res.json({
                 sqm: "N/A",
                 luminance: 0,
                 annual_kwh: 0,
                 annual_cost: 0,
-                area_km2: (result.rows[0]?.area_sqm || 0) / 1000000,
-                message: "No measurement data available for this region."
+                area_km2: (areaM2 / 1000000).toFixed(2),
+                message: "No measurement data available for this region (Local or GEE)."
              });
         }
-
-        const avgSQM = result.rows[0].avg_sqm;
-        const areaM2 = result.rows[0].area_sqm || 0;
 
         // Custom Physics Parameters
         const kwhPrice = parseFloat(costPerKwh) || 0.15;
         const ulo = parseFloat(uloRatio) || 0.2;
 
-        // PHYSICS FORMULA: SQM (mag/arcsec²) -> Luminance (cd/m²)
-        // L = 10.8e4 * 10^(-0.4 * SQM)
-        const luminance = 10.8 * 10000 * Math.pow(10, -0.4 * avgSQM);
-
         // ESTIMATION: 
-        // Upward Light Output (ULO) per cd/m² of luminance
+        if (!luminance) luminance = 10.8 * 10000 * Math.pow(10, -0.4 * avgSQM);
+
         const wastedWattsPerMeter = luminance * ulo;
         const totalWastedKw = (wastedWattsPerMeter * areaM2) / 1000;
         
@@ -231,7 +257,8 @@ app.post('/api/analyze-energy', async (req, res) => {
             annual_kwh: Math.round(annualKwh),
             annual_cost: Math.round(cost),
             area_km2: (areaM2 / 1000000).toFixed(2),
-            params: { kwhPrice, ulo }
+            params: { kwhPrice, ulo },
+            source: dataSource
         });
     } catch (err) {
         console.error(err);
@@ -284,6 +311,34 @@ app.get('/api/proxy/weather', async (req, res) => {
         const response = await axios.get(url);
         res.json(response.data);
     } catch (e) { res.status(500).json({ error: "Weather failed" }); }
+});
+
+// --- GOOGLE EARTH ENGINE ENDPOINTS ---
+app.get('/api/gee/mapid', async (req, res) => {
+    try {
+        // Default to VIIRS Monthly latest
+        const dataset = req.query.dataset || 'NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG';
+        const params = {
+            min: parseFloat(req.query.min || 0),
+            max: parseFloat(req.query.max || 60),
+            palette: ['black', 'purple', 'cyan', 'green', 'yellow', 'red', 'white']
+        };
+        const url = await geeService.getMapId(dataset, params);
+        res.json({ url });
+    } catch (e) {
+        console.error("GEE MapID Error:", e);
+        res.status(500).json({ error: "Failed to get GEE MapID" });
+    }
+});
+
+app.post('/api/gee/stats', async (req, res) => {
+    try {
+        const { geometry } = req.body;
+        const stats = await geeService.getRegionStats(geometry);
+        res.json(stats);
+    } catch (e) {
+        res.status(500).json({ error: "GEE Stats failed" });
+    }
 });
 
 // --- VIIRS DATA PROCESSING ---
@@ -436,6 +491,7 @@ app.post('/api/seed-db', async (req, res) => { await seedDatabase(); res.json({s
 if (require.main === module) {
     app.listen(port, () => {
         console.log(`🚀 Server running on port ${port}`);
+        geeService.init();   // Initialize GEE
         seedDatabase();
         processVIIRSData();  // Load VIIRS data after seeding
     });

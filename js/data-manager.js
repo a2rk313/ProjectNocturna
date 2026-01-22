@@ -108,9 +108,35 @@ class DataManager {
     }
 
     // Helper to get external tile layers (Configuration only)
-    getVIIRSTileUrl() {
-        // Updated to use more recent VIIRS Black Marble data instead of 2012
-        return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2020-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
+    async fetchVIIRSTileUrl() {
+        try {
+            // Try GEE first
+            const response = await fetch(`${this.apiBaseUrl}/gee/mapid`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.url) return data.url;
+            }
+            throw new Error('GEE Unavailable');
+        } catch (e) {
+            console.warn("GEE Tile URL fetch failed, using fallback:", e);
+            // Fallback: NASA GIBS (2020)
+            return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2020-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg';
+        }
+    }
+
+    /**
+     * Fetches VIIRS stats from GEE
+     */
+    async fetchGEEStats(geometry) {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/gee/stats`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ geometry })
+            });
+            if (response.ok) return await response.json();
+            return null;
+        } catch (e) { return null; }
     }
     
     /**
