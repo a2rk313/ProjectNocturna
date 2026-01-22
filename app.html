@@ -173,8 +173,14 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const basemapDropdown = document.getElementById('basemapDropdown');
-            document.addEventListener('click', function() { if (basemapDropdown) basemapDropdown.classList.remove('show'); });
-            if (basemapDropdown) basemapDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+            const basemapSwitcher = document.getElementById('basemapSwitcher');
+            
+            document.addEventListener('click', function(e) {
+                // Only hide the dropdown if the click is outside both the switcher and the dropdown
+                if (basemapDropdown && !basemapSwitcher.contains(e.target) && !basemapDropdown.contains(e.target)) {
+                    basemapDropdown.classList.remove('show');
+                }
+            });
         });
     </script>
 </body>
