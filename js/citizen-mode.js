@@ -53,6 +53,7 @@ class CitizenMode {
         
         window.SystemBus.emit('system:message', `🔭 Scanning near ${selection ? 'selected location' : 'map view'}...`);
         
+        let observatories = [];
         try {
             // Query Overpass API for observatories
             const overpassQuery = `
@@ -74,7 +75,6 @@ class CitizenMode {
             if (!response.ok) throw new Error('Network response was not ok');
             
             const data = await response.json();
-            const observatories = [];
             
             if (data.elements && data.elements.length > 0) {
                 data.elements.forEach(element => {
@@ -93,22 +93,15 @@ class CitizenMode {
                     }
                 });
             }
-            
-            if (observatories.length > 0) {
-                window.SystemBus.emit('map:add_markers', { data: observatories });
-                window.SystemBus.emit('system:message', `✅ Found ${observatories.length} observatories.`);
-            } else {
-                // Fallback demo data if no real observatories found
-                const famous = [
-                    { lat: 51.4769, lng: -0.0005, tags: { name: 'Royal Observatory Greenwich' } },
-                    { lat: 19.8236, lng: -155.4700, tags: { name: 'Mauna Kea' } }
-                ];
-                window.SystemBus.emit('map:add_markers', { data: famous });
-                window.SystemBus.emit('system:message', "✅ Found observatories (demo data).");
-            }
         } catch (error) {
             console.error('Error finding observatories:', error);
-            // Fallback demo data on error
+        }
+
+        if (observatories.length > 0) {
+            window.SystemBus.emit('map:add_markers', { data: observatories });
+            window.SystemBus.emit('system:message', `✅ Found ${observatories.length} observatories.`);
+        } else {
+            // Fallback demo data if no real observatories found or error occurred
             const famous = [
                 { lat: 51.4769, lng: -0.0005, tags: { name: 'Royal Observatory Greenwich' } },
                 { lat: 19.8236, lng: -155.4700, tags: { name: 'Mauna Kea' } }

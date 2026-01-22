@@ -590,18 +590,28 @@ updateUIForMode(mode) {
         const locations = {
             'new york': { lat: 40.7128, lng: -74.0060 },
             'london': { lat: 51.5074, lng: -0.1278 },
-            'tokyo': { lat: 35.6762, lng: 139.6503 },
-            'sydney': { lat: -33.8688, lng: 151.2093 },
-            'paris': { lat: 48.8566, lng: 2.3522 },
-            'berlin': { lat: 52.5200, lng: 13.4050 },
-            'rome': { lat: 41.9028, lng: 12.4964 },
-            'madrid': { lat: 40.4168, lng: -3.7038 },
-            'amsterdam': { lat: 52.3676, lng: 4.9041 },
-            'vienna': { lat: 48.2082, lng: 16.3738 }
+            'tokyo': { lat: 35.6762, lng: 139.6503 }
         };
-        
         const normalized = locationName.toLowerCase().trim();
-        return locations[normalized] || { lat: 0, lng: 0 }; // Default to 0,0 if not found
+        return locations[normalized] || { lat: 0, lng: 0 };
+    }
+
+    // Helper for simple routing
+    async calculateRoute() {
+        const start = document.getElementById('routeStart').value;
+        const end = document.getElementById('routeEnd').value;
+        if (!start || !end) return;
+
+        const s = await this.geocodeLocation(start);
+        const e = await this.geocodeLocation(end);
+
+        if (s.lat && e.lat) {
+             const polyline = L.polyline([[s.lat, s.lng], [e.lat, e.lng]], {color: 'red'}).addTo(this.map);
+             this.map.fitBounds(polyline.getBounds());
+             window.SystemBus.emit('system:message', "✅ Route planned (Straight Line).");
+        } else {
+             window.SystemBus.emit('system:message', "❌ Could not find locations.");
+        }
     }
 
     initEventBusListeners() {

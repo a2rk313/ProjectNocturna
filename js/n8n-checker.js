@@ -1,6 +1,7 @@
 // js/n8n-checker.js
 class N8NChecker {
     static async checkServer() {
+        // Use the server-side proxy instead of direct client connection
         try {
             // Use relative path to check our own server's health instead of external N8N
             const response = await fetch('/api/health');
