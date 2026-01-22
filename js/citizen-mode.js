@@ -56,20 +56,15 @@ class CitizenMode {
         let observatories = [];
         try {
             // Query Overpass API for observatories
-            const overpassQuery = `
-                [out:json];
-                (
-                  node["amenity"="observatory"](around:50000, ${center.lat}, ${center.lng});
-                  way["amenity"="observatory"](around:50000, ${center.lat}, ${center.lng});
-                  relation["amenity"="observatory"](around:50000, ${center.lat}, ${center.lng});
-                );
-                out center;
-            `;
-            
             const response = await fetch('/api/proxy/overpass', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: encodeURIComponent(overpassQuery) })
+                body: JSON.stringify({
+                    type: 'observatories',
+                    lat: center.lat,
+                    lng: center.lng,
+                    radius: 50000
+                })
             });
             
             if (!response.ok) throw new Error('Network response was not ok');

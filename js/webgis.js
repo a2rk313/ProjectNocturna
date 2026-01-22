@@ -454,14 +454,7 @@ class WebGIS {
             console.error("Geocoding failed:", e);
         }
 
-        // Fallback for hardcoded locations if API fails
-        const locations = {
-            'new york': { lat: 40.7128, lng: -74.0060 },
-            'london': { lat: 51.5074, lng: -0.1278 },
-            'tokyo': { lat: 35.6762, lng: 139.6503 }
-        };
-        const normalized = locationName.toLowerCase().trim();
-        return locations[normalized] || { lat: 0, lng: 0 };
+        return null;
     }
 
     // Helper for simple routing
@@ -473,10 +466,38 @@ class WebGIS {
         const s = await this.geocodeLocation(start);
         const e = await this.geocodeLocation(end);
 
-        if (s.lat && e.lat) {
-             const polyline = L.polyline([[s.lat, s.lng], [e.lat, e.lng]], {color: 'red'}).addTo(this.map);
-             this.map.fitBounds(polyline.getBounds());
-             window.SystemBus.emit('system:message', "✅ Route planned (Straight Line).");
+        if (s && e) {
+             window.SystemBus.emit('system:message', "🚗 Calculating route...");
+             try {
+                 const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${s.lng},${s.lat};${e.lng},${e.lat}?overview=full&geometries=geojson`);
+                 const data = await response.json();
+
+                 if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                     const route = data.routes[0];
+
+                     // Add route to map
+                     const routeLayer = L.geoJSON(route.geometry, {
+                         style: { color: '#00ccff', weight: 5, opacity: 0.8 }
+                     }).addTo(this.map);
+
+                     this.drawnItems.addLayer(routeLayer); // Add to drawnItems so it can be cleared
+                     this.map.fitBounds(routeLayer.getBounds());
+
+                     const distKm = (route.distance / 1000).toFixed(1);
+                     const durMin = Math.round(route.duration / 60);
+
+                     window.SystemBus.emit('system:message', `✅ Route found: ${distKm}km, ~${durMin} min.`);
+                 } else {
+                     throw new Error('No route found');
+                 }
+             } catch (err) {
+                 console.error(err);
+                 // Fallback to straight line
+                 const polyline = L.polyline([[s.lat, s.lng], [e.lat, e.lng]], {color: 'red', dashArray: '5, 10'}).addTo(this.map);
+                 this.drawnItems.addLayer(polyline);
+                 this.map.fitBounds(polyline.getBounds());
+                 window.SystemBus.emit('system:message', "⚠️ OSRM failed. Showing direct path.");
+             }
         } else {
              window.SystemBus.emit('system:message', "❌ Could not find locations.");
         }

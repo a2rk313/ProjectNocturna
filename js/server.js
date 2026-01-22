@@ -179,7 +179,7 @@ app.get('/api/history', async (req, res) => {
 // 3. NEW: PHYSICS-BASED ENERGY ANALYSIS
 app.post('/api/analyze-energy', async (req, res) => {
     try {
-        const { geometry } = req.body;
+        const { geometry, costPerKwh, uloRatio } = req.body;
         if (!geometry || !geometry.type || !geometry.coordinates) {
              return res.status(400).json({ error: "Invalid geometry" });
         }
@@ -209,24 +209,29 @@ app.post('/api/analyze-energy', async (req, res) => {
         const avgSQM = result.rows[0].avg_sqm;
         const areaM2 = result.rows[0].area_sqm || 0;
 
+        // Custom Physics Parameters
+        const kwhPrice = parseFloat(costPerKwh) || 0.15;
+        const ulo = parseFloat(uloRatio) || 0.2;
+
         // PHYSICS FORMULA: SQM (mag/arcsec²) -> Luminance (cd/m²)
         // L = 10.8e4 * 10^(-0.4 * SQM)
         const luminance = 10.8 * 10000 * Math.pow(10, -0.4 * avgSQM);
 
         // ESTIMATION: 
-        // Approx 0.2 Watts/m² of Upward Light Output (ULO) per cd/m² of luminance
-        const wastedWattsPerMeter = luminance * 0.2; 
+        // Upward Light Output (ULO) per cd/m² of luminance
+        const wastedWattsPerMeter = luminance * ulo;
         const totalWastedKw = (wastedWattsPerMeter * areaM2) / 1000;
         
         const annualKwh = totalWastedKw * 365 * 10; // 10 hours darkness
-        const cost = annualKwh * 0.15; // $0.15/kWh
+        const cost = annualKwh * kwhPrice;
 
         res.json({
             sqm: parseFloat(avgSQM).toFixed(2),
             luminance: luminance.toExponential(2),
             annual_kwh: Math.round(annualKwh),
             annual_cost: Math.round(cost),
-            area_km2: (areaM2 / 1000000).toFixed(2)
+            area_km2: (areaM2 / 1000000).toFixed(2),
+            params: { kwhPrice, ulo }
         });
     } catch (err) {
         console.error(err);
@@ -237,13 +242,29 @@ app.post('/api/analyze-energy', async (req, res) => {
 // Proxy Endpoints
 app.post('/api/proxy/overpass', async (req, res) => {
     try {
-        const query = req.body.query;
-        if (!query || typeof query !== 'string' || !query.includes('[out:json]')) {
-            return res.status(400).json({ error: "Invalid Overpass query" });
+        const { type, lat, lng, radius } = req.body;
+
+        let query = '';
+        if (type === 'observatories') {
+             if (!lat || !lng) return res.status(400).json({ error: "Missing coordinates" });
+             const r = parseInt(radius) || 50000;
+             query = `[out:json][timeout:25];
+                (
+                  node["amenity"="observatory"](around:${r}, ${lat}, ${lng});
+                  way["amenity"="observatory"](around:${r}, ${lat}, ${lng});
+                  relation["amenity"="observatory"](around:${r}, ${lat}, ${lng});
+                );
+                out center;`;
+        } else {
+            return res.status(400).json({ error: "Invalid query type" });
         }
+
         const response = await axios.post('https://overpass-api.de/api/interpreter', `data=${query}`);
         res.json(response.data);
-    } catch (e) { res.status(500).json({ error: "Overpass failed" }); }
+    } catch (e) {
+        console.error("Overpass Error:", e.message);
+        res.status(500).json({ error: "Overpass failed" });
+    }
 });
 
 app.get('/api/system/n8n-status', async (req, res) => {
@@ -340,6 +361,41 @@ async function seedDatabase() {
         const stream = fs.createReadStream(path.join(__dirname, '../data/GaN2024.csv'))
             .pipe(csv());
 
+        const batchSize = 500;
+        let batch = [];
+
+        const flushBatch = async () => {
+            if (batch.length === 0) return;
+
+            const values = [];
+            const valueStrings = [];
+            let counter = 1;
+
+            for (const r of batch) {
+                values.push(...r);
+                const p = (i) => `$${counter + i}`;
+                // params: lat, lng, elev, date, sqm, mag, const, comm, cloud, moon, grade, score
+                // geom: ST_SetSRID(ST_MakePoint(lng, lat), 4326) => p(1), p(0)
+                valueStrings.push(`(${p(0)}, ${p(1)}, ${p(2)}, ${p(3)}, ${p(4)}, ${p(5)}, ${p(6)}, ${p(7)}, ${p(8)}, ${p(9)}, ${p(10)}, ${p(11)}, ST_SetSRID(ST_MakePoint(${p(1)}, ${p(0)}), 4326))`);
+                counter += 12;
+            }
+
+            const query = `
+                INSERT INTO measurements
+                (lat, lng, elevation, date_observed, sqm, mag, constellation, comment, cloud_cover_pct, moon_illumination, is_research_grade, quality_score, geom)
+                VALUES ${valueStrings.join(', ')}
+            `;
+
+            try {
+                await pool.query(query, values);
+                inserted += batch.length;
+            } catch (e) {
+                console.error("Batch insert failed:", e);
+                skipped += batch.length;
+            }
+            batch = [];
+        };
+
         for await (const row of stream) {
             const lat = parseFloat(row.Latitude);
             const lng = parseFloat(row.Longitude);
@@ -364,17 +420,13 @@ async function seedDatabase() {
             if (!row.SQMSerial) score -= 10;
             if (score < 0) score = 0;
 
-            try {
-                // In a production environment, we would batch these inserts
-                await pool.query(
-                    `INSERT INTO measurements
-                    (lat, lng, elevation, date_observed, sqm, mag, constellation, comment, cloud_cover_pct, moon_illumination, is_research_grade, quality_score, geom)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ST_SetSRID(ST_MakePoint($2, $1), 4326))`,
-                    [lat, lng, row['Elevation(m)'], date, sqm, row.LimitingMag, row.Constellation, row.SkyComment, cloudPct, moonIllum, isResearchGrade, score]
-                );
-                inserted++;
-            } catch (e) { skipped++; }
+            batch.push([lat, lng, row['Elevation(m)'], date, sqm, row.LimitingMag, row.Constellation, row.SkyComment, cloudPct, moonIllum, isResearchGrade, score]);
+
+            if (batch.length >= batchSize) {
+                await flushBatch();
+            }
         }
+        await flushBatch();
         console.log(`✅ Ingestion Complete. Inserted: ${inserted}, Skipped: ${skipped}`);
     } catch (e) { console.error("Seeding failed:", e); }
 }
