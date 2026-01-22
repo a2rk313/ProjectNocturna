@@ -14,7 +14,7 @@
     "seed": "node -e 'require(\"./js/server.js\").seedDatabase()'",
     "seed:force": "curl -X POST http://localhost:3000/api/seed-db",
     "viirs:process": "node js/viirs-processor.js",
-    "test": "node --test tests/"
+    "test": "node --test tests/test_server.js"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",

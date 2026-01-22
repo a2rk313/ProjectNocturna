@@ -147,6 +147,34 @@ class ScientificMode {
              alert("Please draw a region on the map first to analyze energy.");
              return;
         }
+
+        // Show Input Modal
+        const content = `
+            <div class="p-2">
+                <p>Configure analysis parameters:</p>
+                <div class="mb-3">
+                    <label class="form-label">Electricity Cost ($/kWh)</label>
+                    <input type="number" id="energyCost" class="form-control" value="0.15" step="0.01">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Upward Light Ratio (0.0 - 1.0)</label>
+                    <input type="number" id="energyULO" class="form-control" value="0.2" step="0.05">
+                </div>
+                <button class="btn btn-warning w-100" id="runEnergyCalc">Calculate Waste</button>
+            </div>
+        `;
+        window.SystemBus.emit('ui:show_modal', { title: "⚡ Energy Parameters", content: content });
+
+        // Bind click event
+        setTimeout(() => {
+            const btn = document.getElementById('runEnergyCalc');
+            if (btn) btn.onclick = () => this.performEnergyCalculation(geometry);
+        }, 100);
+    }
+
+    async performEnergyCalculation(geometry) {
+        const cost = document.getElementById('energyCost').value;
+        const ulo = document.getElementById('energyULO').value;
         
         window.SystemBus.emit('system:message', "⚡ Calculating radiance flux...");
 
@@ -154,7 +182,11 @@ class ScientificMode {
             const response = await fetch('/api/analyze-energy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ geometry })
+                body: JSON.stringify({
+                    geometry,
+                    costPerKwh: cost,
+                    uloRatio: ulo
+                })
             });
 
             const stats = await response.json();
@@ -171,6 +203,7 @@ class ScientificMode {
                     <p class="text-muted small">Est. Wasted Upward Energy / Year</p>
                     <h4 class="text-danger">$${stats.annual_cost.toLocaleString()}</h4>
                     <small class="text-light opacity-50">Area: ${stats.area_km2} km²</small>
+                    <div class="mt-2 text-muted small">Using $${cost}/kWh, ULO ${ulo}</div>
                 </div>
             `;
             window.SystemBus.emit('ui:show_modal', { title: "⚡ Energy Waste Model", content: content });
